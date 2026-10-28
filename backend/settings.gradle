@@ -1,0 +1,2 @@
+rootProject.name = 'backend'
+include 'core-service', 'inventory-service', 'finance-service', 'delivery-service'
