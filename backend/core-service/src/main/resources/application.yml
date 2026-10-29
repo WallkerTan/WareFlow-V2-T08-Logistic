@@ -6,6 +6,10 @@ spring:
     name: core-service
   config:
     import: "optional:configserver:http://${CONFIG_SERVER_HOST:localhost}:${CONFIG_SERVER_PORT:8888}"
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 15MB
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:wareflow_core}
     username: ${DB_USER:postgres}
@@ -26,6 +30,11 @@ wareflow:
     secret: ${JWT_SECRET:Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
     access-token-ttl: PT8H
     issuer: wareflow-auth
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:dx4ym1xrj}
+  api-key: ${CLOUDINARY_API_KEY:278296519696876}
+  api-secret: ${CLOUDINARY_API_SECRET:278296519696876}
 
 eureka:
   client:
