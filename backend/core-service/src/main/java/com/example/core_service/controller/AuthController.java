@@ -4,6 +4,7 @@ import com.example.core_service.dto.request.LoginRequest;
 import com.example.core_service.dto.request.RegisterCompanyRequest;
 import com.example.core_service.dto.request.RegisterWarehouseManagerRequest;
 import com.example.core_service.dto.response.AuthResponse;
+import com.example.core_service.security.UserPrincipal;
 import com.example.core_service.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,10 +53,13 @@ public class AuthController {
     }
 
     /**
-     * Thông tin người dùng hiện tại (yêu cầu header Authorization: Bearer &lt;token&gt;).
+     * Thông tin người dùng hiện tại (yêu cầu header Authorization: Bearer <token>).
      */
     @GetMapping("/me")
     public AuthResponse me(Authentication authentication) {
-        return authService.getCurrentUser((String) authentication.getPrincipal());
+        String userId = authentication.getPrincipal() instanceof UserPrincipal p
+                ? p.getId().toString()
+                : String.valueOf(authentication.getPrincipal());
+        return authService.getCurrentUser(userId);
     }
 }
