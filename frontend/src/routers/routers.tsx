@@ -9,11 +9,15 @@ const router_wareflow_v2 = createBrowserRouter([
     { path: "/", element: <Navigate to="/auth/login" replace /> },
     { path: "/login", element: <Navigate to="/auth/login" replace /> },
     { path: "/register", element: <Navigate to="/auth/register" replace /> },
-    { path: "/auth", element: <AuthLayout />, children: [
-        { index: true, element: <Navigate to="login" replace /> },
-        { path: "login", element: <LoginForm /> },
-        { path: "register", element: <RegisterForm /> },
-    ] },
+    {
+        path: "/auth",
+        element: <AuthLayout />,
+        children: [
+            { index: true, element: <Navigate to="login" replace /> },
+            { path: "login", element: <LoginForm /> },
+            { path: "register", element: <RegisterForm /> },
+        ],
+    },
     {
         path: "*",
         element: <NotFound />,

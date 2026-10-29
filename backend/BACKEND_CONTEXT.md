@@ -581,3 +581,66 @@ Chạy từ thư mục `backend/`:
    * Giao tiếp đồng bộ giữa các service (nếu cần dữ liệu đối tác) thông qua Spring Cloud OpenFeign hoặc REST Client thông qua Eureka ID (`lb://<service-name>`).
    * Giao tiếp bất đồng bộ qua Message Queue (Kafka/RabbitMQ) cho các sự kiện biến động kho, thanh toán.
 
+
+
+---
+
+## 8. Authentication (JWT), Phân Quyền Role & Khóa/Mở Công Ty
+
+### 8.1. Cơ chế Xác thực & Token Payload
+* **Thuật toán**: HMAC-SHA256 (`io.jsonwebtoken:jjwt`).
+* **Thời gian sống Access Token**: 8 giờ (`access-token-ttl: PT8H`).
+* **Payload Claims**:
+  * `sub`: User ID (`UUID`).
+  * `email`: Email người dùng.
+  * `role`: Vai trò (`SYSTEM_ADMIN`, `COMPANY_ADMIN`, `WAREHOUSE_MANAGER`).
+  * `companyId`: UUID công ty sở hữu (hoặc `null` nếu là `SYSTEM_ADMIN`).
+* **Principal trong Spring Security**: `UserPrincipal` (chứa `id`, `email`, `role`, `companyId`) tích hợp sẵn helper `SecurityUtils`.
+
+### 8.2. Tài khoản Khởi tạo Mặc định (Data Seeder)
+Khi hệ thống chạy lần đầu, `DataInitializer` tự động tạo tài khoản quản trị cao nhất nếu chưa tồn tại:
+* **Email**: `admin@wareflow.com`
+* **Mật khẩu**: `admin123`
+* **Vai trò**: `SYSTEM_ADMIN`
+* **Trạng thái**: `ACTIVE`
+
+### 8.3. Danh sách Endpoint Xác thực & Quản lý Công ty (Core Service)
+
+| Method | Endpoint | Quyền (Role) | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/core/auth/register-company` | Public | Đăng ký công ty mới kèm tài khoản `COMPANY_ADMIN` |
+| `POST` | `/api/core/auth/login` | Public | Đăng nhập email/password, nhận access token |
+| `GET` | `/api/core/auth/me` | Authenticated | Lấy thông tin user hiện tại từ token |
+| `GET` | `/api/core/companies` | `SYSTEM_ADMIN` | Lấy danh sách công ty (search, filter status/businessModel, paging) |
+| `GET` | `/api/core/companies/my-company` | `COMPANY_ADMIN` | Lấy thông tin công ty của tài khoản đang đăng nhập |
+| `GET` | `/api/core/companies/{id}` | `SYSTEM_ADMIN` / Owner `COMPANY_ADMIN` | Xem chi tiết 1 công ty |
+| `PATCH`| `/api/core/companies/{id}/status` | `SYSTEM_ADMIN` | Đổi trạng thái công ty (`ACTIVE`, `LOCKED`, `PENDING`) |
+| `PUT` | `/api/core/companies/{id}/lock` | `SYSTEM_ADMIN` | Khóa công ty nhanh chóng kèm lý do |
+| `PUT` | `/api/core/companies/{id}/unlock` | `SYSTEM_ADMIN` | Mở khóa hoạt động cho công ty |
+| `PUT` | `/api/core/companies/{id}` | `SYSTEM_ADMIN` / Owner `COMPANY_ADMIN` | Cập nhật hồ sơ công ty (phone, taxCode, address, logo,...) |
+
+### 8.4. Cơ chế Chặn Real-Time khi Công ty bị Khóa
+* Khi `SYSTEM_ADMIN` thực hiện Khóa (`LOCKED`):
+  1. Trạng thái `Company.status` chuyển thành `LOCKED`.
+  2. Ghi vết vào `SystemLog` (`action = LOCK_COMPANY`, lưu `metadata` và `actor`).
+  3. Bắn `Notification` phạm vi `COMPANY`.
+  4. **Cơ chế Real-Time Security Filter (`JwtAuthenticationFilter`)**: Ngay lập tức từ chối mọi request của các user thuộc công ty bị khóa với HTTP `403 Forbidden`, ngay cả khi JWT token của user đó vẫn còn hạn!
+
+---
+
+## 9. Tích Hợp Upload Media với Cloudinary
+
+### 9.1. Cấu hình
+* Thư viện: `com.cloudinary:cloudinary-http44:1.39.0`.
+* Thông tin cấu hình trong `application.yml` (hoặc biến môi trường):
+  * `cloudinary.cloud-name`: `dx4ym1xrj` (mặc định)
+  * `cloudinary.api-key`: `278296519696876`
+  * `cloudinary.api-secret`: `278296519696876`
+* Giới hạn kích thước file upload: tối đa **10MB** (`spring.servlet.multipart.max-file-size`).
+
+### 9.2. Danh sách Endpoint Upload
+
+| Method | Endpoint | Quyền | Params / Body | Phản hồi |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/core/upload/image` | Authenticated | `file`: MultipartFile<br>`folder`: String (avatars, companies, products, warehouses) | `CloudinaryUploadResponse`:<br>`{ url, secureUrl, publicId, format, bytes }` |
+| `DELETE`| `/api/core/upload/image` | Authenticated | `publicId`: String | `{ message: "Đã xóa ảnh thành công", publicId: "..." }` |
