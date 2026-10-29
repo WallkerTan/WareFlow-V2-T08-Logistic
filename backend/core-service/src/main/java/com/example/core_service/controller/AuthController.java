@@ -2,6 +2,7 @@ package com.example.core_service.controller;
 
 import com.example.core_service.dto.request.LoginRequest;
 import com.example.core_service.dto.request.RegisterCompanyRequest;
+import com.example.core_service.dto.request.RegisterWarehouseManagerRequest;
 import com.example.core_service.dto.response.AuthResponse;
 import com.example.core_service.security.UserPrincipal;
 import com.example.core_service.service.AuthService;
@@ -31,6 +32,16 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse registerCompany(@Valid @RequestBody RegisterCompanyRequest request) {
         return authService.registerCompany(request);
+    }
+
+    /**
+     * Đăng ký tài khoản WAREHOUSE_MANAGER kèm hồ sơ công ty hoặc cá nhân.
+     * Trả về luôn access token để đăng nhập ngay.
+     */
+    @PostMapping("/register-warehouse-manager")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthResponse registerWarehouseManager(@Valid @RequestBody RegisterWarehouseManagerRequest request) {
+        return authService.registerWarehouseManager(request);
     }
 
     /**
