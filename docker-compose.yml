@@ -84,6 +84,7 @@ services:
       EUREKA_PORT: 8761
       CONFIG_SERVER_HOST: config-server
       CONFIG_SERVER_PORT: 8888
+      JWT_SECRET: ${JWT_SECRET:-Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
     depends_on:
       postgres:
         condition: service_healthy
