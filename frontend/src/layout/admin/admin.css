@@ -829,26 +829,36 @@
 }
 
 /* ---------- Grid layouts ---------- */
+/* minmax(0, 1fr) is required so grid items can shrink below their content
+   width; the default `auto` minimum lets wide tables force overflow. */
 
 .adm-grid-2 {
     display: grid;
-    grid-template-columns: 1.55fr 1fr;
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
     gap: 16px;
     margin-bottom: 18px;
 }
 
 .adm-grid-3 {
     display: grid;
-    grid-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 18px;
 }
 
 .adm-grid-equal {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 18px;
+}
+
+/* Grid children default to `min-width: auto`, which prevents them from
+   shrinking below the intrinsic width of their content (e.g. wide tables). */
+.adm-grid-2 > *,
+.adm-grid-3 > *,
+.adm-grid-equal > * {
+    min-width: 0;
 }
 
 /* ---------- Tables ---------- */
@@ -1728,13 +1738,13 @@
 
 @media (max-width: 1240px) {
     .adm-grid-2 {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
 @media (max-width: 1080px) {
     .adm-grid-3 {
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .admin-search {
         width: auto;
@@ -1769,8 +1779,8 @@
     .admin-menu-btn {
         display: grid;
     }
-    .admin-grid-equal {
-        grid-template-columns: 1fr;
+    .adm-grid-equal {
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
@@ -1795,8 +1805,8 @@
     .admin-profile-meta {
         display: none;
     }
-    .admin-grid-3 {
-        grid-template-columns: 1fr;
+    .adm-grid-3 {
+        grid-template-columns: minmax(0, 1fr);
     }
     .adm-stats {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1806,7 +1816,7 @@
         font-size: 21px;
     }
     .adm-field-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
     .adm-donut-wrap {
         justify-content: center;
