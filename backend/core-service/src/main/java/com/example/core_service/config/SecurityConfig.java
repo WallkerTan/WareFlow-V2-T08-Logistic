@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/register-company",
+                                "/auth/register-warehouse-manager",
                                 "/actuator/**",
                                 "/error"
                         ).permitAll()
