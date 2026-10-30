@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import NotFound from "../page/NotFound";
+import LandingPage from "../page/LandingPage";
 import AuthLayout from "../layout/auth/AuthLayout";
 import LoginPage from "../page/auth/LoginPage";
 import RegisterPage from "../page/auth/RegisterPage";
@@ -28,7 +29,11 @@ const router_wareflow_v2 = createBrowserRouter([
     ] },
     {
         path: "*",
-        element: <NotFound />
-    }
+        element: <NotFound />,
+    },
+    {
+        path: "/LandingPage",
+        element: <LandingPage />,
+    },
 ]);
 export default router_wareflow_v2;
