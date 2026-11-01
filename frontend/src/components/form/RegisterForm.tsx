@@ -3,14 +3,13 @@ import { useForm } from 'react-hook-form';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import AuthField from './AuthField';
-import { authApi } from '../../services/authApi';
 
 export type RegisterValues = { companyName: string; taxCode: string; fullName: string; phone: string; email: string; password: string; confirmPassword: string; accepted: boolean };
 type Props = { onSubmit?: (values: RegisterValues) => Promise<void> };
 
-export default function RegisterForm({ onSubmit = authApi.registerCompany }: Props) {
+export default function RegisterForm({ onSubmit }: Props) {
     'use no memo';
-    const { register, handleSubmit, getValues, reset, formState: { errors, isSubmitting } } = useForm<RegisterValues>({
+    const { register, handleSubmit, getValues, formState: { errors, isSubmitting } } = useForm<RegisterValues>({
         defaultValues: { companyName: '', taxCode: '', fullName: '', phone: '', email: '', password: '', confirmPassword: '', accepted: false },
     });
     const [message, setMessage] = useState('');
@@ -19,11 +18,9 @@ export default function RegisterForm({ onSubmit = authApi.registerCompany }: Pro
         setMessage('');
         setSuccess(false);
         try {
-            await onSubmit(values);
-            reset();
-            setSuccess(true);
-            setMessage('Đăng ký công ty thành công. Bạn có thể đăng nhập bằng tài khoản vừa tạo.');
-        } catch (error) { setMessage(error instanceof Error ? error.message : 'Không thể đăng ký công ty. Vui lòng thử lại.'); }
+            if (onSubmit) { await onSubmit(values); setSuccess(true); setMessage('Yêu cầu đã được xử lý.'); }
+            else setMessage('Đây là bản giao diện. Chưa gửi yêu cầu đăng ký công ty đến máy chủ.');
+        } catch (error) { setMessage(error instanceof Error ? error.message : 'Không thể xử lý yêu cầu.'); }
     }
     return <form className="auth-form register-form" onSubmit={handleSubmit(submit)} noValidate>
         <div className="form-section-label"><span>01</span> Thông tin doanh nghiệp</div>
