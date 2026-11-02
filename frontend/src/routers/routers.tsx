@@ -1,4 +1,4 @@
-﻿import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import NotFound from "../page/NotFound";
 import LandingPage from "../page/LandingPage";
 import AuthLayout from "../layout/auth/AuthLayout";
