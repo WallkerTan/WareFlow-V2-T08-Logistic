@@ -1,0 +1,177 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: wareflow-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/docker/postgres-init/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wareflow-net
+
+  eureka-server:
+    build:
+      context: ./backend/eureka-server
+    container_name: wareflow-eureka-server
+    restart: always
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_HOSTNAME: eureka-server
+    networks:
+      - wareflow-net
+
+  config-server:
+    build:
+      context: ./backend/config-server
+    container_name: wareflow-config-server
+    restart: always
+    ports:
+      - "8888:8888"
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8761
+      CONFIG_PROFILE: native
+    depends_on:
+      - eureka-server
+    networks:
+      - wareflow-net
+
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+    container_name: wareflow-api-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8761
+      CONFIG_SERVER_HOST: config-server
+      CONFIG_SERVER_PORT: 8888
+    depends_on:
+      - eureka-server
+      - config-server
+    networks:
+      - wareflow-net
+
+  core-service:
+    build:
+      context: ./backend/core-service
+    container_name: wareflow-core-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wareflow_core
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8761
+      CONFIG_SERVER_HOST: config-server
+      CONFIG_SERVER_PORT: 8888
+      JWT_SECRET: ${JWT_SECRET:-Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - wareflow-net
+
+  inventory-service:
+    build:
+      context: ./backend/inventory-service
+    container_name: wareflow-inventory-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wareflow_inventory
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8761
+      CONFIG_SERVER_HOST: config-server
+      CONFIG_SERVER_PORT: 8888
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - wareflow-net
+
+  finance-service:
+    build:
+      context: ./backend/finance-service
+    container_name: wareflow-finance-service
+    restart: always
+    ports:
+      - "8083:8083"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wareflow_finance
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8761
+      CONFIG_SERVER_HOST: config-server
+      CONFIG_SERVER_PORT: 8888
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - wareflow-net
+
+  delivery-service:
+    build:
+      context: ./backend/delivery-service
+    container_name: wareflow-delivery-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: wareflow_delivery
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      EUREKA_HOST: eureka-server
+      EUREKA_PORT: 8761
+      CONFIG_SERVER_HOST: config-server
+      CONFIG_SERVER_PORT: 8888
+    depends_on:
+      postgres:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - wareflow-net
+
+networks:
+  wareflow-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
