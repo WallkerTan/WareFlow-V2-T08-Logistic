@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="30 seconds">
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- Lấy tên ứng dụng từ Spring context, mặc định là core-service -->
+    <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="core-service"/>
+
+    <!-- Thư mục chứa log: có thể ghi đè bằng biến môi trường LOG_PATH, mặc định là 'logs' -->
+    <property name="LOG_BASE_DIR" value="${LOG_PATH:-logs}/${APP_NAME}"/>
+
+    <!-- Định dạng log console với màu sắc -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <!-- Định dạng log ghi ra file -->
+    <property name="FILE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <!-- 1. Console Appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 2. Daily Rolling File Appender (Ghi toàn bộ log theo từng ngày: INFO, WARN, ERROR) -->
+    <appender name="DAILY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_BASE_DIR}/${APP_NAME}.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- Lưu log theo từng ngày: logs/core-service/core-service-yyyy-MM-dd.log -->
+            <fileNamePattern>${LOG_BASE_DIR}/${APP_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- Giữ lại log trong vòng 30 ngày -->
+            <maxHistory>30</maxHistory>
+            <!-- Giới hạn dung lượng tổng của toàn bộ file log lưu trữ tối đa 3GB -->
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 3. Error Daily Rolling File Appender (Chỉ ghi riêng các log ERROR theo từng ngày) -->
+    <appender name="DAILY_ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_BASE_DIR}/${APP_NAME}-error.log</file>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>ERROR</level>
+        </filter>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- File lỗi theo ngày: logs/core-service/core-service-error-yyyy-MM-dd.log -->
+            <fileNamePattern>${LOG_BASE_DIR}/${APP_NAME}-error-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 4. Audit Log Daily Rolling File (Chuyên biệt cho nhật ký thao tác hệ thống / Audit Log) -->
+    <appender name="DAILY_AUDIT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_BASE_DIR}/${APP_NAME}-audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- File audit theo ngày: logs/core-service/core-service-audit-yyyy-MM-dd.log -->
+            <fileNamePattern>${LOG_BASE_DIR}/${APP_NAME}-audit-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>90</maxHistory> <!-- Lưu trữ nhật ký kiểm toán trong 90 ngày -->
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [AUDIT] [%t] %-5level %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- Logger riêng cho Audit Service / Aspect -->
+    <logger name="AUDIT_LOGGER" level="INFO" additivity="true">
+        <appender-ref ref="DAILY_AUDIT_FILE"/>
+    </logger>
+
+    <!-- Mức log cho các package -->
+    <logger name="com.example.core_service" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="WARN"/>
+
+    <!-- Root Logger cấu hình cho cả Console và Daily Rolling Files -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="DAILY_FILE"/>
+        <appender-ref ref="DAILY_ERROR_FILE"/>
+    </root>
+</configuration>

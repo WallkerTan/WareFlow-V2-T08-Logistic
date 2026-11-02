@@ -1,6 +1,7 @@
 package com.example.core_service.controller;
 
 import com.example.core_service.dto.response.CloudinaryUploadResponse;
+import com.example.core_service.log.AuditLog;
 import com.example.core_service.service.CloudinaryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,7 @@ public class UploadController {
      */
     @PostMapping(value = "/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
+    @AuditLog(action = "UPLOAD_IMAGE", targetType = "Media", description = "Tải ảnh lên máy chủ Cloudinary")
     public CloudinaryUploadResponse uploadImage(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "folder", defaultValue = "general") String folder
@@ -37,9 +39,11 @@ public class UploadController {
      * Xóa ảnh khỏi Cloudinary bằng publicId
      */
     @DeleteMapping("/image")
+    @AuditLog(action = "DELETE_IMAGE", targetType = "Media", description = "Xóa ảnh trên Cloudinary")
     public Map<String, String> deleteImage(@RequestParam("publicId") String publicId) {
         cloudinaryService.deleteImage(publicId);
         return Map.of("message", "Đã xóa ảnh thành công", "publicId", publicId);
     }
 }
+
 
