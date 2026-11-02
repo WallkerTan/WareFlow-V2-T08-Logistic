@@ -1,7 +1,8 @@
+﻿import { Link } from 'react-router-dom';
 import ProfileEditor from '../../components/profile/ProfileEditor';
 
 export default function CompanyProfile() {
-    return <ProfileEditor kind="company" title="Hồ sơ công ty" description="Quản lý thông tin doanh nghiệp và hồ sơ pháp lý của công ty." sections={[
+    return <><div className="wf-notice" style={{ marginBottom: 22 }}><Link to="/company/warehouses">Xem danh sách kho công ty đã mua/thuê và thông tin chi tiết →</Link></div><ProfileEditor kind="company" title="Hồ sơ công ty" description="Quản lý thông tin doanh nghiệp và hồ sơ pháp lý của công ty." sections={[
         { title: 'Thông tin doanh nghiệp', description: 'Thông tin nhận diện và lĩnh vực hoạt động.', fields: [
             { name: 'name', label: 'Tên công ty', required: true },
             { name: 'business_model', label: 'Mô hình kinh doanh', type: 'select', required: true, options: [{ value: 'food', label: 'Thực phẩm' }, { value: 'tech', label: 'Công nghệ' }, { value: 'appliance', label: 'Đồ gia dụng' }, { value: 'fashion', label: 'Thời trang' }] },
@@ -13,5 +14,6 @@ export default function CompanyProfile() {
         { title: 'Thông tin quản lý', description: 'Thông tin được hệ thống cấp khi công ty đăng ký.', fields: [
             { name: 'id', label: 'Mã công ty', readOnly: true }, { name: 'status', label: 'Trạng thái', readOnly: true, hint: 'Chờ duyệt / Đang hoạt động / Đã khóa.' }, { name: 'created_at', label: 'Ngày tạo', readOnly: true },
         ] },
-    ]} />;
+    ]} /></>;
 }
+
