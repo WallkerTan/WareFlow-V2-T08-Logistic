@@ -36,6 +36,11 @@ cloudinary:
   api-key: ${CLOUDINARY_API_KEY:278296519696876}
   api-secret: ${CLOUDINARY_API_SECRET:278296519696876}
 
+logging:
+  config: classpath:logback-spring.xml
+  file:
+    path: ${LOG_PATH:logs}
+
 eureka:
   client:
     service-url:
