@@ -1,22 +1,38 @@
-﻿import { NavLink, Outlet, Link } from 'react-router-dom';
-import { Building2, Warehouse, ShieldCheck, ArrowUpRight, PanelLeft, Layers3 } from 'lucide-react';
+import { useState } from 'react';
+import { NavLink, Outlet, Link, useLocation } from 'react-router-dom';
+import { ArrowUpRight, ChevronRight, Menu, X } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import './main.css';
+import './roles.css';
 
-export default function MainLayout() {
-    return <div className="wf-shell">
-        <aside className="wf-sidebar">
-            <Link className="wf-brand" to="/company/profile"><span className="wf-brand-mark">W</span>ware<span>flow</span></Link>
-            <div className="wf-workspace"><Layers3 size={22} /><div><strong>Không gian quản lý</strong><small>Hồ sơ & thông tin</small></div></div>
-            <p className="wf-nav-label">QUẢN TRỊ HỆ THỐNG</p>
-            <nav aria-label="Quản lý hồ sơ">
-                <NavLink to="/wareflow/warehouses"><Warehouse size={19} />Quản lý kho</NavLink>
-                <NavLink to="/company/warehouses"><Warehouse size={19} />Kho của công ty</NavLink><NavLink to="/company/profile"><Building2 size={19} />Hồ sơ công ty</NavLink>
-                <NavLink to="/storehouse/profile"><Warehouse size={19} />Hồ sơ kho</NavLink>
-                <NavLink to="/wareflow/profile"><ShieldCheck size={19} />Hồ sơ WareFlow</NavLink>
+export type WorkspaceConfig = {
+    role: 'admin' | 'company' | 'storehouse'; title: string; description: string;
+    navLabel: string; home: string; profile: string; avatar: string; topbarLabel: string;
+    icon: LucideIcon; links: { to: string; label: string; icon: LucideIcon }[];
+};
+
+export default function MainLayout({ config }: { config: WorkspaceConfig }) {
+    const [expanded, setExpanded] = useState(false);
+    const { pathname } = useLocation();
+    const page = config.links.find(link => pathname === link.to.split('?')[0])?.label || 'Xem thử phê duyệt';
+    const Icon = config.icon;
+    return <div className={`wf-shell wf-role-${config.role}${expanded ? ' wf-menu-open' : ''}`}>
+        <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
+            <Link className="wf-brand" to={config.home} onClick={() => setExpanded(false)}><span className="wf-brand-mark">W</span>ware<span>flow</span></Link>
+            <div className="wf-workspace"><Icon size={22} /><div><strong>{config.title}</strong><small>{config.description}</small></div></div>
+            <p className="wf-nav-label">{config.navLabel}</p>
+            <nav aria-label={`Điều hướng ${config.title}`}>
+                {config.links.map(link => <NavLink key={link.to} to={link.to} onClick={() => setExpanded(false)}><link.icon size={19} />{link.label}</NavLink>)}
             </nav>
-            <div className="wf-sidebar-bottom"><span className="wf-mini-mark">W</span><div><strong>WareFlow Workspace</strong><small>Quản lý kho & logistics</small></div></div>
+            <div className="wf-sidebar-bottom"><span className="wf-mini-mark"><Icon size={16} /></span><div><strong>{config.title}</strong><small>WareFlow · Quản lý kho & logistics</small></div></div>
         </aside>
-        <div className="wf-main"><header className="wf-topbar"><span><PanelLeft size={19} /> Không gian làm việc <b>/</b> Hồ sơ</span><Link to="/auth/login">Đăng nhập <ArrowUpRight size={16} /></Link></header><main className="wf-content"><Outlet /></main><footer className="wf-footer">© {new Date().getFullYear()} WareFlow<span>Kết nối toàn bộ chuỗi vận hành.</span></footer></div>
+        <div className="wf-main">
+            <header className="wf-topbar">
+                <div className="wf-breadcrumb"><button className="wf-menu-button" type="button" aria-label={expanded ? 'Đóng menu' : 'Mở menu'} aria-expanded={expanded} aria-controls={`${config.role}-sidebar`} onClick={() => setExpanded(!expanded)}>{expanded ? <X size={19} /> : <Menu size={19} />}</button><Link to={config.home}>{config.title}</Link><ChevronRight size={13} /><span>{page}</span></div>
+                <div className="wf-topbar-actions"><span className="wf-role-badge">{config.topbarLabel}</span><Link className="wf-account" to={config.profile} aria-label={`Hồ sơ ${config.title}`}><span>{config.avatar}</span></Link><Link className="wf-signin" to="/auth/login">Đăng nhập <ArrowUpRight size={15} /></Link></div>
+            </header>
+            <main className="wf-content"><Outlet /></main>
+            <footer className="wf-footer">© {new Date().getFullYear()} WareFlow<span>{config.description}</span></footer>
+        </div>
     </div>;
 }
-
