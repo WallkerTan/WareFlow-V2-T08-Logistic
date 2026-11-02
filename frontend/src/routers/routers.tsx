@@ -10,23 +10,43 @@ import StorehouseProfile from "../page/storehouse/StorehouseProfile";
 import WareflowProfile from "../page/wareflow/WareflowProfile";
 import ModalPreview from "../page/wareflow/ModalPreview";
 const router_wareflow_v2 = createBrowserRouter([
-    { path: "/", element: <MainLayout />, children: [
-        { index: true, element: <Navigate to="/company/profile" replace /> },
-        { path: 'company', element: <Navigate to="/company/profile" replace /> },
-        { path: 'company/profile', element: <CompanyProfile /> },
-        { path: 'storehouse', element: <Navigate to="/storehouse/profile" replace /> },
-        { path: 'storehouse/profile', element: <StorehouseProfile /> },
-        { path: 'wareflow', element: <Navigate to="/wareflow/profile" replace /> },
-        { path: 'wareflow/profile', element: <WareflowProfile /> },
-        { path: 'wareflow/modal-preview', element: <ModalPreview /> },
-    ] },
+    {
+        path: "/",
+        element: <MainLayout />,
+        children: [
+            {
+                index: true,
+                element: <Navigate to="/company/profile" replace />,
+            },
+            {
+                path: "company",
+                element: <Navigate to="/company/profile" replace />,
+            },
+            { path: "company/profile", element: <CompanyProfile /> },
+            {
+                path: "storehouse",
+                element: <Navigate to="/storehouse/profile" replace />,
+            },
+            { path: "storehouse/profile", element: <StorehouseProfile /> },
+            {
+                path: "wareflow",
+                element: <Navigate to="/wareflow/profile" replace />,
+            },
+            { path: "wareflow/profile", element: <WareflowProfile /> },
+            { path: "wareflow/modal-preview", element: <ModalPreview /> },
+        ],
+    },
     { path: "/login", element: <Navigate to="/auth/login" replace /> },
     { path: "/register", element: <Navigate to="/auth/register" replace /> },
-    { path: "/auth", element: <AuthLayout />, children: [
-        { index: true, element: <Navigate to="login" replace /> },
-        { path: "login", element: <LoginPage /> },
-        { path: "register", element: <RegisterPage /> },
-    ] },
+    {
+        path: "/auth",
+        element: <AuthLayout />,
+        children: [
+            { index: true, element: <Navigate to="login" replace /> },
+            { path: "login", element: <LoginPage /> },
+            { path: "register", element: <RegisterPage /> },
+        ],
+    },
     {
         path: "*",
         element: <NotFound />,
