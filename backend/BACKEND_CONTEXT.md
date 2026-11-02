@@ -644,3 +644,46 @@ Khi hệ thống chạy lần đầu, `DataInitializer` tự động tạo tài 
 | :--- | :--- | :--- | :--- | :--- |
 | `POST` | `/api/core/upload/image` | Authenticated | `file`: MultipartFile<br>`folder`: String (avatars, companies, products, warehouses) | `CloudinaryUploadResponse`:<br>`{ url, secureUrl, publicId, format, bytes }` |
 | `DELETE`| `/api/core/upload/image` | Authenticated | `publicId`: String | `{ message: "Đã xóa ảnh thành công", publicId: "..." }` |
+
+
+---
+
+## 10. Hệ Thống Ghi Log Hàng Ngày (Daily Rolling File Logging) & Nhật Ký Hệ Thống (System Audit Log)
+
+### 10.1. Cấu hình Thư mục Log & Luân Chuyển Theo Ngày (Daily Rolling Files)
+Toàn bộ hệ sinh thái Microservices WareFlow được cấu hình qua `logback-spring.xml` tự động tạo và lưu trữ log vào thư mục `logs/` theo từng ngày:
+* **Thư mục cơ sở**: `logs/${spring.application.name}/` (ví dụ `logs/core-service/`, `logs/inventory-service/`, ...).
+* **Các file log luân chuyển hàng ngày**:
+  1. **File log tổng hợp (`INFO`, `WARN`, `ERROR`)**:
+     * File hiện tại: `${APP_NAME}.log`
+     * File theo từng ngày: `${APP_NAME}-%d{yyyy-MM-dd}.log` (ví dụ `core-service-2026-11-01.log`)
+     * Thời gian lưu trữ: 30 ngày (`maxHistory: 30`), dung lượng tối đa 3GB (`totalSizeCap: 3GB`).
+  2. **File log lỗi riêng biệt (`ERROR`)**:
+     * File hiện tại: `${APP_NAME}-error.log`
+     * File theo từng ngày: `${APP_NAME}-error-%d{yyyy-MM-dd}.log`
+     * Giúp devops và lập trình viên tra cứu và phát hiện sự cố nhanh chóng.
+  3. **File nhật ký kiểm toán hệ thống (`AUDIT`)**:
+     * File theo từng ngày: `${APP_NAME}-audit-%d{yyyy-MM-dd}.log`
+     * Lưu trữ toàn bộ dấu vết hành động của người dùng và hệ thống trong 90 ngày.
+
+### 10.2. HTTP Request Logging Filter
+* `HttpLoggingFilter`: Tự động ghi nhận mọi request HTTP đến service ra file log hàng ngày với các thông tin: HTTP Method, Endpoint URI, Client IP, Mã trạng thái (HTTP Status), và Thời gian xử lý (`durationMs`).
+
+### 10.3. AOP Aspect Tự Động Ghi Nhật Ký (`@AuditLog`)
+* Bất kỳ phương thức nào gắn `@AuditLog(action = "...", description = "...", targetType = "...")` sẽ được `AuditLogAspect` tự động bắt:
+  * Trích xuất thông tin người dùng đang thực hiện (`actor`, `company`).
+  * Trích xuất địa chỉ IP (`X-Forwarded-For` / `X-Real-IP`), User-Agent.
+  * Ghi nhận trạng thái kết quả `SUCCESS` hoặc `FAILED` (kèm thông báo lỗi nếu có).
+  * Tự động lưu vào database bảng `system_logs` và ghi ra file log hàng ngày `core-service-audit-yyyy-MM-dd.log`.
+
+### 10.4. Danh sách API Nhật Ký Hệ Thống (System Log APIs)
+
+Tất cả các API được định tuyến qua Gateway: `http://localhost:8080/api/core/system-logs/**`
+
+| Method | Endpoint | Quyền (Role) | Mô tả & Tham số lọc theo ngày |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/core/system-logs` | `SYSTEM_ADMIN` | Tra cứu log toàn hệ thống.<br>Params: `date` (yyyy-MM-dd), `fromDate`, `toDate`, `action`, `companyId`, `actorId`, `search`, `page`, `size` |
+| `GET` | `/api/core/system-logs/my-company` | `COMPANY_ADMIN` | Tra cứu log công ty của mình theo ngày.<br>Params: `date` (yyyy-MM-dd), `fromDate`, `toDate`, `action`, `search`, `page`, `size` |
+| `GET` | `/api/core/system-logs/{id}` | `SYSTEM_ADMIN` / `COMPANY_ADMIN` (Owner) | Xem chi tiết 1 bản ghi nhật ký kiểm toán |
+| `GET` | `/api/core/system-logs/statistics` | `SYSTEM_ADMIN` | Thống kê số lượng log theo từng ngày trong N ngày gần nhất (param `days`, mặc định 7 ngày) |
+| `GET` | `/api/core/system-logs/my-company/statistics` | `COMPANY_ADMIN` | Thống kê số lượng log của công ty theo từng ngày trong N ngày gần nhất (param `days`) |
