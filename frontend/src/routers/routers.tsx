@@ -1,3 +1,4 @@
+﻿import CompanyWarehouses from '../page/company/CompanyWarehouses';
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import NotFound from "../page/NotFound";
 import AuthLayout from "../layout/auth/AuthLayout";
@@ -8,10 +9,13 @@ import CompanyProfile from "../page/company/CompanyProfile";
 import StorehouseProfile from "../page/storehouse/StorehouseProfile";
 import WareflowProfile from "../page/wareflow/WareflowProfile";
 import ModalPreview from "../page/wareflow/ModalPreview";
+import WarehouseManagement from "../page/wareflow/WarehouseManagement";
 const router_wareflow_v2 = createBrowserRouter([
     { path: "/", element: <MainLayout />, children: [
-        { index: true, element: <Navigate to="/company/profile" replace /> },
+        { index: true, element: <Navigate to="/wareflow/warehouses" replace /> },
+        { path: 'wareflow/warehouses', element: <WarehouseManagement /> },
         { path: 'company', element: <Navigate to="/company/profile" replace /> },
+        { path: 'company/warehouses', element: <CompanyWarehouses /> },
         { path: 'company/profile', element: <CompanyProfile /> },
         { path: 'storehouse', element: <Navigate to="/storehouse/profile" replace /> },
         { path: 'storehouse/profile', element: <StorehouseProfile /> },
@@ -32,3 +36,4 @@ const router_wareflow_v2 = createBrowserRouter([
     }
 ]);
 export default router_wareflow_v2;
+
