@@ -1,4 +1,5 @@
-﻿import CompanyWarehouses from '../page/company/CompanyWarehouses';
+import WarehouseMarketplace from '../page/company/WarehouseMarketplace';
+import CompanyWarehouses from '../page/company/CompanyWarehouses';
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import NotFound from "../page/NotFound";
 import AuthLayout from "../layout/auth/AuthLayout";
@@ -23,6 +24,7 @@ const router_wareflow_v2 = createBrowserRouter([
     { path: '/company', element: <CompanyLayout />, children: [
         { index: true, element: <Navigate to="warehouses" replace /> },
         { path: 'warehouses', element: <CompanyWarehouses /> },
+        { path: 'marketplace', element: <WarehouseMarketplace /> },
         { path: 'profile', element: <CompanyProfile /> },
     ] },
     { path: '/storehouse', element: <StorehouseLayout />, children: [
@@ -42,4 +44,3 @@ const router_wareflow_v2 = createBrowserRouter([
     }
 ]);
 export default router_wareflow_v2;
-
