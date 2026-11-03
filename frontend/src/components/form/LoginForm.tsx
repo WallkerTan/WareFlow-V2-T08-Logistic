@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, ShieldCheck } from 'lucide-react';
 import AuthField from './AuthField';
-import { authApi } from '../../services/authApi';
+import { authApi, getAuthSession } from '../../services/authApi';
 
 export type LoginValues = { email: string; password: string; remember: boolean };
-type Props = { onSubmit?: (values: LoginValues) => Promise<void> };
+type Props = { onSubmit?: (values: LoginValues) => Promise<unknown> };
 
 export default function LoginForm({ onSubmit = authApi.login }: Props) {
     'use no memo';
+    const navigate = useNavigate();
     const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<LoginValues>({ defaultValues: { email: '', password: '', remember: false } });
     const [message, setMessage] = useState('');
     const [success, setSuccess] = useState(false);
@@ -20,6 +21,7 @@ export default function LoginForm({ onSubmit = authApi.login }: Props) {
             await onSubmit(values);
             setSuccess(true);
             setMessage('Đăng nhập thành công. Phiên làm việc đã được máy chủ xác nhận.');
+            navigate(getAuthSession()?.role === 'SYSTEM_ADMIN' ? '/admin/dashboard' : '/dashboard', { replace: true });
         } catch (error) { setMessage(error instanceof Error ? error.message : 'Không thể đăng nhập. Vui lòng thử lại.'); }
     }
     return <form className="auth-form" onSubmit={handleSubmit(submit)} noValidate>

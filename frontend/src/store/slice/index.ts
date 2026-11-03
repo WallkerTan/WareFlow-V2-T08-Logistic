@@ -1,5 +1,3 @@
-import { combineReducers } from "@reduxjs/toolkit";
-
-const rootReducer = combineReducers({});
+const rootReducer = (state: Record<string, never> = {}) => state;
 
 export default rootReducer;

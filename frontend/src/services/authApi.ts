@@ -1,20 +1,34 @@
 export type LoginRequest = { email: string; password: string; remember: boolean };
 export type CompanyRegistrationRequest = {
     companyName: string;
-    taxCode: string;
+    businessModel: 'FOOD' | 'TECH' | 'APPLIANCE' | 'FASHION' | 'OTHER';
     fullName: string;
     phone: string;
     email: string;
     password: string;
 };
 
+export type AuthResponse = {
+    accessToken: string;
+    tokenType: string;
+    expiresAt: string;
+    userId: string;
+    email: string;
+    fullName: string;
+    role: string;
+    companyId: string | null;
+    companyName: string | null;
+};
+
+const AUTH_SESSION_KEY = 'wareflow.auth';
+
 // Cookie-based session: the server must issue an HttpOnly session cookie.
 // URLs are configurable until the backend auth contract is available.
 const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
 const loginPath = import.meta.env.VITE_AUTH_LOGIN_PATH || '/auth/login';
-const registerPath = import.meta.env.VITE_AUTH_REGISTER_PATH || '/auth/register';
+const registerPath = import.meta.env.VITE_AUTH_REGISTER_PATH || '/auth/register-company';
 
-async function post(path: string, payload: LoginRequest | CompanyRegistrationRequest): Promise<void> {
+async function post(path: string, payload: LoginRequest | CompanyRegistrationRequest): Promise<AuthResponse> {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
@@ -38,9 +52,10 @@ async function post(path: string, payload: LoginRequest | CompanyRegistrationReq
             throw new Error(messages[response.status] || 'Dịch vụ xác thực đang gặp sự cố. Vui lòng thử lại sau.');
         }
         // A dev-server HTML fallback must never be treated as successful auth.
-        if (response.status !== 204 && !response.headers.get('content-type')?.includes('application/json')) {
+        if (!response.headers.get('content-type')?.includes('application/json')) {
             throw new Error('Phản hồi API không hợp lệ. Vui lòng kiểm tra cấu hình máy chủ.');
         }
+        return await response.json() as AuthResponse;
     } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
             throw new Error('Máy chủ phản hồi quá lâu. Vui lòng thử lại.', { cause: error });
@@ -55,12 +70,31 @@ async function post(path: string, payload: LoginRequest | CompanyRegistrationReq
 }
 
 export const authApi = {
-    login: (values: LoginRequest) => post(loginPath, {
-        email: values.email.trim().toLowerCase(), password: values.password, remember: !!values.remember,
-    }),
+    login: async (values: LoginRequest) => {
+        const result = await post(loginPath, {
+            email: values.email.trim().toLowerCase(), password: values.password, remember: !!values.remember,
+        });
+        if (result.accessToken) sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(result));
+        return result;
+    },
     registerCompany: (values: CompanyRegistrationRequest) => post(registerPath, {
-        companyName: values.companyName.trim(), taxCode: values.taxCode.replace(/-/g, ''),
+        companyName: values.companyName.trim(), businessModel: values.businessModel,
         fullName: values.fullName.trim(), phone: values.phone.replace(/[\s.-]/g, ''),
         email: values.email.trim().toLowerCase(), password: values.password,
     }),
 };
+
+export function getAuthSession(): AuthResponse | null {
+    const value = sessionStorage.getItem(AUTH_SESSION_KEY);
+    if (!value) return null;
+    try {
+        return JSON.parse(value) as AuthResponse;
+    } catch {
+        sessionStorage.removeItem(AUTH_SESSION_KEY);
+        return null;
+    }
+}
+
+export function clearAuthSession() {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
+}

@@ -1,4 +1,5 @@
 import "./landingPage.css";
+import { Link } from "react-router-dom";
 const LandingPage = () => {
     return (
         <>
@@ -15,12 +16,12 @@ const LandingPage = () => {
                     <a href="#contact">Liên hệ</a>
                 </nav>
                 <div className="header-actions">
-                    <a className="login" href="#contact">
+                    <Link className="login" to="/auth/login">
                         Đăng nhập
-                    </a>
-                    <a className="button button-small" href="#contact">
+                    </Link>
+                    <Link className="button button-small" to="/auth/register">
                         Dùng thử miễn phí <span>→</span>
-                    </a>
+                    </Link>
                 </div>
             </header>
             <main id="top">
@@ -38,9 +39,9 @@ const LandingPage = () => {
                             hiệu quả.
                         </p>
                         <div className="actions">
-                            <a className="button" href="#contact">
+                            <Link className="button" to="/auth/register">
                                 Bắt đầu miễn phí <span>→</span>
-                            </a>
+                            </Link>
                             <a className="watch" href="#workflow">
                                 <strong>▶</strong> Xem cách hoạt động
                             </a>
@@ -165,9 +166,9 @@ const LandingPage = () => {
                         <br />
                         <em>lợi thế cạnh tranh.</em>
                     </h2>
-                    <a className="button light" href="mailto:hello@wareflow.vn">
+                    <Link className="button light" to="/auth/register">
                         Đăng ký dùng thử <span>→</span>
-                    </a>
+                    </Link>
                 </section>
             </main>
             <footer>
