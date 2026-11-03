@@ -5,13 +5,13 @@ import { ArrowRight, ShieldCheck } from 'lucide-react';
 import AuthField from './AuthField';
 import { authApi } from '../../services/authApi';
 
-export type RegisterValues = { companyName: string; taxCode: string; fullName: string; phone: string; email: string; password: string; confirmPassword: string; accepted: boolean };
-type Props = { onSubmit?: (values: RegisterValues) => Promise<void> };
+export type RegisterValues = { companyName: string; businessModel: 'FOOD' | 'TECH' | 'APPLIANCE' | 'FASHION' | 'OTHER'; fullName: string; phone: string; email: string; password: string; confirmPassword: string; accepted: boolean };
+type Props = { onSubmit?: (values: RegisterValues) => Promise<unknown> };
 
 export default function RegisterForm({ onSubmit = authApi.registerCompany }: Props) {
     'use no memo';
     const { register, handleSubmit, getValues, reset, formState: { errors, isSubmitting } } = useForm<RegisterValues>({
-        defaultValues: { companyName: '', taxCode: '', fullName: '', phone: '', email: '', password: '', confirmPassword: '', accepted: false },
+        defaultValues: { companyName: '', businessModel: 'OTHER', fullName: '', phone: '', email: '', password: '', confirmPassword: '', accepted: false },
     });
     const [message, setMessage] = useState('');
     const [success, setSuccess] = useState(false);
@@ -28,7 +28,19 @@ export default function RegisterForm({ onSubmit = authApi.registerCompany }: Pro
     return <form className="auth-form register-form" onSubmit={handleSubmit(submit)} noValidate>
         <div className="form-section-label"><span>01</span> Thông tin doanh nghiệp</div>
         <AuthField id="companyName" label="Tên công ty" autoComplete="organization" placeholder="Công ty TNHH của bạn" required {...register('companyName', { validate: v => !!v?.trim() || 'Vui lòng nhập tên công ty.' })} error={errors.companyName?.message} />
-        <AuthField id="taxCode" label="Mã số thuế" placeholder="Nhập mã số thuế doanh nghiệp" required {...register('taxCode', { required: 'Vui lòng nhập mã số thuế.', pattern: { value: /^\d{10}(-?\d{3})?$/, message: 'Mã số thuế gồm 10 hoặc 13 chữ số.' } })} error={errors.taxCode?.message} />
+        <div className="auth-field">
+            <label htmlFor="businessModel">Lĩnh vực kinh doanh <span className="required"> *</span></label>
+            <div className="auth-input-wrap">
+                <select id="businessModel" {...register('businessModel', { required: 'Vui lòng chọn lĩnh vực kinh doanh.' })}>
+                    <option value="FOOD">Thực phẩm</option>
+                    <option value="TECH">Công nghệ</option>
+                    <option value="APPLIANCE">Điện máy</option>
+                    <option value="FASHION">Thời trang</option>
+                    <option value="OTHER">Khác</option>
+                </select>
+            </div>
+            {errors.businessModel && <span className="field-error" role="alert">{errors.businessModel.message}</span>}
+        </div>
         <div className="form-section-label"><span>02</span> Tài khoản quản trị</div>
         <div className="auth-field-row">
             <AuthField id="fullName" label="Họ và tên" autoComplete="name" placeholder="Nguyễn Văn An" required {...register('fullName', { validate: v => !!v?.trim() || 'Vui lòng nhập họ tên.' })} error={errors.fullName?.message} />
