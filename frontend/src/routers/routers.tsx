@@ -45,7 +45,6 @@ function RequireRole({
         />
     );
 }
-
 const router_wareflow_v2 = createBrowserRouter([
     { path: "/", element: <Navigate to="/wareflow/warehouses" replace /> },
     {
@@ -112,4 +111,5 @@ const router_wareflow_v2 = createBrowserRouter([
         element: <LandingPage />,
     },
 ]);
+
 export default router_wareflow_v2;
