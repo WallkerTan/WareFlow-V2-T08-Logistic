@@ -4,6 +4,7 @@ import com.example.core_service.dto.request.LoginRequest;
 import com.example.core_service.dto.request.RegisterCompanyRequest;
 import com.example.core_service.dto.request.RegisterWarehouseManagerRequest;
 import com.example.core_service.dto.response.AuthResponse;
+import com.example.core_service.log.AuditLog;
 import com.example.core_service.security.UserPrincipal;
 import com.example.core_service.service.AuthService;
 import jakarta.validation.Valid;
@@ -30,6 +31,7 @@ public class AuthController {
      */
     @PostMapping("/register-company")
     @ResponseStatus(HttpStatus.CREATED)
+    @AuditLog(action = "REGISTER_COMPANY", targetType = "Company", description = "Đăng ký công ty mới kèm tài khoản COMPANY_ADMIN")
     public AuthResponse registerCompany(@Valid @RequestBody RegisterCompanyRequest request) {
         return authService.registerCompany(request);
     }
@@ -40,6 +42,7 @@ public class AuthController {
      */
     @PostMapping("/register-warehouse-manager")
     @ResponseStatus(HttpStatus.CREATED)
+    @AuditLog(action = "REGISTER_WAREHOUSE_MANAGER", targetType = "User", description = "Đăng ký tài khoản quản lý kho")
     public AuthResponse registerWarehouseManager(@Valid @RequestBody RegisterWarehouseManagerRequest request) {
         return authService.registerWarehouseManager(request);
     }
@@ -48,6 +51,7 @@ public class AuthController {
      * Đăng nhập bằng email + mật khẩu, trả về JWT access token.
      */
     @PostMapping("/login")
+    @AuditLog(action = "LOGIN", targetType = "User", description = "Đăng nhập hệ thống")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
