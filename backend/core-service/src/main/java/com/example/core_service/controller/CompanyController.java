@@ -96,6 +96,7 @@ public class CompanyController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SYSTEM_ADMIN') or (hasRole('COMPANY_ADMIN') and @securityUtils.isCompanyOwner(#id))")
+    @com.example.core_service.log.AuditLog(action = "UPDATE_COMPANY_PROFILE", targetType = "Company", description = "Cập nhật thông tin hồ sơ công ty")
     public CompanyResponse updateCompanyProfile(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCompanyProfileRequest request

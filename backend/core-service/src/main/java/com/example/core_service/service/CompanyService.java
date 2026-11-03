@@ -34,7 +34,7 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final UserRepository userRepository;
-    private final SystemLogRepository systemLogRepository;
+    private final SystemLogService systemLogService;
     private final NotificationRepository notificationRepository;
 
     @Transactional(readOnly = true)
@@ -112,13 +112,7 @@ public class CompanyService {
             metadata.put("reason", request.getReason().trim());
         }
 
-        systemLogRepository.save(SystemLog.builder()
-                .actor(actor)
-                .company(company)
-                .action(action)
-                .target(targetMap)
-                .metadata(metadata)
-                .build());
+        systemLogService.recordLog(actor, company, action, targetMap, metadata);
 
         // 2. Tạo thông báo tới các thành viên công ty (Notification)
         String notifTitle = newStatus == CompanyStatus.LOCKED
