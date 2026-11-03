@@ -1,26 +1,80 @@
+﻿import WarehouseMarketplace from "../page/company/WarehouseMarketplace";
+import CompanyWarehouses from "../page/company/CompanyWarehouses";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import NotFound from "../page/NotFound";
 import LandingPage from "../page/LandingPage";
 import AuthLayout from "../layout/auth/AuthLayout";
-import LoginForm from "../components/form/LoginForm";
-import RegisterForm from "../components/form/RegisterForm";
-
+import DashboardPage from "../page/DashboardPage";
+import AdminDashboardPage from "../page/AdminDashboardPage";
+import { getAuthSession } from "../services/authApi";
+import type { ReactNode } from "react";
 import AdminLayout from "../layout/admin/AdminLayout";
-import AdminDashboard from "../page/admin/AdminDashboard";
-import AdminCompanies from "../page/admin/AdminCompanies";
-import AdminUsers from "../page/admin/AdminUsers";
-import AdminWarehouses from "../page/admin/AdminWarehouses";
-import AdminSuppliers from "../page/admin/AdminSuppliers";
-import AdminProducts from "../page/admin/AdminProducts";
-import AdminInventory from "../page/admin/AdminInventory";
-import AdminShipments from "../page/admin/AdminShipments";
-import AdminFinance from "../page/admin/AdminFinance";
-import AdminNotifications from "../page/admin/AdminNotifications";
-import AdminLogs from "../page/admin/AdminLogs";
-import AdminSettings from "../page/admin/AdminSettings";
+import WarehouseManagement from "../page/wareflow/WarehouseManagement";
+import WareflowProfile from "../page/wareflow/WareflowProfile";
+import ModalPreview from "../page/wareflow/ModalPreview";
+import CompanyLayout from "../layout/company/CompanyLayout";
+import CompanyProfile from "../page/company/CompanyProfile";
+import StorehouseLayout from "../layout/storehouse/StorehouseLayout";
+import StorehouseProfile from "../page/storehouse/StorehouseProfile";
+import LoginPage from "../page/auth/LoginPage";
+import RegisterPage from "../page/auth/RegisterPage";
 
+function RequireRole({
+    role,
+    children,
+}: {
+    role: string;
+    children: ReactNode;
+}) {
+    const session = getAuthSession();
+    if (!session?.accessToken) return <Navigate to="/auth/login" replace />;
+    if (
+        role === "NON_ADMIN"
+            ? session.role !== "SYSTEM_ADMIN"
+            : session.role === role
+    )
+        return children;
+    return (
+        <Navigate
+            to={
+                session.role === "SYSTEM_ADMIN"
+                    ? "/admin/dashboard"
+                    : "/dashboard"
+            }
+            replace
+        />
+    );
+}
 const router_wareflow_v2 = createBrowserRouter([
-    { path: "/", element: <Navigate to="/auth/login" replace /> },
+    { path: "/", element: <Navigate to="/wareflow/warehouses" replace /> },
+    {
+        path: "/wareflow",
+        element: <AdminLayout />,
+        children: [
+            { index: true, element: <Navigate to="warehouses" replace /> },
+            { path: "warehouses", element: <WarehouseManagement /> },
+            { path: "profile", element: <WareflowProfile /> },
+            { path: "modal-preview", element: <ModalPreview /> },
+        ],
+    },
+    {
+        path: "/company",
+        element: <CompanyLayout />,
+        children: [
+            { index: true, element: <Navigate to="warehouses" replace /> },
+            { path: "warehouses", element: <CompanyWarehouses /> },
+            { path: "marketplace", element: <WarehouseMarketplace /> },
+            { path: "profile", element: <CompanyProfile /> },
+        ],
+    },
+    {
+        path: "/storehouse",
+        element: <StorehouseLayout />,
+        children: [
+            { index: true, element: <Navigate to="profile" replace /> },
+            { path: "profile", element: <StorehouseProfile /> },
+        ],
+    },
     { path: "/login", element: <Navigate to="/auth/login" replace /> },
     { path: "/register", element: <Navigate to="/auth/register" replace /> },
     {
@@ -28,27 +82,25 @@ const router_wareflow_v2 = createBrowserRouter([
         element: <AuthLayout />,
         children: [
             { index: true, element: <Navigate to="login" replace /> },
-            { path: "login", element: <LoginForm /> },
-            { path: "register", element: <RegisterForm /> },
+            { path: "login", element: <LoginPage /> },
+            { path: "register", element: <RegisterPage /> },
         ],
     },
     {
-        path: "/admin",
-        element: <AdminLayout />,
-        children: [
-            { index: true, element: <AdminDashboard /> },
-            { path: "companies", element: <AdminCompanies /> },
-            { path: "users", element: <AdminUsers /> },
-            { path: "warehouses", element: <AdminWarehouses /> },
-            { path: "suppliers", element: <AdminSuppliers /> },
-            { path: "products", element: <AdminProducts /> },
-            { path: "inventory", element: <AdminInventory /> },
-            { path: "shipments", element: <AdminShipments /> },
-            { path: "finance", element: <AdminFinance /> },
-            { path: "notifications", element: <AdminNotifications /> },
-            { path: "logs", element: <AdminLogs /> },
-            { path: "settings", element: <AdminSettings /> },
-        ],
+        path: "/dashboard",
+        element: (
+            <RequireRole role="NON_ADMIN">
+                <DashboardPage />
+            </RequireRole>
+        ),
+    },
+    {
+        path: "/admin/dashboard",
+        element: (
+            <RequireRole role="SYSTEM_ADMIN">
+                <AdminDashboardPage />
+            </RequireRole>
+        ),
     },
     {
         path: "*",
