@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import AuthField from "./AuthField";
-import { authApi, getAuthSession } from "../../services/authApi";
+import { getAuthSession } from "../../services/authApi";
 
 export type LoginValues = {
     email: string;
