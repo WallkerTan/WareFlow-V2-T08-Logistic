@@ -1,0 +1,3 @@
+import { DataPage } from '../../components/workspace/WorkspacePages';
+const records=[['PN-1024','Nhập hàng','Minh Phát','125','04/11/2026','Hoàn tất'],['PX-1023','Xuất hàng','Đông Á','80','03/11/2026','Đang xử lý'],['PN-1022','Nhập hàng','An Phú','250','02/11/2026','Chờ duyệt']];
+export default function StorehouseInboundPage(){return <DataPage title="Nhập hàng hóa" columns={['Mã phiếu','Loại phiếu','Đối tác','Số lượng','Ngày tạo','Trạng thái']} rows={records.filter(r=>r[1]==='Nhập hàng')} action={{to:'/storehouse/inbound/new',label:'Tạo phiếu nhập'}}/>}
