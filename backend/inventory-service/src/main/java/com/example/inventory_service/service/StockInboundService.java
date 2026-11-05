@@ -293,7 +293,7 @@ public class StockInboundService {
 
     @Transactional
     public StockDocumentResponse createReceipt(UUID warehouseId, CreateReceiptRequest request, UserIdentity user) {
-        StockDocument po = getPo(warehouseId, request.poId());
+        StockDocument po = getPoForUpdate(warehouseId, request.poId());
 
         if (po.getStatus() != StockDocumentStatus.APPROVED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -340,12 +340,17 @@ public class StockInboundService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "Không tìm thấy sản phẩm trong kho: " + lineReq.productId()));
 
-            // Số lượng đặt trong PO
+            // Số lượng còn phải nhận trước dòng này (hỗ trợ nhận hàng nhiều đợt).
             BigDecimal orderedQty = toBigDecimal(poLine.get("qty"));
             BigDecimal receivedQty = lineReq.receivedQty();
-
-            // Tính chênh lệch: diff = receivedQty - orderedQty (ví dụ: đặt 100, nhận 95 -> diff = -5)
-            BigDecimal diff = receivedQty.subtract(orderedQty);
+            BigDecimal previouslyReceivedQty = toBigDecimal(poLine.get("receivedQty"));
+            BigDecimal remainingQty = orderedQty.subtract(previouslyReceivedQty).max(BigDecimal.ZERO);
+            if (receivedQty.compareTo(remainingQty) > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Số lượng nhận vượt số còn phải nhận cho sản phẩm " + lineReq.productId()
+                                + ": còn " + remainingQty + ", yêu cầu nhận " + receivedQty);
+            }
+            BigDecimal diff = receivedQty.subtract(remainingQty);
 
             // Đơn giá từ PO
             BigDecimal price = toBigDecimal(poLine.get("price"));
@@ -393,8 +398,8 @@ public class StockInboundService {
                     .documentId(receipt.getId())
                     .qtyChange(receivedQty)
                     .actorId(user.id())
-                    .note(String.format("Nhận hàng PO %s - Lô: %s - Đặt: %s, Nhận: %s (Lệch: %s)",
-                            po.getId(), lotCode, orderedQty, receivedQty, diff))
+                    .note(String.format("Nhận hàng PO %s - Lô: %s - Đặt tổng: %s, Đã nhận trước đó: %s, Còn phải nhận: %s, Nhận đợt này: %s (Lệch đợt: %s)",
+                            po.getId(), lotCode, orderedQty, previouslyReceivedQty, remainingQty, receivedQty, diff))
                     .build();
             movementRepository.save(movement);
 
@@ -409,6 +414,8 @@ public class StockInboundService {
             rLine.put("sku", product.getSku());
             rLine.put("unit", product.getUnit());
             rLine.put("orderedQty", orderedQty);
+            rLine.put("previouslyReceivedQty", previouslyReceivedQty);
+            rLine.put("remainingQty", remainingQty);
             rLine.put("receivedQty", receivedQty);
             rLine.put("diff", diff);
             rLine.put("price", price);
@@ -433,10 +440,11 @@ public class StockInboundService {
         receipt.setApproval(receiptApproval);
         StockDocument savedReceipt = documentRepository.save(receipt);
 
-        // Cập nhật trạng thái PO
-        // Mặc định hoàn thành PO nếu completePo = true hoặc không truyền (vì đã thực hiện nhận hàng)
+        // Chỉ hoàn tất PO khi được yêu cầu và mọi dòng đã nhận đủ.
         boolean complete = request.completePo() == null || Boolean.TRUE.equals(request.completePo());
-        if (complete) {
+        boolean allLinesReceived = po.getLines() != null && po.getLines().stream().allMatch(line ->
+                toBigDecimal(line.get("receivedQty")).compareTo(toBigDecimal(line.get("qty"))) >= 0);
+        if (complete && allLinesReceived) {
             po.setStatus(StockDocumentStatus.DONE);
             Map<String, Object> poApproval = po.getApproval() != null ? new LinkedHashMap<>(po.getApproval()) : new LinkedHashMap<>();
             poApproval.put("completedAt", now.toString());
@@ -499,6 +507,15 @@ public class StockInboundService {
 
     private StockDocument getPo(UUID warehouseId, UUID poId) {
         StockDocument doc = documentRepository.findByIdAndWarehouseId(poId, warehouseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn đặt hàng PO"));
+        if (doc.getType() != StockDocumentType.PO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chứng từ không phải là đơn đặt hàng PO");
+        }
+        return doc;
+    }
+
+    private StockDocument getPoForUpdate(UUID warehouseId, UUID poId) {
+        StockDocument doc = documentRepository.findByIdAndWarehouseIdForUpdate(poId, warehouseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy đơn đặt hàng PO"));
         if (doc.getType() != StockDocumentType.PO) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chứng từ không phải là đơn đặt hàng PO");

@@ -17,10 +17,10 @@ public record StockDocumentResponse(
         List<Map<String, Object>> lines,
         Map<String, Object> approval,
         UUID createdBy,
-        Instant createdAt
-) {
+        Instant createdAt) {
     public static StockDocumentResponse from(StockDocument doc) {
-        if (doc == null) return null;
+        if (doc == null)
+            return null;
         return new StockDocumentResponse(
                 doc.getId(),
                 doc.getWarehouseId(),
@@ -30,8 +30,6 @@ public record StockDocumentResponse(
                 doc.getLines(),
                 doc.getApproval(),
                 doc.getCreatedBy(),
-                doc.getCreatedAt()
-        );
+                doc.getCreatedAt());
     }
 }
-
