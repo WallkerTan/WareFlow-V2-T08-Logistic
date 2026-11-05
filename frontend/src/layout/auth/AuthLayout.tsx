@@ -3,7 +3,9 @@ import { ArrowLeft, ArrowUpRight, Boxes, Check, Package, Truck, Warehouse } from
 import './auth.css';
 
 export default function AuthLayout() {
-    const isRegister = useLocation().pathname.endsWith('register');
+    const pathname = useLocation().pathname;
+    const isRegister = pathname.endsWith('register');
+    const isForgot = pathname.endsWith('forgot-password');
     return <div className="auth-page">
         <aside className="auth-aside">
             <Link to="/" className="wareflow-brand" aria-label="WareFlow trang chủ"><span className="brand-icon">W</span><span>ware<span className="brand-blue">flow</span></span></Link>
@@ -25,7 +27,7 @@ export default function AuthLayout() {
             <div className="auth-topbar"><Link to="/"><ArrowLeft size={16} /> Trang chủ</Link><span>WAREFLOW / WORKSPACE</span></div>
             <div className={`auth-content ${isRegister ? 'auth-content-register' : ''}`}>
                 <span className="form-eyebrow">{isRegister ? 'BẮT ĐẦU CÙNG WAREFLOW' : 'KHÔNG GIAN LÀM VIỆC CỦA BẠN'}</span>
-                <h2>{isRegister ? 'Đăng ký công ty' : 'Chào mừng trở lại' }<span className="heading-dot">.</span></h2>
+                <h2>{isForgot ? 'Quên mật khẩu' : isRegister ? 'Đăng ký công ty' : 'Chào mừng trở lại' }<span className="heading-dot">.</span></h2>
                 <p className="auth-description">{isRegister ? 'Thiết lập không gian làm việc và bắt đầu quản lý doanh nghiệp của bạn.' : 'Đăng nhập để tiếp tục quản lý và kết nối mọi hoạt động kho hàng.'}</p>
                 <nav className="auth-tabs" aria-label="Tài khoản"><Link to="/auth/login" aria-current={!isRegister ? 'page' : undefined}>Đăng nhập</Link><Link to="/auth/register" aria-current={isRegister ? 'page' : undefined}>Đăng ký công ty</Link></nav>
                 <Outlet />

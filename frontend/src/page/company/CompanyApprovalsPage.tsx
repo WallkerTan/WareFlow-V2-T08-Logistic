@@ -1,0 +1,2 @@
+import { DataPage } from '../../components/workspace/WorkspacePages';
+export default function CompanyApprovalsPage() { return (<DataPage title="Trung tâm phê duyệt" columns={['Mã yêu cầu', 'Loại yêu cầu', 'Người gửi', 'Kho', 'Ngày tạo', 'Trạng thái']} rows={[["YC-001", "Cấp ngân sách", "Nguyễn Minh Anh", "Bình Dương", "04/11/2026", "Chờ duyệt"], ["YC-002", "Điều chuyển hàng", "Trần Quốc Bảo", "Thủ Đức", "03/11/2026", "Chờ duyệt"]]}/>); }

@@ -46,6 +46,9 @@ public class StockLot {
     @Builder.Default
     private StockLotStatus status = StockLotStatus.OK;
 
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

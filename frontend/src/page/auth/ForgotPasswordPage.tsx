@@ -1,0 +1,2 @@
+import { Link } from 'react-router-dom';
+export default function ForgotPasswordPage() { return <form className="auth-form" onSubmit={e => e.preventDefault()}><p>Nhập email tài khoản để yêu cầu đặt lại mật khẩu.</p><label className="wf-field"><span>Email tài khoản</span><input type="email" placeholder="ban@congty.vn"/></label><button type="button" className="adm-btn adm-btn-primary" disabled>Gửi hướng dẫn (bản mẫu)</button><Link to="/auth/login">Quay lại đăng nhập</Link></form>; }
