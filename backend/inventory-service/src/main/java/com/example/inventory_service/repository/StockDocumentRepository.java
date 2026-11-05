@@ -16,19 +16,21 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface StockDocumentRepository extends JpaRepository<StockDocument, UUID>, JpaSpecificationExecutor<StockDocument> {
+public interface StockDocumentRepository
+        extends JpaRepository<StockDocument, UUID>, JpaSpecificationExecutor<StockDocument> {
 
     Optional<StockDocument> findByIdAndWarehouseId(UUID id, UUID warehouseId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select d from StockDocument d where d.id = :id and d.warehouseId = :warehouseId")
-    Optional<StockDocument> findByIdAndWarehouseIdForUpdate(@Param("id") UUID id, @Param("warehouseId") UUID warehouseId);
+    Optional<StockDocument> findByIdAndWarehouseIdForUpdate(@Param("id") UUID id,
+            @Param("warehouseId") UUID warehouseId);
 
     Page<StockDocument> findByWarehouseIdAndType(UUID warehouseId, StockDocumentType type, Pageable pageable);
 
-    Page<StockDocument> findByWarehouseIdAndTypeAndStatus(UUID warehouseId, StockDocumentType type, StockDocumentStatus status, Pageable pageable);
+    Page<StockDocument> findByWarehouseIdAndTypeAndStatus(UUID warehouseId, StockDocumentType type,
+            StockDocumentStatus status, Pageable pageable);
 
     @Query(value = "SELECT * FROM stock_documents d WHERE d.warehouse_id = :warehouseId AND d.type = 'RECEIPT' AND d.approval ->> 'poId' = :poId ORDER BY d.created_at DESC", nativeQuery = true)
     List<StockDocument> findReceiptsByPoId(@Param("warehouseId") UUID warehouseId, @Param("poId") String poId);
 }
-
