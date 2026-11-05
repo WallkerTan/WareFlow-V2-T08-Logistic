@@ -28,6 +28,7 @@ export default function LoginForm({ onSubmit }: Props) {
         setMessage("");
         setSuccess(false);
         try {
+            if (!onSubmit) return;
             await onSubmit(values);
             setSuccess(true);
             setMessage(

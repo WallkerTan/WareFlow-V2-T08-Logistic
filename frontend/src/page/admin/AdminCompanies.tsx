@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Building2, Check, Download, Filter, Pencil, Plus, Search, ShieldAlert, Trash2, X } from 'lucide-react';
 import { Badge, Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
 import { companies as seedCompanies } from '../../data/adminData';
@@ -277,7 +278,7 @@ export default function AdminCompanies() {
                                     return (
                                         <tr key={company.id}>
                                             <td>
-                                                <span className="adm-cell-main">{company.name}</span>
+                                                <Link className="adm-cell-main" to={`/admin/companies/${company.id}`}>{company.name}</Link>
                                                 <span className="adm-cell-sub">{company.email}</span>
                                             </td>
                                             <td className="adm-mono">{company.taxCode}</td>

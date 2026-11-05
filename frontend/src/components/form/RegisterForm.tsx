@@ -22,7 +22,6 @@ export default function RegisterForm({ onSubmit }: Props) {
         register,
         handleSubmit,
         getValues,
-        reset,
         formState: { errors, isSubmitting },
     } = useForm<RegisterValues>({
         defaultValues: {
