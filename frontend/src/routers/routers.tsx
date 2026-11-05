@@ -45,6 +45,7 @@ import AdminProducts from "../page/admin/AdminProducts";
 import AdminUsers from "../page/admin/AdminUsers";
 import AdminLogs from "../page/admin/AdminLogs";
 import AdminNotifications from "../page/admin/AdminNotifications";
+import StockLots from "../page/storehouse/StockLots";
 const router = createBrowserRouter([
     { path: "/", element: <LandingPage /> },
     { path: "/LandingPage", element: <Navigate to="/" replace /> },
@@ -143,6 +144,7 @@ const router = createBrowserRouter([
         element: <StorehouseLayout />,
         children: [
             { index: true, element: <Navigate to="inventory" replace /> },
+            { path: "lots", element: <StockLots /> },
             { path: "inventory", element: <StorehouseInventoryPage /> },
             { path: "finance", element: <StorehouseFinancePage /> },
             { path: "profile", element: <StorehouseProfile /> },
