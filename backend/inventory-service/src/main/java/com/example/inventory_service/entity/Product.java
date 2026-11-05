@@ -27,7 +27,7 @@ public class Product {
     @Column(name = "warehouse_id", nullable = false)
     private UUID warehouseId;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String sku;
 
     private String barcode;
@@ -43,6 +43,9 @@ public class Product {
 
     @Column(name = "min_stock", precision = 12, scale = 2)
     private BigDecimal minStock;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

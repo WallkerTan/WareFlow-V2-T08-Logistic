@@ -1,6 +1,12 @@
 server:
   port: 8082
 
+wareflow:
+  jwt:
+    secret: ${JWT_SECRET:Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+    issuer: ${JWT_ISSUER:wareflow-auth}
+  core-service-url: ${CORE_SERVICE_URL:http://localhost:8081}
+
 spring:
   application:
     name: inventory-service
