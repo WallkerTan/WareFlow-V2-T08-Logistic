@@ -10,6 +10,7 @@ import CompanyLayout from "../layout/company/CompanyLayout";
 import StorehouseLayout from "../layout/storehouse/StorehouseLayout";
 import CompanyProfile from "../page/company/CompanyProfile";
 import StorehouseProfile from "../page/storehouse/StorehouseProfile";
+import StockLots from "../page/storehouse/StockLots";
 import WareflowProfile from "../page/wareflow/WareflowProfile";
 import ModalPreview from "../page/wareflow/ModalPreview";
 import WarehouseManagement from "../page/wareflow/WarehouseManagement";
@@ -28,7 +29,8 @@ const router_wareflow_v2 = createBrowserRouter([
         { path: 'profile', element: <CompanyProfile /> },
     ] },
     { path: '/storehouse', element: <StorehouseLayout />, children: [
-        { index: true, element: <Navigate to="profile" replace /> },
+        { index: true, element: <Navigate to="lots" replace /> },
+        { path: 'lots', element: <StockLots /> },
         { path: 'profile', element: <StorehouseProfile /> },
     ] },
     { path: "/login", element: <Navigate to="/auth/login" replace /> },
