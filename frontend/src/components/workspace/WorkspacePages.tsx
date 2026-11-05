@@ -1,17 +1,93 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Boxes, Warehouse, Wallet, TrendingUp, Search, Plus, ArrowUpRight } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { Card, StatCard, Badge } from '../../components/admin/AdminUI';
-export function Heading({ title, action }: {
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+    Boxes,
+    Warehouse,
+    Wallet,
+    TrendingUp,
+    Search,
+    Plus,
+    ArrowUpRight,
+} from "lucide-react";
+import {
+    AreaChart,
+    Area,
+    ResponsiveContainer,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+} from "recharts";
+import { Card, StatCard, Badge } from "../../components/admin/AdminUI";
+export function Heading({
+    title,
+    action,
+}: {
     title: string;
     action?: {
         to: string;
         label: string;
     };
-}) { return <div className="admin-page-head"><div><span className="workspace-eyebrow">WAREFLOW / VẬN HÀNH</span><h2>{title}</h2><p>Theo dõi và quản lý tập trung mọi hoạt động. Dữ liệu minh họa giao diện.</p></div>{action && <Link className="adm-btn adm-btn-primary" to={action.to}><Plus size={16}/>{action.label}</Link>}</div>; }
-function Stats() { return <div className="adm-stats"><StatCard label="Tổng sản phẩm" value="2.688" icon={<Boxes size={20}/>} trend="12,8%" footnote="so với tháng trước"/><StatCard label="Kho đang hoạt động" value="03" icon={<Warehouse size={20}/>} footnote="Trong mạng lưới công ty"/><StatCard label="Tổng thu tháng này" value="860 triệu ₫" icon={<TrendingUp size={20}/>} tone="success" trend="8,2%"/><StatCard label="Tổng chi tháng này" value="552 triệu ₫" icon={<Wallet size={20}/>} tone="warning" footnote="308 triệu ₫ chênh lệch thu chi"/></div>; }
-export function DataPage({ title, columns, rows, embedded = false, action }: {
+}) {
+    return (
+        <div className="admin-page-head">
+            <div>
+                <span className="workspace-eyebrow">WAREFLOW / VẬN HÀNH</span>
+                <h2>{title}</h2>
+                <p>
+                    Theo dõi và quản lý tập trung mọi hoạt động. Dữ liệu minh
+                    họa giao diện.
+                </p>
+            </div>
+            {action && (
+                <Link className="adm-btn adm-btn-primary" to={action.to}>
+                    <Plus size={16} />
+                    {action.label}
+                </Link>
+            )}
+        </div>
+    );
+}
+function Stats() {
+    return (
+        <div className="adm-stats">
+            <StatCard
+                label="Tổng sản phẩm"
+                value="2.688"
+                icon={<Boxes size={20} />}
+                trend="12,8%"
+                footnote="so với tháng trước"
+            />
+            <StatCard
+                label="Kho đang hoạt động"
+                value="03"
+                icon={<Warehouse size={20} />}
+                footnote="Trong mạng lưới công ty"
+            />
+            <StatCard
+                label="Tổng thu tháng này"
+                value="860 triệu ₫"
+                icon={<TrendingUp size={20} />}
+                tone="success"
+                trend="8,2%"
+            />
+            <StatCard
+                label="Tổng chi tháng này"
+                value="552 triệu ₫"
+                icon={<Wallet size={20} />}
+                tone="warning"
+                footnote="308 triệu ₫ chênh lệch thu chi"
+            />
+        </div>
+    );
+}
+export function DataPage({
+    title,
+    columns,
+    rows,
+    embedded = false,
+    action,
+}: {
     title: string;
     columns: string[];
     rows: string[][];
@@ -20,18 +96,420 @@ export function DataPage({ title, columns, rows, embedded = false, action }: {
         to: string;
         label: string;
     };
-}) { const [query, setQuery] = useState(''); const filtered = rows.filter(r => r.join(' ').toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi'))); return <>{!embedded && <Heading title={title} action={action}/>}<Card title={embedded ? title : undefined}><div className="workspace-toolbar"><label><Search size={16}/><input aria-label={'Tìm kiếm ' + title} placeholder="Tìm kiếm theo mã, tên hoặc nội dung…" value={query} onChange={e => setQuery(e.target.value)}/></label><span>{filtered.length} bản ghi</span></div><div className="workspace-table"><table><thead><tr>{columns.map(c => <th key={c}>{c}</th>)}</tr></thead><tbody>{filtered.map((r, i) => <tr key={i}>{r.map((v, j) => <td key={j}>{j === r.length - 1 ? <Badge label={v} tone={/Chờ|Sắp/.test(v) ? 'warning' : /Đang/.test(v) ? 'info' : 'success'}/> : v}</td>)}</tr>)}</tbody></table>{!filtered.length && <p className="workspace-empty">Không có bản ghi phù hợp.</p>}</div><div className="workspace-table-footer">Hiển thị {filtered.length} bản ghi <span>Dữ liệu minh họa</span></div></Card></>; }
-const goods = [['SP-001', 'Gạo ST25 túi 5kg', 'Thực phẩm', 'Bình Dương', '1.240', '125.000 ₫', 'Sẵn sàng'], ['SP-002', 'Dầu hướng dương 1L', 'Thực phẩm', 'Thủ Đức', '860', '58.000 ₫', 'Sẵn sàng'], ['SP-003', 'Áo polo cotton', 'Thời trang', 'Long An', '48', '189.000 ₫', 'Sắp hết'], ['SP-004', 'Tai nghe Bluetooth', 'Điện tử', 'Bình Dương', '325', '450.000 ₫', 'Sẵn sàng'], ['SP-005', 'Bình giữ nhiệt 500ml', 'Gia dụng', 'Thủ Đức', '215', '235.000 ₫', 'Sẵn sàng']];
-export function InventoryPage({ storehouse = false }: {
+}) {
+    const [query, setQuery] = useState("");
+    const filtered = rows.filter((r) =>
+        r
+            .join(" ")
+            .toLocaleLowerCase("vi")
+            .includes(query.toLocaleLowerCase("vi")),
+    );
+    return (
+        <>
+            {!embedded && <Heading title={title} action={action} />}
+            <Card title={embedded ? title : undefined}>
+                <div className="workspace-toolbar">
+                    <label>
+                        <Search size={16} />
+                        <input
+                            aria-label={"Tìm kiếm " + title}
+                            placeholder="Tìm kiếm theo mã, tên hoặc nội dung…"
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                        />
+                    </label>
+                    <span>{filtered.length} bản ghi</span>
+                </div>
+                <div className="workspace-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                {columns.map((c) => (
+                                    <th key={c}>{c}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {filtered.map((r, i) => (
+                                <tr key={i}>
+                                    {r.map((v, j) => (
+                                        <td key={j}>
+                                            {j === r.length - 1 ? (
+                                                <Badge
+                                                    label={v}
+                                                    tone={
+                                                        /Chờ|Sắp/.test(v)
+                                                            ? "warning"
+                                                            : /Đang/.test(v)
+                                                              ? "info"
+                                                              : "success"
+                                                    }
+                                                />
+                                            ) : (
+                                                v
+                                            )}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {!filtered.length && (
+                        <p className="workspace-empty">
+                            Không có bản ghi phù hợp.
+                        </p>
+                    )}
+                </div>
+                <div className="workspace-table-footer">
+                    Hiển thị {filtered.length} bản ghi{" "}
+                    <span>Dữ liệu minh họa</span>
+                </div>
+            </Card>
+        </>
+    );
+}
+const goods = [
+    [
+        "SP-001",
+        "Gạo ST25 túi 5kg",
+        "Thực phẩm",
+        "Bình Dương",
+        "1.240",
+        "125.000 ₫",
+        "Sẵn sàng",
+    ],
+    [
+        "SP-002",
+        "Dầu hướng dương 1L",
+        "Thực phẩm",
+        "Thủ Đức",
+        "860",
+        "58.000 ₫",
+        "Sẵn sàng",
+    ],
+    [
+        "SP-003",
+        "Áo polo cotton",
+        "Thời trang",
+        "Long An",
+        "48",
+        "189.000 ₫",
+        "Sắp hết",
+    ],
+    [
+        "SP-004",
+        "Tai nghe Bluetooth",
+        "Điện tử",
+        "Bình Dương",
+        "325",
+        "450.000 ₫",
+        "Sẵn sàng",
+    ],
+    [
+        "SP-005",
+        "Bình giữ nhiệt 500ml",
+        "Gia dụng",
+        "Thủ Đức",
+        "215",
+        "235.000 ₫",
+        "Sẵn sàng",
+    ],
+];
+export function InventoryPage({
+    storehouse = false,
+}: {
     storehouse?: boolean;
-}) { return <><Heading title={storehouse ? 'Hàng hóa & thu chi của kho' : 'Hàng hóa các kho'} action={storehouse ? { to: '/storehouse/inbound/new', label: 'Tạo phiếu nhập' } : undefined}/>{storehouse ? <div className="adm-stats"><StatCard label="Số mặt hàng" value="02" icon={<Boxes size={20}/>}/><StatCard label="Số lượng tồn" value="1.565" icon={<Warehouse size={20}/>}/><StatCard label="Thu trong tháng" value="180 triệu ₫" tone="success" icon={<TrendingUp size={20}/>}/><StatCard label="Chi trong tháng" value="115 triệu ₫" tone="warning" icon={<Wallet size={20}/>}/></div> : <Stats />}<DataPage embedded title="Danh sách hàng hóa" columns={['Mã sản phẩm', 'Tên sản phẩm', 'Danh mục', 'Kho', 'Tồn kho', 'Đơn giá', 'Trạng thái']} rows={storehouse ? goods.filter(r => r[3] === 'Bình Dương') : goods}/>{storehouse && <div className="workspace-quick"><Link to="/storehouse/finance">Xem chi tiết thu chi <ArrowUpRight size={16}/></Link><Link to="/storehouse/outbound/new">Tạo phiếu xuất <ArrowUpRight size={16}/></Link></div>}</>; }
-export function CompanyDashboard() { return <><Heading title="Tổng quan công ty"/><Stats /><div className="workspace-welcome"><div><Badge label="MẠNG LƯỚI ĐANG HOẠT ĐỘNG" tone="success"/><h2>Mọi kho hàng. Một góc nhìn.</h2><p>Kiểm soát hàng hóa, ngân sách và tiến độ vận hành trong toàn doanh nghiệp.</p><Link className="adm-btn adm-btn-primary" to="/company/inventory">Quản lý hàng hóa <ArrowUpRight size={16}/></Link></div><Warehouse size={110} strokeWidth={1}/></div><DataPage embedded title="Hiệu suất các kho" columns={['Kho hàng', 'Khu vực', 'Số lượng tồn', 'Công suất', 'Trạng thái']} rows={[["Kho Bình Dương", "Bình Dương", "1.565", "78%", "Hoạt động"], ["Kho Thủ Đức", "TP. Hồ Chí Minh", "1.075", "64%", "Hoạt động"], ["Kho Long An", "Long An", "48", "32%", "Hoạt động"]]}/></>; }
-const trend = [32, 45, 38, 61, 52, 78, 86].map((v, i) => ({ name: 'T' + (i + 5), thu: v, chi: Math.round(v * .64) }));
-export function FinancePage({ storehouse = false }: {
-    storehouse?: boolean;
-}) { return <><Heading title={storehouse ? 'Thu chi kho Bình Dương' : 'Ngân sách & thu chi'} action={storehouse ? undefined : { to: '/company/budget/new', label: 'Cấp ngân sách' }}/>{!storehouse && <Stats />}<div className="workspace-columns"><Card title="Biến động thu chi" subtitle="Đơn vị: triệu đồng · Dữ liệu minh họa"><div style={{ height: 280 }}><ResponsiveContainer width="100%" height="100%"><AreaChart data={trend}><CartesianGrid strokeDasharray="3 3" vertical={false}/><XAxis dataKey="name"/><YAxis /><Tooltip /><Area dataKey="thu" name="Thu" stroke="#4567ed" fill="#eef2ff"/><Area dataKey="chi" name="Chi" stroke="#22a88a" fill="#e7f7f2"/></AreaChart></ResponsiveContainer></div></Card><Card title={storehouse ? 'Ngân sách của kho' : 'Phân bổ ngân sách'} subtitle="Kỳ ngân sách tháng 11"><div className="workspace-budgets">{(storehouse ? ['Bình Dương'] : ['Bình Dương', 'Thủ Đức', 'Long An']).map((n, i) => <div key={n}><strong>Kho {n}</strong><span>Đã dùng {[180, 120, 80][i]} / 250 triệu ₫</span><progress value={[72, 48, 32][i]} max="100"/></div>)}</div></Card></div><DataPage embedded title="Giao dịch gần đây" columns={['Mã giao dịch', 'Nội dung', 'Kho', 'Số tiền', 'Trạng thái']} rows={[["GD-1024", "Thu bán hàng", "Bình Dương", "+ 28.500.000 ₫", "Hoàn tất"], ["GD-1023", "Thanh toán nhà cung cấp", "Bình Dương", "− 12.800.000 ₫", "Hoàn tất"]]}/></>; }
-export function PreviewForm({ title, fields, back }: {
+}) {
+    return (
+        <>
+            <Heading
+                title={
+                    storehouse
+                        ? "Hàng hóa & thu chi của kho"
+                        : "Hàng hóa các kho"
+                }
+                action={
+                    storehouse
+                        ? {
+                              to: "/storehouse/inbound/new",
+                              label: "Tạo phiếu nhập",
+                          }
+                        : undefined
+                }
+            />
+            {storehouse ? (
+                <div className="adm-stats">
+                    <StatCard
+                        label="Số mặt hàng"
+                        value="02"
+                        icon={<Boxes size={20} />}
+                    />
+                    <StatCard
+                        label="Số lượng tồn"
+                        value="1.565"
+                        icon={<Warehouse size={20} />}
+                    />
+                    <StatCard
+                        label="Thu trong tháng"
+                        value="180 triệu ₫"
+                        tone="success"
+                        icon={<TrendingUp size={20} />}
+                    />
+                    <StatCard
+                        label="Chi trong tháng"
+                        value="115 triệu ₫"
+                        tone="warning"
+                        icon={<Wallet size={20} />}
+                    />
+                </div>
+            ) : (
+                <Stats />
+            )}
+            <DataPage
+                embedded
+                title="Danh sách hàng hóa"
+                columns={[
+                    "Mã sản phẩm",
+                    "Tên sản phẩm",
+                    "Danh mục",
+                    "Kho",
+                    "Tồn kho",
+                    "Đơn giá",
+                    "Trạng thái",
+                ]}
+                rows={
+                    storehouse
+                        ? goods.filter((r) => r[3] === "Bình Dương")
+                        : goods
+                }
+            />
+            {storehouse && (
+                <div className="workspace-quick">
+                    <Link to="/storehouse/finance">
+                        Xem chi tiết thu chi <ArrowUpRight size={16} />
+                    </Link>
+                    <Link to="/storehouse/outbound/new">
+                        Tạo phiếu xuất <ArrowUpRight size={16} />
+                    </Link>
+                </div>
+            )}
+        </>
+    );
+}
+export function CompanyDashboard() {
+    return (
+        <>
+            <Heading title="Tổng quan công ty" />
+            <Stats />
+            <div className="workspace-welcome">
+                <div>
+                    <Badge label="MẠNG LƯỚI ĐANG HOẠT ĐỘNG" tone="success" />
+                    <h2>Mọi kho hàng. Một góc nhìn.</h2>
+                    <p>
+                        Kiểm soát hàng hóa, ngân sách và tiến độ vận hành trong
+                        toàn doanh nghiệp.
+                    </p>
+                    <Link
+                        className="adm-btn adm-btn-primary"
+                        to="/company/inventory"
+                    >
+                        Quản lý hàng hóa <ArrowUpRight size={16} />
+                    </Link>
+                </div>
+                <Warehouse size={110} strokeWidth={1} />
+            </div>
+            <DataPage
+                embedded
+                title="Hiệu suất các kho"
+                columns={[
+                    "Kho hàng",
+                    "Khu vực",
+                    "Số lượng tồn",
+                    "Công suất",
+                    "Trạng thái",
+                ]}
+                rows={[
+                    [
+                        "Kho Bình Dương",
+                        "Bình Dương",
+                        "1.565",
+                        "78%",
+                        "Hoạt động",
+                    ],
+                    [
+                        "Kho Thủ Đức",
+                        "TP. Hồ Chí Minh",
+                        "1.075",
+                        "64%",
+                        "Hoạt động",
+                    ],
+                    ["Kho Long An", "Long An", "48", "32%", "Hoạt động"],
+                ]}
+            />
+        </>
+    );
+}
+const trend = [32, 45, 38, 61, 52, 78, 86].map((v, i) => ({
+    name: "T" + (i + 5),
+    thu: v,
+    chi: Math.round(v * 0.64),
+}));
+export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
+    return (
+        <>
+            <Heading
+                title={
+                    storehouse
+                        ? "Thu chi kho Bình Dương"
+                        : "Ngân sách & thu chi"
+                }
+                action={
+                    storehouse
+                        ? undefined
+                        : { to: "/company/budget/new", label: "Cấp ngân sách" }
+                }
+            />
+            {!storehouse && <Stats />}
+            <div className="workspace-columns">
+                <Card
+                    title="Biến động thu chi"
+                    subtitle="Đơn vị: triệu đồng · Dữ liệu minh họa"
+                >
+                    <div style={{ height: 280 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trend}>
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    vertical={false}
+                                />
+                                <XAxis dataKey="name" />
+                                <YAxis />
+                                <Tooltip />
+                                <Area
+                                    dataKey="thu"
+                                    name="Thu"
+                                    stroke="#4567ed"
+                                    fill="#eef2ff"
+                                />
+                                <Area
+                                    dataKey="chi"
+                                    name="Chi"
+                                    stroke="#22a88a"
+                                    fill="#e7f7f2"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+                <Card
+                    title={
+                        storehouse ? "Ngân sách của kho" : "Phân bổ ngân sách"
+                    }
+                    subtitle="Kỳ ngân sách tháng 11"
+                >
+                    <div className="workspace-budgets">
+                        {(storehouse
+                            ? ["Bình Dương"]
+                            : ["Bình Dương", "Thủ Đức", "Long An"]
+                        ).map((n, i) => (
+                            <div key={n}>
+                                <strong>Kho {n}</strong>
+                                <span>
+                                    Đã dùng {[180, 120, 80][i]} / 250 triệu ₫
+                                </span>
+                                <progress value={[72, 48, 32][i]} max="100" />
+                            </div>
+                        ))}
+                    </div>
+                </Card>
+            </div>
+            <DataPage
+                embedded
+                title="Giao dịch gần đây"
+                columns={[
+                    "Mã giao dịch",
+                    "Nội dung",
+                    "Kho",
+                    "Số tiền",
+                    "Trạng thái",
+                ]}
+                rows={[
+                    [
+                        "GD-1024",
+                        "Thu bán hàng",
+                        "Bình Dương",
+                        "+ 28.500.000 ₫",
+                        "Hoàn tất",
+                    ],
+                    [
+                        "GD-1023",
+                        "Thanh toán nhà cung cấp",
+                        "Bình Dương",
+                        "− 12.800.000 ₫",
+                        "Hoàn tất",
+                    ],
+                ]}
+            />
+        </>
+    );
+}
+export function PreviewForm({
+    title,
+    fields,
+    back,
+}: {
     title: string;
     fields: string[];
     back: string;
-}) { return <><Heading title={title}/><section className="wf-card"><form onSubmit={e => e.preventDefault()}><div className="wf-fields">{fields.map(f => <label className="wf-field" key={f}><span>{f}</span>{/Ghi chú|Mô tả|Địa chỉ/.test(f) ? <textarea placeholder={'Nhập ' + f.toLowerCase()}/> : <input type={/Số lượng|Số tiền|Đơn giá|Ngân sách/.test(f) ? 'number' : /Ngày/.test(f) ? 'date' : 'text'} placeholder={'Nhập ' + f.toLowerCase()}/>}</label>)}</div><p className="workspace-form-note">Bản mẫu giao diện. Thông tin không được lưu vào hệ thống.</p><div className="wf-form-actions"><Link className="adm-btn" to={back}>Quay lại</Link><button className="adm-btn adm-btn-primary" type="button" disabled>Lưu (bản mẫu)</button></div></form></section></>; }
+}) {
+    return (
+        <>
+            <Heading title={title} />
+            <section className="wf-card">
+                <form onSubmit={(e) => e.preventDefault()}>
+                    <div className="wf-fields">
+                        {fields.map((f) => (
+                            <label className="wf-field" key={f}>
+                                <span>{f}</span>
+                                {/Ghi chú|Mô tả|Địa chỉ/.test(f) ? (
+                                    <textarea
+                                        placeholder={"Nhập " + f.toLowerCase()}
+                                    />
+                                ) : (
+                                    <input
+                                        type={
+                                            /Số lượng|Số tiền|Đơn giá|Ngân sách/.test(
+                                                f,
+                                            )
+                                                ? "number"
+                                                : /Ngày/.test(f)
+                                                  ? "date"
+                                                  : "text"
+                                        }
+                                        placeholder={"Nhập " + f.toLowerCase()}
+                                    />
+                                )}
+                            </label>
+                        ))}
+                    </div>
+                    <p className="workspace-form-note">
+                        Bản mẫu giao diện. Thông tin không được lưu vào hệ
+                        thống.
+                    </p>
+                    <div className="wf-form-actions">
+                        <Link className="adm-btn" to={back}>
+                            Quay lại
+                        </Link>
+                        <button
+                            className="adm-btn adm-btn-primary"
+                            type="button"
+                            disabled
+                        >
+                            Lưu (bản mẫu)
+                        </button>
+                    </div>
+                </form>
+            </section>
+        </>
+    );
+}
