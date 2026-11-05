@@ -805,3 +805,61 @@ Tất cả endpoint qua Gateway: `http://localhost:8080/api/core/warehouse-trans
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/core/notifications` | Authenticated | Danh sách thông báo của user hiện tại |
 | `PATCH` | `/api/core/notifications/{id}/read` | Authenticated | Đánh dấu thông báo đã đọc |
+
+
+---
+
+## 12. Nghiệp Vụ Nhập Hàng (Inbound / INV-08: Purchase Order & Goods Receipt)
+
+### 12.1. Tổng Quan Quy Trình Nhập Hàng
+
+```
+[Phần 1: Đơn Đặt Hàng - PO]
+1. WAREHOUSE_MANAGER / COMPANY_ADMIN tạo đơn PO (DRAFT)
+   POST /api/inventory/warehouses/{warehouseId}/purchase-orders
+   Body: lines (productId, qty, price), supplierName, note
+   → Tính tổng tiền (totalAmount).
+
+2. Gửi duyệt đơn đặt hàng
+   POST /api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/submit
+   → Nếu totalAmount >= largeSpendingThreshold (mục 2.8: Chi tiêu lớn >= 20.000.000 VNĐ):
+     chuyển trạng thái PENDING_APPROVAL kèm đánh dấu bắt buộc qua trung tâm phê duyệt công ty.
+   → Nếu chi tiêu nhỏ hoặc do COMPANY_ADMIN tạo: tự động duyệt hoặc chờ duyệt nội bộ.
+
+3. Phê duyệt đơn đặt hàng (mục 2.8: Trung tâm phê duyệt công ty)
+   POST /api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/approve
+   → COMPANY_ADMIN thực hiện phê duyệt chi tiêu công ty.
+   → status: PENDING_APPROVAL → APPROVED.
+   (Hoặc từ chối: POST /api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/reject → CANCELLED)
+
+[Phần 2: Nhận Hàng Thực Tế - Goods Receipt]
+4. Đối chiếu với PO và nhận hàng vào kho
+   POST /api/inventory/warehouses/{warehouseId}/receipts
+   Body: poId, lines (productId, receivedQty, lotCode, expiryDate, condition)
+   → Đối chiếu số lượng đặt (orderedQty) và số lượng nhận (receivedQty).
+   → Tính độ lệch: diff = receivedQty - orderedQty (VD: đặt 100, nhận 95 → diff = -5).
+   → Cập nhật hoặc tạo mới StockLot trong bảng `stock_lots` (lotCode, expiryDate, quantity += receivedQty).
+   → Ghi nhật ký biến động kho `stock_movements` (documentType = 'RECEIPT', qtyChange = +receivedQty).
+   → Tạo phiếu StockDocument (type = RECEIPT, status = DONE).
+   → Đổi trạng thái đơn PO sang DONE.
+```
+
+### 12.2. Danh Sách Endpoint Nhập Hàng (INV-08)
+
+Tất cả các endpoint đi qua Gateway với prefix: `http://localhost:8080/api/inventory/**`
+
+| Method | Endpoint | Quyền (Role) | Mô Tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Tạo đơn đặt hàng PO mới (`status = DRAFT`) |
+| `PUT` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Chỉnh sửa PO khi đang ở trạng thái `DRAFT` |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/submit` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Gửi duyệt PO (`DRAFT` → `PENDING_APPROVAL`) |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/approve` | `COMPANY_ADMIN`, `SYSTEM_ADMIN` | Phê duyệt PO (mục 2.8: chi tiêu lớn) |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/reject` | `COMPANY_ADMIN`, `SYSTEM_ADMIN` | Từ chối PO (`PENDING_APPROVAL` → `CANCELLED`) |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/cancel` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Hủy PO khi chưa nhận hàng |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/purchase-orders` | Authenticated | Danh sách PO (lọc `status`, phân trang) |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}` | Authenticated | Xem chi tiết 1 đơn PO |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/receipts` | Authenticated | Danh sách các phiếu nhận hàng đối chiếu của PO |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/receipts` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Nhận hàng theo PO, ghi nhận chênh lệch và cập nhật lô |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/receipts` | Authenticated | Danh sách phiếu nhận hàng |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/receipts/{id}` | Authenticated | Chi tiết phiếu nhận hàng |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/snapshot` | Authenticated / Internal | Snapshot tồn kho phục vụ bàn giao kho |
