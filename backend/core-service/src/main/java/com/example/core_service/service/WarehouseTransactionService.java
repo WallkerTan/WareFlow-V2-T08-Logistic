@@ -130,6 +130,20 @@ public class WarehouseTransactionService {
                        "companyName", company.getName())
         );
 
+        if (request.getType() == WarehouseTransactionType.BUY) {
+            userRepository.findByCompany_IdAndRole(company.getId(), UserRole.COMPANY_ADMIN)
+                    .forEach(admin -> notificationService.sendToUser(
+                            admin.getId(),
+                            NotificationScope.COMPANY,
+                            "WAREHOUSE_BUY_REQUEST_SUBMITTED",
+                            "Đề nghị mua kho đã được gửi",
+                            Map.of("transactionId", saved.getId().toString(),
+                                   "warehouseId", warehouse.getId().toString(),
+                                   "warehouseName", warehouse.getName(),
+                                   "companyName", company.getName())
+                    ));
+        }
+
         log.info("Đã tạo đề nghị {} kho id={} từ công ty {}", request.getType(), warehouse.getId(), company.getName());
         return WarehouseTransactionResponse.fromEntity(saved);
     }
