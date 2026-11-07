@@ -1,8 +1,7 @@
 package com.example.core_service.controller;
 
 import com.example.core_service.entity.Notification;
-import com.example.core_service.repository.NotificationRepository;
-import com.example.core_service.security.SecurityUtils;
+import com.example.core_service.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationController {
 
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
 
     /**
      * Lấy danh sách thông báo của user hiện tại (sắp xếp mới nhất trước).
@@ -27,9 +26,13 @@ public class NotificationController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public List<Notification> getMyNotifications() {
-        return notificationRepository.findByRecipient_IdOrderByCreatedAtDesc(
-                SecurityUtils.getCurrentUserId()
-        );
+        return notificationService.getCurrentUserNotifications();
+    }
+
+    @GetMapping("/unread-count")
+    @PreAuthorize("isAuthenticated()")
+    public long getUnreadCount() {
+        return notificationService.countCurrentUserUnread();
     }
 
     /**
@@ -39,13 +42,13 @@ public class NotificationController {
     @PatchMapping("/{id}/read")
     @PreAuthorize("isAuthenticated()")
     public void markAsRead(@PathVariable Long id) {
-        notificationRepository.findById(id).ifPresent(n -> {
-            if (SecurityUtils.getCurrentUserId().equals(
-                    n.getRecipient() != null ? n.getRecipient().getId() : null)) {
-                n.setIsRead(true);
-                notificationRepository.save(n);
-            }
-        });
+        notificationService.markCurrentUserNotificationAsRead(id);
+    }
+
+    @PatchMapping("/read-all")
+    @PreAuthorize("isAuthenticated()")
+    public int markAllAsRead() {
+        return notificationService.markAllCurrentUserNotificationsAsRead();
     }
 }
 
