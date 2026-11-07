@@ -32,6 +32,13 @@ public class WarehouseAccessService {
     }
 
     public UserIdentity authorize(String authorization, UUID warehouseId, boolean write) {
+        if (write) {
+            return authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER");
+        }
+        return authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN", "SYSTEM_ADMIN");
+    }
+
+    public UserIdentity authorizeRoles(String authorization, UUID warehouseId, String... allowedRoles) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Cần đăng nhập để truy cập kho");
         }
@@ -53,11 +60,28 @@ public class WarehouseAccessService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Thông tin tài khoản trong token không hợp lệ");
         }
         String role = claims.get("role", String.class);
-        if (!"WAREHOUSE_MANAGER".equals(role) && !"COMPANY_ADMIN".equals(role)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vai trò không được phép truy cập chức năng kho");
+
+        boolean roleAllowed = false;
+        if (allowedRoles != null && allowedRoles.length > 0) {
+            for (String r : allowedRoles) {
+                if (r.equalsIgnoreCase(role)) {
+                    roleAllowed = true;
+                    break;
+                }
+            }
+        } else {
+            roleAllowed = "WAREHOUSE_MANAGER".equals(role) || "COMPANY_ADMIN".equals(role) || "SYSTEM_ADMIN".equals(role);
         }
-        if (write && !"WAREHOUSE_MANAGER".equals(role)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "company_admin chỉ có quyền xem hàng hóa");
+
+        if (!roleAllowed) {
+            if ("COMPANY_ADMIN".equals(role)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "company_admin chỉ có quyền xem hàng hóa");
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vai trò " + role + " không có quyền thực hiện thao tác này");
+        }
+
+        if ("SYSTEM_ADMIN".equals(role)) {
+            return new UserIdentity(userId, companyId, role);
         }
 
         try {
