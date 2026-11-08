@@ -4,6 +4,7 @@ import com.example.core_service.entity.Notification;
 import com.example.core_service.entity.User;
 import com.example.core_service.entity.enums.NotificationScope;
 import com.example.core_service.entity.enums.UserRole;
+import com.example.core_service.security.SecurityUtils;
 import com.example.core_service.repository.NotificationRepository;
 import com.example.core_service.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,47 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public List<Notification> getCurrentUserNotifications() {
+        boolean systemAdmin = SecurityUtils.getCurrentUserRole() == UserRole.SYSTEM_ADMIN;
+        return notificationRepository.findVisibleToUser(
+                SecurityUtils.getCurrentUserId(), systemAdmin, NotificationScope.SYSTEM);
+    }
+
+    @Transactional(readOnly = true)
+    public long countCurrentUserUnread() {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        if (SecurityUtils.getCurrentUserRole() == UserRole.SYSTEM_ADMIN) {
+            return notificationRepository.countUnreadForSystemAdmin(userId, NotificationScope.SYSTEM);
+        }
+        return notificationRepository.countUnreadForUser(userId);
+    }
+
+    @Transactional
+    public void markCurrentUserNotificationAsRead(Long notificationId) {
+        notificationRepository.findById(notificationId).ifPresent(notification -> {
+            UUID userId = SecurityUtils.getCurrentUserId();
+            boolean ownNotification = notification.getRecipient() != null
+                    && userId.equals(notification.getRecipient().getId());
+            boolean visibleSystemBroadcast = SecurityUtils.getCurrentUserRole() == UserRole.SYSTEM_ADMIN
+                    && notification.getRecipient() == null
+                    && notification.getScope() == NotificationScope.SYSTEM;
+            if (ownNotification || visibleSystemBroadcast) {
+                notification.setIsRead(true);
+                notificationRepository.save(notification);
+            }
+        });
+    }
+
+    @Transactional
+    public int markAllCurrentUserNotificationsAsRead() {
+        UUID userId = SecurityUtils.getCurrentUserId();
+        if (SecurityUtils.getCurrentUserRole() == UserRole.SYSTEM_ADMIN) {
+            return notificationRepository.markAllReadForSystemAdmin(userId, NotificationScope.SYSTEM);
+        }
+        return notificationRepository.markAllReadForUser(userId);
+    }
 
     /**
      * Gửi thông báo đến một người dùng cụ thể.
