@@ -38,6 +38,20 @@
     color:white;
     font-size:22px;
     box-shadow:0 4px 10px #17213920}
+.auth-brand-logo {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    border-radius: 50%;
+    filter: drop-shadow(0 4px 10px rgba(65, 105, 232, 0.25));
+}
+.mini-logo-img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    border-radius: 50%;
+    vertical-align: middle;
+}
 .brand-blue {
     color:var(--auth-blue)}
 .auth-story {

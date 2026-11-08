@@ -33,7 +33,7 @@ export default function WorkspaceShell({ config }: {
     return (<div className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}>
             <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
                 <Link className="wf-brand" to={config.home} onClick={() => setExpanded(false)}>
-                    <span className="wf-brand-mark">W</span>ware
+                    <img src="/logo.png" alt="WareFlow" className="wf-brand-logo-img" />ware
                     <span>flow</span>
                 </Link>
                 <div className="wf-workspace">

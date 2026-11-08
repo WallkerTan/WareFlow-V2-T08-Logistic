@@ -95,7 +95,10 @@ export default function DashboardPage() {
 
     return <div className="dashboard-page">
         <aside className="dashboard-sidebar">
-            <Link to="/dashboard" className="dashboard-brand"><span>W</span> ware<b>flow</b></Link>
+            <Link to="/dashboard" className="dashboard-brand">
+                <img src="/logo.png" alt="WareFlow" className="dashboard-brand-img" />
+                <span>ware<b>flow</b></span>
+            </Link>
             <div className="dashboard-nav-label">KHÔNG GIAN LÀM VIỆC</div>
             <a href="#overview" className="dashboard-nav active"><Boxes size={18} /> Tổng quan</a>
             <a className="dashboard-nav" href="#warehouses"><Warehouse size={18} /> Kho mua/thuê</a>

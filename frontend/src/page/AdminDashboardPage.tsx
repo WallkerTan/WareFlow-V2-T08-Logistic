@@ -168,7 +168,10 @@ export default function AdminDashboardPage() {
 
     return <div className="dashboard-page">
         <aside className="dashboard-sidebar">
-            <a href="/admin/dashboard" className="dashboard-brand"><span>W</span> ware<b>flow</b></a>
+            <a href="/admin/dashboard" className="dashboard-brand">
+                <img src="/logo.png" alt="WareFlow" className="dashboard-brand-img" />
+                <span>ware<b>flow</b></span>
+            </a>
             <div className="dashboard-nav-label">QUẢN TRỊ HỆ THỐNG</div>
             <a href="#admin-overview" className="dashboard-nav active"><ShieldCheck size={18} /> Tổng quan admin</a>
             <a href="#companies" className="dashboard-nav"><Building2 size={18} /> Quản lý công ty</a>

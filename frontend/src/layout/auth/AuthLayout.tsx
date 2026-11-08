@@ -8,13 +8,16 @@ export default function AuthLayout() {
     const isForgot = pathname.endsWith('forgot-password');
     return <div className="auth-page">
         <aside className="auth-aside">
-            <Link to="/" className="wareflow-brand" aria-label="WareFlow trang chủ"><span className="brand-icon">W</span><span>ware<span className="brand-blue">flow</span></span></Link>
+            <Link to="/" className="wareflow-brand" aria-label="WareFlow trang chủ">
+                <img src="/logo.png" alt="WareFlow" className="brand-logo-img auth-brand-logo" />
+                <span>ware<span className="brand-blue">flow</span></span>
+            </Link>
             <div className="auth-story">
                 <span className="auth-eyebrow"><span /> QUẢN LÝ KHO THẾ HỆ MỚI</span>
                 <h1>Vận hành kho<br /><em>thông minh</em> hơn.</h1>
                 <p>Kết nối hàng tồn, đơn hàng và logistics trong một nền tảng. Để mỗi quyết định đều đi trước một bước.</p>
                 <div className="warehouse-preview" aria-label="Minh họa tổng quan quản lý kho">
-                    <div className="preview-heading"><span><span className="mini-logo">W</span> Tổng quan kho hàng</span><span className="live-badge"><i /> Trực quan</span></div>
+                    <div className="preview-heading"><span><img src="/logo.png" alt="WF" className="mini-logo-img" /> Tổng quan kho hàng</span><span className="live-badge"><i /> Trực quan</span></div>
                     <div className="preview-stats"><div><span>Tổng sản phẩm</span><strong>— <Boxes size={19} /></strong><small>Được quản lý tập trung</small></div><div><span>Đơn đang xử lý</span><strong>— <Package size={19} /></strong><small>Theo dõi từng bước</small></div></div>
                     <div className="preview-chart"><div className="chart-title"><span>Luồng hàng trong tuần</span><ArrowUpRight size={16} /></div><div className="chart-bars"><span>Chưa có dữ liệu hoạt động kho.</span></div></div>
                     <div className="preview-delivery"><span className="delivery-icon"><Truck size={19} /></span><div><strong>Sẵn sàng cho mọi đơn hàng</strong><span>Từ nhập kho đến giao hàng</span></div><span className="delivery-check"><Check size={15} /></span></div>
