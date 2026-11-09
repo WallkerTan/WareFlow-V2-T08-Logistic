@@ -5,6 +5,7 @@ import com.example.inventory_service.entity.Product;
 import com.example.inventory_service.entity.enums.StockDocumentStatus;
 import com.example.inventory_service.entity.enums.StockLotStatus;
 import com.example.inventory_service.repository.ProductRepository;
+import com.example.inventory_service.repository.StockLotRepository;
 import com.example.inventory_service.security.WarehouseAccessService;
 import com.example.inventory_service.security.WarehouseAccessService.UserIdentity;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -63,6 +64,9 @@ class StockInboundFlowTests {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private StockLotRepository stockLotRepository;
 
     /**
      * Mock WarehouseAccessService để bypass gọi core-service qua mạng.
@@ -227,7 +231,7 @@ class StockInboundFlowTests {
                         "receivedQty", 1000,
                         "lotCode", lotCode,
                         "expiryDate", LocalDate.now().plusMonths(6).toString(),
-                        "condition", StockLotStatus.NORMAL.name()
+                        "condition", StockLotStatus.OK.toJson()
                 ))
         ));
 
@@ -246,6 +250,17 @@ class StockInboundFlowTests {
                 receiptResult.getResponse().getContentAsString(), StockDocumentResponse.class);
         assertThat(receipt.lines()).isNotEmpty();
         assertThat(receipt.warehouseId()).isEqualTo(warehouseId);
+
+        // Verify persisted stock and PO completion, not only the receipt response.
+        var lot = stockLotRepository.findByProduct_IdAndLotCodeIgnoreCaseAndDeletedAtIsNull(productId, lotCode)
+                .orElseThrow();
+        assertThat(lot.getQuantity()).isEqualByComparingTo("1000");
+        assertThat(stockLotRepository.sumQuantity(productId)).isEqualByComparingTo("1000");
+        mockMvc.perform(get("/warehouses/{warehouseId}/purchase-orders/{poId}", warehouseId, poId)
+                        .header("Authorization", FAKE_ADMIN_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(StockDocumentStatus.DONE.name()))
+                .andExpect(jsonPath("$.lines[0].receivedQty").value(1000));
 
         // Bước 5: Xem danh sách receipts của PO
         mockMvc.perform(get("/warehouses/{warehouseId}/purchase-orders/{poId}/receipts", warehouseId, poId)
