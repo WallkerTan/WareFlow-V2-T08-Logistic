@@ -97,7 +97,7 @@ const LandingPage = () => {
 
                 {/* Metrics Banner */}
                 <RevealOnScroll>
-                    <section className="metrics">
+                    <section className="metrics ">
                         <div>
                             <b>500+</b>
                             <small>Doanh nghiệp tin dùng</small>

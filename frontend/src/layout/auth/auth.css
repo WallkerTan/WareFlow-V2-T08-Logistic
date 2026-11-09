@@ -7,7 +7,7 @@
     grid-template-columns:minmax(380px,46%) 1fr;
     background:#fff;
     color:var(--auth-ink);
-    font-family:Inter,"Segoe UI",Arial,sans-serif;
+    font-family:'Be Vietnam Pro','Inter',-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
     line-height:1.5}
 .auth-page * {
     box-sizing:border-box}

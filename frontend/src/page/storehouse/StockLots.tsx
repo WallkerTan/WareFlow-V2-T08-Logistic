@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, ArrowDownToLine, ArrowRight, Boxes, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Eye, Package, Search, Settings2, ShieldAlert } from 'lucide-react';
 import { Modal } from 'antd';
 import { availableQuantity, daysRemaining, lotStatus, products, stockLots as initialLots } from '../../data/stockLots';
