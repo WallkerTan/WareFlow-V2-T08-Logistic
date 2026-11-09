@@ -1,0 +1,19 @@
+spring:
+  cloud:
+    config:
+      enabled: false
+    discovery:
+      enabled: false
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+wareflow:
+  approval:
+    large-spending-threshold: 20000000
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
