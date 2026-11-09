@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Download, Fingerprint, Search, ShieldCheck } from 'lucide-react';
-import { Card, EmptyState, Pagination, Badge } from '../../components/admin/AdminUI';
+import { Download, Fingerprint, Info, Lock, Search, ShieldCheck } from 'lucide-react';
+import { Card, EmptyState, Modal, Pagination, Badge } from '../../components/admin/AdminUI';
 import { systemLogs } from '../../data/adminData';
+import type { SystemLogEntry } from '../../types/admin';
 import { formatDateTime, formatRelativeTime } from '../../utils/format';
 
 const PAGE_SIZE = 8;
@@ -19,6 +20,7 @@ export default function AdminLogs() {
     const [query, setQuery] = useState('');
     const [actionFilter, setActionFilter] = useState('ALL');
     const [page, setPage] = useState(1);
+    const [selectedLog, setSelectedLog] = useState<SystemLogEntry | null>(null);
 
     const filtered = useMemo(() => {
         const keyword = query.trim().toLowerCase();
@@ -151,7 +153,11 @@ export default function AdminLogs() {
                                 {visible.map((entry) => {
                                     const meta = actionMeta[entry.action] ?? { label: entry.action, tone: 'neutral' as const };
                                     return (
-                                        <tr key={entry.id}>
+                                        <tr
+                                            key={entry.id}
+                                            onClick={() => setSelectedLog(entry)}
+                                            title="Nhấp để xem chi tiết nhật ký"
+                                        >
                                             <td>
                                                 <Badge label={meta.label} tone={meta.tone} />
                                             </td>
@@ -176,6 +182,119 @@ export default function AdminLogs() {
                     <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onChange={setPage} />
                 )}
             </Card>
+
+            {selectedLog && (
+                <Modal
+                    title={`Nhật ký thao tác #${selectedLog.id}`}
+                    description={`Bản ghi kiểm toán an ninh · core-service: system_logs`}
+                    onClose={() => setSelectedLog(null)}
+                    footer={
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 11, color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <Lock size={14} color="#6366f1" /> Bản ghi WORM (Write Once, Read Many) - Bất biến
+                            </span>
+                            <button className="adm-btn adm-btn-primary" onClick={() => setSelectedLog(null)}>
+                                Đóng
+                            </button>
+                        </div>
+                    }
+                >
+                    <div
+                        style={{
+                            padding: '12px 14px',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            fontSize: 12.5,
+                            lineHeight: 1.5,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#334155',
+                        }}
+                    >
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <strong>Ràng buộc bảo mật & kiểm toán (core-service: system_logs):</strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                    Nhật ký hệ thống được bảo vệ và không cho phép chỉnh sửa hoặc xóa vì lý do an ninh, phục vụ đối soát pháp lý và truy vết hoạt động người dùng.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="adm-form">
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Mã định danh log (BIGSERIAL PK)</label>
+                                <input
+                                    className="adm-input"
+                                    value={`LOG-#${selectedLog.id}`}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Hành động thực hiện (Action)</label>
+                                <input
+                                    className="adm-input"
+                                    value={actionMeta[selectedLog.action]?.label ?? selectedLog.action}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Người thực hiện (Actor)</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedLog.actorName}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Công ty</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedLog.companyName}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Đối tượng tác động (Target)</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedLog.target}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Địa chỉ IP ghi nhận</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedLog.ipAddress}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed', fontFamily: 'monospace' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field">
+                            <label>Thời điểm chính xác</label>
+                            <input
+                                className="adm-input"
+                                value={`${formatDateTime(selectedLog.createdAt)} (${formatRelativeTime(selectedLog.createdAt)})`}
+                                disabled
+                                style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                            />
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }

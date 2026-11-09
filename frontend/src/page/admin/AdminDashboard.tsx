@@ -24,10 +24,12 @@ import {
     Truck,
     Users,
     Warehouse,
+    Info,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { Badge, Card, Progress, StatCard } from '../../components/admin/AdminUI';
+import { Badge, Card, Modal, Progress, StatCard } from '../../components/admin/AdminUI';
 import { companies, notifications, products, shipments, systemLogs, transactions, users, warehouses } from '../../data/adminData';
+import type { Company, Shipment } from '../../types/admin';
 import {
     companyStatusMeta,
     formatCompactCurrency,
@@ -65,6 +67,8 @@ const donutColors = companyDistribution.map((entry) => entry.color);
 
 export default function AdminDashboard() {
     const [range, setRange] = useState<'30' | '90' | '365'>('90');
+    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
     const metrics = useMemo(() => {
         const activeCompanies = companies.filter((company) => company.status === 'ACTIVE').length;
@@ -336,7 +340,11 @@ export default function AdminDashboard() {
                                 {recentCompanies.map((company) => {
                                     const status = companyStatusMeta[company.status];
                                     return (
-                                        <tr key={company.id}>
+                                        <tr
+                                            key={company.id}
+                                            onClick={() => setSelectedCompany(company)}
+                                            title="Nhấp để xem chi tiết doanh nghiệp"
+                                        >
                                             <td>
                                                 <span className="adm-cell-main">{company.name}</span>
                                                 <span className="adm-cell-sub">{company.taxCode}</span>
@@ -378,7 +386,11 @@ export default function AdminDashboard() {
                                 {pendingShipments.map((shipment) => {
                                     const status = shipmentStatusMeta[shipment.status];
                                     return (
-                                        <tr key={shipment.id}>
+                                        <tr
+                                            key={shipment.id}
+                                            onClick={() => setSelectedShipment(shipment)}
+                                            title="Nhấp để xem chi tiết vận đơn"
+                                        >
                                             <td>
                                                 <span className="adm-cell-main adm-mono">{shipment.trackingCode}</span>
                                                 <span className="adm-cell-sub">{shipment.destination}</span>
@@ -484,6 +496,118 @@ export default function AdminDashboard() {
                     </ul>
                 </Card>
             </div>
+
+            {selectedCompany && (
+                <Modal
+                    title={`Doanh nghiệp: ${selectedCompany.name}`}
+                    description={`MST: ${selectedCompany.taxCode} · core-service: companies`}
+                    onClose={() => setSelectedCompany(null)}
+                    footer={
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Link className="adm-btn adm-btn-primary" to={`/admin/companies/${selectedCompany.id}`}>
+                                Đi tới trang quản lý công ty <ArrowRight size={14} />
+                            </Link>
+                            <button className="adm-btn" onClick={() => setSelectedCompany(null)}>
+                                Đóng
+                            </button>
+                        </div>
+                    }
+                >
+                    <div
+                        style={{
+                            padding: '12px 14px',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            fontSize: 12.5,
+                            lineHeight: 1.5,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#334155',
+                        }}
+                    >
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <strong>Ràng buộc quan hệ CSDL (core-service: companies):</strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                    Công ty hiện đang có {selectedCompany.warehouseCount} kho hàng và {selectedCompany.memberCount} thành viên liên kết.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="adm-form">
+                        <div className="adm-field">
+                            <label>Tên công ty</label>
+                            <input className="adm-input" value={selectedCompany.name} disabled style={{ background: '#f8fafc' }} />
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Mô hình kinh doanh</label>
+                                <input className="adm-input" value={selectedCompany.businessModel} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                            <div className="adm-field">
+                                <label>Trạng thái</label>
+                                <input className="adm-input" value={companyStatusMeta[selectedCompany.status].label} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Email quản trị</label>
+                                <input className="adm-input" value={selectedCompany.email} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                            <div className="adm-field">
+                                <label>Ngày đăng ký</label>
+                                <input className="adm-input" value={formatDateTime(selectedCompany.createdAt)} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
+
+            {selectedShipment && (
+                <Modal
+                    title={`Vận đơn: ${selectedShipment.trackingCode}`}
+                    description={`delivery-service: shipments`}
+                    onClose={() => setSelectedShipment(null)}
+                    footer={
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Link className="adm-btn adm-btn-primary" to="/admin/shipments">
+                                Xem tất cả vận đơn <ArrowRight size={14} />
+                            </Link>
+                            <button className="adm-btn" onClick={() => setSelectedShipment(null)}>
+                                Đóng
+                            </button>
+                        </div>
+                    }
+                >
+                    <div className="adm-form">
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Mã vận đơn</label>
+                                <input className="adm-input" value={selectedShipment.trackingCode} disabled style={{ background: '#f8fafc', fontFamily: 'monospace' }} />
+                            </div>
+                            <div className="adm-field">
+                                <label>Đơn vị vận chuyển</label>
+                                <input className="adm-input" value={selectedShipment.carrier} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Điểm đến</label>
+                                <input className="adm-input" value={selectedShipment.destination} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                            <div className="adm-field">
+                                <label>Tiền thu hộ COD</label>
+                                <input className="adm-input" value={formatCompactCurrency(selectedShipment.codAmount)} disabled style={{ background: '#f8fafc' }} />
+                            </div>
+                        </div>
+                        <div className="adm-field">
+                            <label>Trạng thái</label>
+                            <input className="adm-input" value={shipmentStatusMeta[selectedShipment.status].label} disabled style={{ background: '#f8fafc' }} />
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }

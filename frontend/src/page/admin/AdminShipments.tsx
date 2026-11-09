@@ -1,20 +1,85 @@
 import { useMemo, useState } from 'react';
-import { Download, MapPin, Search, Truck } from 'lucide-react';
-import { Badge, Card, EmptyState, Pagination } from '../../components/admin/AdminUI';
-import { shipments } from '../../data/adminData';
-import type { ShipmentStatus } from '../../types/admin';
+import { Check, Download, Info, MapPin, Search, ShieldAlert, Trash2, Truck } from 'lucide-react';
+import { Badge, Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
+import { shipments as seedShipments } from '../../data/adminData';
+import type { Shipment, ShipmentStatus } from '../../types/admin';
 import { formatCompactCurrency, formatDateTime, shipmentStatusMeta } from '../../utils/format';
 
 const PAGE_SIZE = 6;
 
 export default function AdminShipments() {
+    const [rows, setRows] = useState<Shipment[]>(seedShipments);
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'ALL' | ShipmentStatus>('ALL');
     const [page, setPage] = useState(1);
+    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+    const [editForm, setEditForm] = useState<{
+        customerName: string;
+        destination: string;
+        carrier: string;
+        warehouseName: string;
+        status: ShipmentStatus;
+        codAmount: number;
+    }>({
+        customerName: '',
+        destination: '',
+        carrier: '',
+        warehouseName: '',
+        status: 'CREATED',
+        codAmount: 0,
+    });
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [toast, setToast] = useState<string | null>(null);
+
+    const openShipmentDetail = (shipment: Shipment) => {
+        setSelectedShipment(shipment);
+        setEditForm({
+            customerName: shipment.customerName,
+            destination: shipment.destination,
+            carrier: shipment.carrier,
+            warehouseName: shipment.warehouseName,
+            status: shipment.status,
+            codAmount: shipment.codAmount,
+        });
+        setConfirmDelete(false);
+    };
+
+    const handleSaveShipment = () => {
+        if (!selectedShipment) return;
+        setRows((prev) =>
+            prev.map((s) =>
+                s.id === selectedShipment.id
+                    ? {
+                          ...s,
+                          ...editForm,
+                      }
+                    : s
+            )
+        );
+        setSelectedShipment(null);
+        showToast(`Đã lưu thay đổi cho vận đơn ${selectedShipment.trackingCode}.`);
+    };
+
+    const handleDeleteShipment = () => {
+        if (!selectedShipment) return;
+        if (selectedShipment.status === 'DELIVERED') {
+            alert('Ràng buộc CSDL: Vận đơn đã giao hàng thành công, không thể xóa!');
+            return;
+        }
+        setRows((prev) => prev.filter((s) => s.id !== selectedShipment.id));
+        const code = selectedShipment.trackingCode;
+        setSelectedShipment(null);
+        showToast(`Đã hủy/xóa vận đơn ${code}.`);
+    };
+
+    const showToast = (msg: string) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3500);
+    };
 
     const filtered = useMemo(() => {
         const keyword = query.trim().toLowerCase();
-        return shipments.filter((shipment) => {
+        return rows.filter((shipment) => {
             const matchesQuery =
                 !keyword ||
                 shipment.trackingCode.toLowerCase().includes(keyword) ||
@@ -23,7 +88,7 @@ export default function AdminShipments() {
             const matchesStatus = statusFilter === 'ALL' || shipment.status === statusFilter;
             return matchesQuery && matchesStatus;
         });
-    }, [query, statusFilter]);
+    }, [rows, query, statusFilter]);
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
@@ -36,7 +101,7 @@ export default function AdminShipments() {
         };
     }
 
-    const totalCod = shipments.reduce((sum, shipment) => sum + shipment.codAmount, 0);
+    const totalCod = rows.reduce((sum, shipment) => sum + shipment.codAmount, 0);
 
     return (
         <>
@@ -55,7 +120,7 @@ export default function AdminShipments() {
             <div className="adm-stats">
                 {(['CREATED', 'IN_TRANSIT', 'DELIVERED', 'FAILED'] as ShipmentStatus[]).map((status) => {
                     const meta = shipmentStatusMeta[status];
-                    const count = shipments.filter((shipment) => shipment.status === status).length;
+                    const count = rows.filter((shipment) => shipment.status === status).length;
                     return (
                         <article className="adm-stat" key={status}>
                             <div className="adm-stat-top">
@@ -66,7 +131,7 @@ export default function AdminShipments() {
                             </div>
                             <div className="adm-stat-value">{count}</div>
                             <div className="adm-stat-foot">
-                                <span>{Math.round((count / shipments.length) * 100)}% tổng đơn</span>
+                                <span>{rows.length > 0 ? Math.round((count / rows.length) * 100) : 0}% tổng đơn</span>
                             </div>
                         </article>
                     );
@@ -140,7 +205,11 @@ export default function AdminShipments() {
                                 {visible.map((shipment) => {
                                     const status = shipmentStatusMeta[shipment.status];
                                     return (
-                                        <tr key={shipment.id}>
+                                        <tr
+                                            key={shipment.id}
+                                            onClick={() => openShipmentDetail(shipment)}
+                                            title="Nhấp để xem chi tiết & cập nhật vận đơn"
+                                        >
                                             <td className="adm-mono adm-cell-main">{shipment.trackingCode}</td>
                                             <td>
                                                 <span className="adm-cell-main">{shipment.customerName}</span>
@@ -167,6 +236,174 @@ export default function AdminShipments() {
                     <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onChange={setPage} />
                 )}
             </Card>
+
+            {toast && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 24,
+                        zIndex: 99,
+                        background: '#1f2937',
+                        color: '#fff',
+                        padding: '12px 20px',
+                        borderRadius: 10,
+                        fontSize: 13,
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                    }}
+                >
+                    <Check size={16} color="#10b981" />
+                    <span>{toast}</span>
+                </div>
+            )}
+
+            {selectedShipment && (
+                <Modal
+                    title={`Vận đơn: ${selectedShipment.trackingCode}`}
+                    description={`ID: ${selectedShipment.id} · delivery-service: shipments`}
+                    onClose={() => setSelectedShipment(null)}
+                    footer={
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                {selectedShipment.status === 'DELIVERED' ? (
+                                    <span style={{ fontSize: 11, color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <ShieldAlert size={14} color="#10b981" /> Đã giao thành công (Chốt hồ sơ COD)
+                                    </span>
+                                ) : confirmDelete ? (
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        <span style={{ fontSize: 12, color: '#ef4444' }}>Hủy vận đơn này?</span>
+                                        <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={handleDeleteShipment}>
+                                            Hủy / Xóa
+                                        </button>
+                                        <button className="adm-btn adm-btn-sm" onClick={() => setConfirmDelete(false)}>
+                                            Không
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => setConfirmDelete(true)}>
+                                        <Trash2 size={14} /> Hủy vận đơn
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="adm-btn" onClick={() => setSelectedShipment(null)}>
+                                    Hủy
+                                </button>
+                                {selectedShipment.status !== 'DELIVERED' && (
+                                    <button className="adm-btn adm-btn-primary" onClick={handleSaveShipment}>
+                                        <Check size={14} /> Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    }
+                >
+                    <div
+                        style={{
+                            padding: '12px 14px',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            fontSize: 12.5,
+                            lineHeight: 1.5,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#334155',
+                        }}
+                    >
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <strong>Ràng buộc giao vận (delivery-service: shipments):</strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                    Vận đơn xuất từ kho <b>{selectedShipment.warehouseName}</b> theo phiếu xuất kho tương ứng (<code>document_id</code>). Khi đơn đã giao thành công và thu COD, trạng thái sẽ khóa để tránh gian lận đối soát tiền hàng.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="adm-form">
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Mã vận đơn (Tracking Code)</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedShipment.trackingCode}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed', fontFamily: 'monospace' }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Kho xuất hàng</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedShipment.warehouseName}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Khách hàng người nhận</label>
+                                <input
+                                    className="adm-input"
+                                    value={editForm.customerName}
+                                    disabled={selectedShipment.status === 'DELIVERED'}
+                                    onChange={(e) => setEditForm({ ...editForm, customerName: e.target.value })}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Đơn vị vận chuyển</label>
+                                <input
+                                    className="adm-input"
+                                    value={editForm.carrier}
+                                    disabled={selectedShipment.status === 'DELIVERED'}
+                                    onChange={(e) => setEditForm({ ...editForm, carrier: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field">
+                            <label>Địa chỉ nhận hàng</label>
+                            <input
+                                className="adm-input"
+                                value={editForm.destination}
+                                disabled={selectedShipment.status === 'DELIVERED'}
+                                onChange={(e) => setEditForm({ ...editForm, destination: e.target.value })}
+                            />
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Tiền thu hộ COD (VNĐ)</label>
+                                <input
+                                    className="adm-input"
+                                    type="number"
+                                    value={editForm.codAmount}
+                                    disabled={selectedShipment.status === 'DELIVERED'}
+                                    onChange={(e) => setEditForm({ ...editForm, codAmount: Number(e.target.value) })}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Trạng thái giao vận</label>
+                                <select
+                                    className="adm-select"
+                                    value={editForm.status}
+                                    disabled={selectedShipment.status === 'DELIVERED'}
+                                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as ShipmentStatus })}
+                                >
+                                    <option value="CREATED">Mới tạo (CREATED)</option>
+                                    <option value="IN_TRANSIT">Đang giao hàng (IN_TRANSIT)</option>
+                                    <option value="DELIVERED">Đã giao thành công (DELIVERED)</option>
+                                    <option value="FAILED">Giao thất bại (FAILED)</option>
+                                    <option value="RETURNED">Chuyển hoàn (RETURNED)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }

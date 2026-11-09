@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
     Boxes,
@@ -8,6 +8,13 @@ import {
     Search,
     Plus,
     ArrowUpRight,
+    AlertTriangle,
+    ShieldAlert,
+    Trash2,
+    Database,
+    Info,
+    Check,
+    X,
 } from "lucide-react";
 import {
     AreaChart,
@@ -18,7 +25,7 @@ import {
     CartesianGrid,
     Tooltip,
 } from "recharts";
-import { Card, StatCard, Badge } from "../../components/admin/AdminUI";
+import { Card, StatCard, Badge, Modal } from "../../components/admin/AdminUI";
 export function Heading({
     title,
     action,
@@ -98,16 +105,245 @@ export function DataPage({
     };
 }) {
     const [query, setQuery] = useState("");
-    const filtered = rows.filter((r) =>
+    const [tableRows, setTableRows] = useState<string[][]>(rows);
+    const [selectedRow, setSelectedRow] = useState<string[] | null>(null);
+    const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+    const [editForm, setEditForm] = useState<Record<number, string>>({});
+    const [notification, setNotification] = useState<{ text: string; tone: "success" | "danger" | "info" } | null>(null);
+    const [confirmDelete, setConfirmDelete] = useState(false);
+
+    useEffect(() => {
+        setTableRows(rows);
+    }, [rows]);
+
+    const filtered = tableRows.filter((r) =>
         r
             .join(" ")
             .toLocaleLowerCase("vi")
             .includes(query.toLocaleLowerCase("vi")),
     );
+
+    // Entity & Relation Analysis based on WareFlow CSDL schema
+    const titleLower = title.toLowerCase();
+    let serviceInfo = {
+        service: "core-service",
+        table: "records",
+        desc: "Dữ liệu vận hành hệ thống WareFlow",
+        isReadOnly: false,
+        canDelete: true,
+        deleteWarning: "Hành động này sẽ xóa dữ liệu khỏi hệ thống.",
+    };
+
+    if (titleLower.includes("lịch sử") || titleLower.includes("nhật ký") || titleLower.includes("biến động")) {
+        serviceInfo = {
+            service: "inventory-service",
+            table: "stock_movements (Sổ biến động kho)",
+            desc: "Nhật ký biến động kho là bản ghi bất biến (Append-only). Không được sửa hoặc xóa theo quy định truy vết kho.",
+            isReadOnly: true,
+            canDelete: false,
+            deleteWarning: "Ràng buộc bảo mật & kiểm toán: Không thể xóa sổ nhật ký biến động kho đã ghi nhận.",
+        };
+    } else if (titleLower.includes("giao dịch") || titleLower.includes("ngân sách") || titleLower.includes("thu chi")) {
+        serviceInfo = {
+            service: "finance-service",
+            table: "transactions / budgets",
+            desc: "Dữ liệu tài chính & ngân sách đã hạch toán. Bất biến để phục vụ đối soát và kiểm toán.",
+            isReadOnly: true,
+            canDelete: false,
+            deleteWarning: "Ràng buộc tài chính: Giao dịch tài chính đã ghi sổ cái không thể xóa hoặc chỉnh sửa số tiền.",
+        };
+    } else if (titleLower.includes("điều chuyển")) {
+        serviceInfo = {
+            service: "inventory-service",
+            table: "stock_documents (Loại: export_transfer)",
+            desc: "Phiếu điều chuyển kho hàng hóa giữa các kho trong mạng lưới doanh nghiệp.",
+            isReadOnly: false,
+            canDelete: true,
+            deleteWarning: "Nếu phiếu đã 'Hoàn tất' hoặc 'Đang vận chuyển', không nên xóa để tránh chênh lệch tồn giữa 2 kho.",
+        };
+    } else if (titleLower.includes("nhập hàng")) {
+        serviceInfo = {
+            service: "inventory-service",
+            table: "stock_documents (Loại: PO / receipt)",
+            desc: "Phiếu nhập hàng từ nhà cung cấp hoặc điều chuyển đến kho.",
+            isReadOnly: false,
+            canDelete: true,
+            deleteWarning: "Phiếu nhập đã duyệt/hoàn tất không thể xóa trực tiếp vì đã tạo các lô hàng tương ứng.",
+        };
+    } else if (titleLower.includes("xuất hàng")) {
+        serviceInfo = {
+            service: "inventory-service",
+            table: "stock_documents (Loại: export_sale / export_transfer)",
+            desc: "Phiếu xuất kho cho đơn bán hoặc điều chuyển.",
+            isReadOnly: false,
+            canDelete: true,
+            deleteWarning: "Phiếu xuất đã giao hoặc xuất kho thực tế sẽ trừ tồn hàng; không thể xóa trực tiếp.",
+        };
+    } else if (titleLower.includes("vận đơn") || titleLower.includes("giao hàng")) {
+        serviceInfo = {
+            service: "delivery-service",
+            table: "shipments (Vận đơn giao hàng)",
+            desc: "Theo dõi hành trình giao nhận, đơn vị vận chuyển và tiền COD.",
+            isReadOnly: false,
+            canDelete: true,
+            deleteWarning: "Vận đơn đã bàn giao cho ĐVVC hoặc đã giao thành công không thể xóa.",
+        };
+    } else if (titleLower.includes("phê duyệt")) {
+        serviceInfo = {
+            service: "core-service",
+            table: "warehouse_transactions / approvals",
+            desc: "Yêu cầu mua/thuê kho, cấp ngân sách hoặc điều chuyển chờ ban lãnh đạo phê duyệt.",
+            isReadOnly: false,
+            canDelete: true,
+            deleteWarning: "Xóa yêu cầu sẽ hủy quy trình duyệt của tài liệu này.",
+        };
+    } else if (titleLower.includes("nhân viên")) {
+        serviceInfo = {
+            service: "core-service",
+            table: "users (Tài khoản người dùng)",
+            desc: "Nhân sự thuộc doanh nghiệp và kho quản lý.",
+            isReadOnly: false,
+            canDelete: false,
+            deleteWarning: "Ràng buộc khóa ngoại: Nhân viên đã phát sinh lịch sử thao tác kho không được xóa; hãy chuyển Trạng thái thành 'Khóa'.",
+        };
+    } else if (titleLower.includes("hàng hóa") || titleLower.includes("sản phẩm")) {
+        serviceInfo = {
+            service: "inventory-service",
+            table: "products (Danh mục hàng hóa)",
+            desc: "Thông tin mã hàng, đơn giá, số lượng tồn và trạng thái sản phẩm.",
+            isReadOnly: false,
+            canDelete: true,
+            deleteWarning: "Sản phẩm còn tồn kho hoặc có lô hàng (stock_lots) liên kết không thể xóa.",
+        };
+    } else if (titleLower.includes("hiệu suất") || titleLower.includes("kho")) {
+        serviceInfo = {
+            service: "core-service",
+            table: "warehouses (Kho hàng)",
+            desc: "Hạ tầng kho bãi và sức chứa lưu trữ.",
+            isReadOnly: false,
+            canDelete: false,
+            deleteWarning: "Kho đang hoạt động chứa hàng hóa không thể xóa trực tiếp.",
+        };
+    }
+
+    const openRowDetail = (row: string[], index: number) => {
+        setSelectedRow(row);
+        setSelectedIndex(index);
+        const initialForm: Record<number, string> = {};
+        row.forEach((val, idx) => {
+            initialForm[idx] = val;
+        });
+        setEditForm(initialForm);
+        setConfirmDelete(false);
+    };
+
+    const handleFieldChange = (idx: number, value: string) => {
+        setEditForm((prev) => ({ ...prev, [idx]: value }));
+    };
+
+    const handleSave = () => {
+        if (!selectedRow || selectedIndex === -1) return;
+        const updatedRow = columns.map((_, idx) => editForm[idx] ?? selectedRow[idx]);
+        const updatedTable = [...tableRows];
+        // find index in original table
+        const originalIdx = tableRows.findIndex(
+            (r) => r[0] === selectedRow[0] && r[1] === selectedRow[1]
+        );
+        if (originalIdx !== -1) {
+            updatedTable[originalIdx] = updatedRow;
+            setTableRows(updatedTable);
+        }
+        setSelectedRow(null);
+        setNotification({
+            text: `Đã cập nhật thông tin "${updatedRow[0]}" thành công.`,
+            tone: "success",
+        });
+        setTimeout(() => setNotification(null), 4000);
+    };
+
+    const handleQuickAction = (newStatus: string) => {
+        if (!selectedRow) return;
+        const statusIdx = columns.length - 1;
+        const updatedRow = [...selectedRow];
+        updatedRow[statusIdx] = newStatus;
+        const updatedTable = [...tableRows];
+        const originalIdx = tableRows.findIndex((r) => r[0] === selectedRow[0]);
+        if (originalIdx !== -1) {
+            updatedTable[originalIdx] = updatedRow;
+            setTableRows(updatedTable);
+        }
+        setSelectedRow(null);
+        setNotification({
+            text: `Đã chuyển trạng thái "${updatedRow[0]}" thành "${newStatus}".`,
+            tone: "success",
+        });
+        setTimeout(() => setNotification(null), 4000);
+    };
+
+    const handleDelete = () => {
+        if (!selectedRow) return;
+        const idToDelete = selectedRow[0];
+        setTableRows((prev) => prev.filter((r) => r[0] !== idToDelete));
+        setSelectedRow(null);
+        setNotification({
+            text: `Đã xóa bản ghi "${idToDelete}" khỏi hệ thống.`,
+            tone: "danger",
+        });
+        setTimeout(() => setNotification(null), 4000);
+    };
+
     return (
         <>
             {!embedded && <Heading title={title} action={action} />}
             <Card title={embedded ? title : undefined}>
+                {notification && (
+                    <div
+                        style={{
+                            margin: "0 0 16px",
+                            padding: "10px 16px",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            background:
+                                notification.tone === "success"
+                                    ? "#eaf8f1"
+                                    : notification.tone === "danger"
+                                      ? "#fdeded"
+                                      : "#eef4fd",
+                            color:
+                                notification.tone === "success"
+                                    ? "#137359"
+                                    : notification.tone === "danger"
+                                      ? "#b42318"
+                                      : "#175cd3",
+                            border: `1px solid ${
+                                notification.tone === "success"
+                                    ? "#a3e2c3"
+                                    : notification.tone === "danger"
+                                      ? "#fecdca"
+                                      : "#b2ccff"
+                            }`,
+                        }}
+                    >
+                        <span>
+                            <strong>Thông báo:</strong> {notification.text}
+                        </span>
+                        <button
+                            onClick={() => setNotification(null)}
+                            style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                color: "inherit",
+                                fontWeight: "bold",
+                            }}
+                        >
+                            ×
+                        </button>
+                    </div>
+                )}
                 <div className="workspace-toolbar">
                     <label>
                         <Search size={16} />
@@ -118,7 +354,7 @@ export function DataPage({
                             onChange={(e) => setQuery(e.target.value)}
                         />
                     </label>
-                    <span>{filtered.length} bản ghi</span>
+                    <span>{filtered.length} bản ghi (Nhấp vào dòng để xem chi tiết)</span>
                 </div>
                 <div className="workspace-table">
                     <table>
@@ -131,18 +367,24 @@ export function DataPage({
                         </thead>
                         <tbody>
                             {filtered.map((r, i) => (
-                                <tr key={i}>
+                                <tr
+                                    key={i}
+                                    onClick={() => openRowDetail(r, i)}
+                                    title="Nhấp để xem & cập nhật chi tiết"
+                                >
                                     {r.map((v, j) => (
                                         <td key={j}>
                                             {j === r.length - 1 ? (
                                                 <Badge
                                                     label={v}
                                                     tone={
-                                                        /Chờ|Sắp/.test(v)
+                                                        /Chờ|Sắp|Khóa/.test(v)
                                                             ? "warning"
-                                                            : /Đang/.test(v)
+                                                            : /Đang|Xử lý/.test(v)
                                                               ? "info"
-                                                              : "success"
+                                                              : /Hủy|Lỗi/.test(v)
+                                                                ? "danger"
+                                                                : "success"
                                                     }
                                                 />
                                             ) : (
@@ -161,10 +403,219 @@ export function DataPage({
                     )}
                 </div>
                 <div className="workspace-table-footer">
-                    Hiển thị {filtered.length} bản ghi{" "}
-                    <span>Dữ liệu minh họa</span>
+                    <span>
+                        Hiển thị {filtered.length} bản ghi · Nhấp trực tiếp vào dòng để mở chi tiết & chỉnh sửa
+                    </span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        <Database size={12} /> {serviceInfo.service}
+                    </span>
                 </div>
             </Card>
+
+            {selectedRow && (
+                <Modal
+                    title={`Chi tiết: ${selectedRow[0]} - ${selectedRow[1] || ""}`}
+                    description={`Bản ghi thuộc bảng ${serviceInfo.table}`}
+                    onClose={() => setSelectedRow(null)}
+                    footer={
+                        <div
+                            style={{
+                                display: "flex",
+                                width: "100%",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                gap: 10,
+                            }}
+                        >
+                            <div>
+                                {serviceInfo.canDelete ? (
+                                    confirmDelete ? (
+                                        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                            <span style={{ fontSize: 12, color: "#d92d20" }}>Xác nhận xóa?</span>
+                                            <button
+                                                className="adm-btn adm-btn-danger adm-btn-sm"
+                                                onClick={handleDelete}
+                                            >
+                                                Xóa vĩnh viễn
+                                            </button>
+                                            <button
+                                                className="adm-btn adm-btn-sm"
+                                                onClick={() => setConfirmDelete(false)}
+                                            >
+                                                Hủy
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            className="adm-btn adm-btn-danger adm-btn-sm"
+                                            onClick={() => setConfirmDelete(true)}
+                                            title={serviceInfo.deleteWarning}
+                                        >
+                                            <Trash2 size={14} /> Xóa bản ghi
+                                        </button>
+                                    )
+                                ) : (
+                                    <span
+                                        style={{
+                                            fontSize: 11,
+                                            color: "#667085",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: 4,
+                                        }}
+                                        title={serviceInfo.deleteWarning}
+                                    >
+                                        <ShieldAlert size={14} color="#f79009" /> Không thể xóa (ràng buộc quan hệ CSDL)
+                                    </span>
+                                )}
+                            </div>
+
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <button className="adm-btn" onClick={() => setSelectedRow(null)}>
+                                    Đóng
+                                </button>
+                                {!serviceInfo.isReadOnly && (
+                                    <button className="adm-btn adm-btn-primary" onClick={handleSave}>
+                                        <Check size={14} /> Lưu thay đổi
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    }
+                >
+                    {/* Relationship constraint notice banner */}
+                    <div
+                        style={{
+                            padding: "12px 14px",
+                            borderRadius: 8,
+                            marginBottom: 18,
+                            fontSize: 12.5,
+                            lineHeight: 1.5,
+                            background: serviceInfo.isReadOnly ? "#f8f9fc" : "#fefbf3",
+                            border: `1px solid ${serviceInfo.isReadOnly ? "#dbe1ed" : "#fbe09c"}`,
+                            color: serviceInfo.isReadOnly ? "#344054" : "#934e00",
+                        }}
+                    >
+                        <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                            {serviceInfo.isReadOnly ? (
+                                <Info size={16} color="#4567ed" style={{ flexShrink: 0, marginTop: 2 }} />
+                            ) : (
+                                <AlertTriangle size={16} color="#d97706" style={{ flexShrink: 0, marginTop: 2 }} />
+                            )}
+                            <div>
+                                <strong>Ràng buộc quan hệ CSDL ({serviceInfo.service}):</strong>
+                                <p style={{ margin: "4px 0 0" }}>{serviceInfo.desc}</p>
+                                <p style={{ margin: "4px 0 0", fontSize: 11.5, opacity: 0.9 }}>
+                                    {serviceInfo.deleteWarning}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick approval action if status is pending */}
+                    {selectedRow[selectedRow.length - 1] === "Chờ duyệt" && (
+                        <div
+                            style={{
+                                padding: "12px 14px",
+                                borderRadius: 8,
+                                marginBottom: 18,
+                                background: "#f0fdf4",
+                                border: "1px solid #bbf7d0",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                            }}
+                        >
+                            <div>
+                                <strong style={{ color: "#166534", fontSize: 13 }}>Thao tác phê duyệt nhanh:</strong>
+                                <p style={{ margin: 0, fontSize: 12, color: "#15803d" }}>
+                                    Yêu cầu đang chờ quản trị viên xử lý.
+                                </p>
+                            </div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                                <button
+                                    className="adm-btn adm-btn-sm"
+                                    style={{ background: "#16a34a", color: "#fff", borderColor: "#16a34a" }}
+                                    onClick={() => handleQuickAction("Đã duyệt")}
+                                >
+                                    <Check size={13} /> Duyệt yêu cầu
+                                </button>
+                                <button
+                                    className="adm-btn adm-btn-sm adm-btn-danger"
+                                    onClick={() => handleQuickAction("Từ chối")}
+                                >
+                                    <X size={13} /> Từ chối
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Edit Form Fields */}
+                    <div className="adm-form">
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: 14,
+                            }}
+                        >
+                            {columns.map((col, idx) => {
+                                const val = editForm[idx] ?? selectedRow[idx] ?? "";
+                                const isKey = idx === 0;
+                                const isStatus = idx === columns.length - 1;
+                                const isNumber = /Số lượng|Tồn kho|Đơn giá|Số tiền|Công suất/.test(col);
+
+                                return (
+                                    <div
+                                        className="adm-field"
+                                        key={col}
+                                        style={
+                                            col.includes("Nội dung") || col.includes("Địa chỉ") || col.includes("Ghi chú")
+                                                ? { gridColumn: "span 2" }
+                                                : undefined
+                                        }
+                                    >
+                                        <label>
+                                            {col} {isKey && <span style={{ color: "#667085" }}>(Mã định danh)</span>}
+                                        </label>
+                                        {isKey || serviceInfo.isReadOnly ? (
+                                            <input
+                                                className="adm-input"
+                                                value={val}
+                                                disabled
+                                                style={{ background: "#f8f9fb", cursor: "not-allowed" }}
+                                            />
+                                        ) : isStatus ? (
+                                            <select
+                                                className="adm-select"
+                                                value={val}
+                                                onChange={(e) => handleFieldChange(idx, e.target.value)}
+                                            >
+                                                <option value={val}>{val} (Hiện tại)</option>
+                                                {["Hoạt động", "Khóa", "Chờ duyệt", "Đã duyệt", "Hoàn tất", "Đang xử lý", "Đang giao", "Đã giao", "Sẵn sàng", "Sắp hết", "Đã hủy"]
+                                                    .filter((opt) => opt !== val)
+                                                    .map((opt) => (
+                                                        <option key={opt} value={opt}>
+                                                            {opt}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                className="adm-input"
+                                                type={isNumber ? "text" : "text"}
+                                                value={val}
+                                                onChange={(e) => handleFieldChange(idx, e.target.value)}
+                                                placeholder={`Nhập ${col.toLowerCase()}…`}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }
@@ -355,6 +806,8 @@ const trend = [32, 45, 38, 61, 52, 78, 86].map((v, i) => ({
     chi: Math.round(v * 0.64),
 }));
 export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
+    const strokeColor = storehouse ? "#7955c1" : "#17846b";
+    const fillColor = storehouse ? "#f3edfc" : "#eaf6f1";
     return (
         <>
             <Heading
@@ -388,8 +841,8 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                                 <Area
                                     dataKey="thu"
                                     name="Thu"
-                                    stroke="#4567ed"
-                                    fill="#eef2ff"
+                                    stroke={strokeColor}
+                                    fill={fillColor}
                                 />
                                 <Area
                                     dataKey="chi"
