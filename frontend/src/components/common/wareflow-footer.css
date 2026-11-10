@@ -23,6 +23,11 @@
 .wareflow-footer a:focus-visible { outline:2px solid #fff; outline-offset:5px; }
 .wareflow-footer .wareflow-footer-copyright { padding:10px 20px; background:#ffffff20; text-align:center; color:#fff; font-size:11px; }
 .auth-page > .wareflow-footer { margin-top:0; }
+.wf-role-company > .wareflow-footer { background:linear-gradient(110deg,#167b5b 0%,#21976b 50%,#42ad77 100%); }
+.wf-role-storehouse > .wareflow-footer { background:linear-gradient(110deg,#6541a1 0%,#8154bf 50%,#a16ad4 100%); }
+.wf-role-company .wareflow-footer-social a { color:#167b5b; }
+.wf-role-storehouse .wareflow-footer-social a { color:#7955b4; }
+.landing-page footer.wareflow-footer { display:block; width:100%; max-width:none; margin:0; padding:0; color:#fff; }
 @media(max-width:1000px) {
     .wareflow-footer .wareflow-footer-info { grid-template-columns:1fr 1fr; gap:24px; }
     .wareflow-footer-info section:first-child { grid-column:1 / -1; }

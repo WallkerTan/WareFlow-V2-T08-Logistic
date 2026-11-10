@@ -1,7 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, Boxes, Check, Package, Truck, Warehouse } from 'lucide-react';
 import './auth.css';
-import WareFlowFooter from '../../components/common/WareFlowFooter';
 
 export default function AuthLayout() {
     const pathname = useLocation().pathname;
@@ -37,6 +36,5 @@ export default function AuthLayout() {
                 <Outlet />
             </div>
         </main>
-        <WareFlowFooter />
     </div>;
 }

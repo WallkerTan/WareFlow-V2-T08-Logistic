@@ -7,6 +7,7 @@ import "../../layout/main/main.css";
 import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
 import "../../layout/main/roles.css";
+import './workspace-frame.css';
 export type WorkspaceConfig = {
     role: "admin" | "company" | "storehouse";
     title: string;
@@ -33,6 +34,7 @@ export default function WorkspaceShell({ config }: {
     const Icon = config.icon;
     return (<div className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}>
             <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
+                <div className="wf-sidebar-panel">
                 <Link className="wf-brand" to={config.home} onClick={() => setExpanded(false)}>
                     <img src="/logo.png" alt="WareFlow" className="wf-brand-logo-img" />ware
                     <span>flow</span>
@@ -60,6 +62,7 @@ export default function WorkspaceShell({ config }: {
                         <small>WareFlow · Quản lý kho & logistics</small>
                     </div>
                 </div>
+                </div>
             </aside>
             <div className="wf-main">
                 <header className="wf-topbar">
@@ -86,7 +89,7 @@ export default function WorkspaceShell({ config }: {
                 <main className="wf-content">
                     <Outlet />
                 </main>
-                <WareFlowFooter />
             </div>
+            <WareFlowFooter />
         </div>);
 }
