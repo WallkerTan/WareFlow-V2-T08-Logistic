@@ -8,6 +8,7 @@ import { ContactSection } from "../components/landing/ContactSection";
 import { FloatingContactButton } from "../components/landing/FloatingContactButton";
 import { RevealOnScroll } from "../components/landing/RevealOnScroll";
 import { PhoneCall } from "lucide-react";
+import WareFlowFooter from '../components/common/WareFlowFooter';
 
 const LandingPage = () => {
     return (
@@ -97,7 +98,7 @@ const LandingPage = () => {
 
                 {/* Metrics Banner */}
                 <RevealOnScroll>
-                    <section className="metrics ">
+                    <section className="metrics" aria-label="Số liệu nổi bật của WareFlow">
                         <div>
                             <b>500+</b>
                             <small>Doanh nghiệp tin dùng</small>
@@ -156,24 +157,7 @@ const LandingPage = () => {
             </main>
 
             {/* Footer */}
-            <footer>
-                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                    <a className="brand" href="#top">
-                        <img src="/logo.png" alt="WareFlow" className="brand-logo-img brand-logo-footer" />
-                        <span>
-                            ware <b>flow</b>
-                        </span>
-                    </a>
-                    <span style={{ color: "#a5b4c8" }}>|</span>
-                    <small style={{ color: "#748299" }}>Giải pháp quản trị kho thông minh & Logistics thế hệ mới.</small>
-                </div>
-                <div style={{ display: "flex", gap: "24px", alignItems: "center" }}>
-                    <a href="#product" style={{ color: "#64748b" }}>Sản phẩm</a>
-                    <a href="#features" style={{ color: "#64748b" }}>Tính năng</a>
-                    <a href="#contact" style={{ color: "#64748b" }}>Liên hệ</a>
-                    <small>© 2026 WareFlow. All rights reserved.</small>
-                </div>
-            </footer>
+            <WareFlowFooter />
 
             {/* Floating Contact & Quick Actions Button */}
             <FloatingContactButton />
