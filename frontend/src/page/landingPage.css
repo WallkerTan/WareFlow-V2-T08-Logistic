@@ -278,18 +278,28 @@
     font-weight: 700;
 }
 .landing-page .metrics {
-    padding: 25px 0;
+    width: min(1180px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 30px 0;
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
     border-top: 1px solid #e2e8f1;
     border-bottom: 1px solid #e2e8f1;
 }
 .landing-page .metrics div {
-    padding: 0 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    padding: 4px 20px;
+    text-align: center;
     border-right: 1px solid #e2e8f1;
 }
 .landing-page .metrics div:first-child {
-    padding-left: 0;
+    padding-left: 20px;
 }
 .landing-page .metrics div:last-child {
     border: 0;
@@ -297,12 +307,15 @@
 .landing-page .metrics b {
     display: block;
     font-size: 29px;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
 }
 .landing-page .metrics small {
     display: block;
-    margin-top: 5px;
+    margin-top: 0;
     color: #8792a4;
     font-size: 12px;
+    line-height: 1.7;
 }
 .landing-page .features {
     padding: 125px 0;
@@ -477,14 +490,16 @@
         gap: 22px;
     }
     .landing-page .metrics {
+        width: calc(100% - 32px);
         grid-template-columns: repeat(2, 1fr);
-        gap: 20px 0;
+        gap: 24px 0;
+        padding: 24px 0;
     }
     .landing-page .metrics div {
-        padding: 0 15px;
+        padding: 4px 12px;
     }
     .landing-page .metrics div:first-child {
-        padding-left: 0;
+        padding-left: 12px;
     }
     .landing-page .metrics div:nth-child(2) {
         border: 0;
