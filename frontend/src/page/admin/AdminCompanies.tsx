@@ -276,9 +276,19 @@ export default function AdminCompanies() {
                                     const status = companyStatusMeta[company.status];
                                     const model = businessModelMeta[company.businessModel];
                                     return (
-                                        <tr key={company.id}>
+                                        <tr
+                                            key={company.id}
+                                            onClick={() => openEdit(company)}
+                                            title="Nhấp để xem chi tiết & cập nhật công ty"
+                                        >
                                             <td>
-                                                <Link className="adm-cell-main" to={`/admin/companies/${company.id}`}>{company.name}</Link>
+                                                <Link
+                                                    className="adm-cell-main"
+                                                    to={`/admin/companies/${company.id}`}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    {company.name}
+                                                </Link>
                                                 <span className="adm-cell-sub">{company.email}</span>
                                             </td>
                                             <td className="adm-mono">{company.taxCode}</td>
@@ -295,19 +305,32 @@ export default function AdminCompanies() {
                                             </td>
                                             <td className="adm-col-actions">
                                                 <div style={{ display: 'inline-flex', gap: 6 }}>
-                                                    <button className="adm-btn adm-btn-sm adm-btn-icon" onClick={() => openEdit(company)} aria-label={`Sửa ${company.name}`}>
+                                                    <button
+                                                        className="adm-btn adm-btn-sm adm-btn-icon"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openEdit(company);
+                                                        }}
+                                                        aria-label={`Sửa ${company.name}`}
+                                                    >
                                                         <Pencil size={14} />
                                                     </button>
                                                     <button
                                                         className="adm-btn adm-btn-sm adm-btn-icon"
-                                                        onClick={() => toggleStatus(company)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            toggleStatus(company);
+                                                        }}
                                                         aria-label={company.status === 'LOCKED' ? `Mở khoá ${company.name}` : `Khoá ${company.name}`}
                                                     >
                                                         {company.status === 'LOCKED' ? <Check size={14} /> : <ShieldAlert size={14} />}
                                                     </button>
                                                     <button
                                                         className="adm-btn adm-btn-sm adm-btn-icon"
-                                                        onClick={() => setConfirmDelete(company)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setConfirmDelete(company);
+                                                        }}
                                                         aria-label={`Xoá ${company.name}`}
                                                     >
                                                         <Trash2 size={14} />

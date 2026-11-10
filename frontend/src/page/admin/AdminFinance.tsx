@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ArrowDownRight, ArrowUpRight, Download, Receipt, Search, Wallet } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Check, Download, Info, Receipt, Search, ShieldCheck, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Badge, Card, EmptyState, Pagination, Progress } from '../../components/admin/AdminUI';
-import { budgets, transactions } from '../../data/adminData';
-import type { TransactionType } from '../../types/admin';
+import { Badge, Card, EmptyState, Modal, Pagination, Progress } from '../../components/admin/AdminUI';
+import { budgets, transactions as seedTransactions } from '../../data/adminData';
+import type { Transaction, TransactionType } from '../../types/admin';
 import { formatCompactCurrency, formatCurrency, formatDateTime, transactionCategoryMeta, transactionTypeMeta } from '../../utils/format';
 
 const PAGE_SIZE = 6;
@@ -18,13 +18,36 @@ const cashflow = [
 ];
 
 export default function AdminFinance() {
+    const [rows, setRows] = useState<Transaction[]>(seedTransactions);
     const [query, setQuery] = useState('');
     const [typeFilter, setTypeFilter] = useState<'ALL' | TransactionType>('ALL');
     const [page, setPage] = useState(1);
+    const [selectedTx, setSelectedTx] = useState<Transaction | null>(null);
+    const [noteForm, setNoteForm] = useState('');
+    const [toast, setToast] = useState<string | null>(null);
+
+    const openTxDetail = (tx: Transaction) => {
+        setSelectedTx(tx);
+        setNoteForm(tx.note);
+    };
+
+    const handleSaveNote = () => {
+        if (!selectedTx) return;
+        setRows((prev) =>
+            prev.map((t) => (t.id === selectedTx.id ? { ...t, note: noteForm } : t))
+        );
+        setSelectedTx(null);
+        showToast(`Đã cập nhật giải trình cho giao dịch #${selectedTx.id}.`);
+    };
+
+    const showToast = (msg: string) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3500);
+    };
 
     const filtered = useMemo(() => {
         const keyword = query.trim().toLowerCase();
-        return transactions.filter((transaction) => {
+        return rows.filter((transaction) => {
             const matchesQuery =
                 !keyword ||
                 transaction.note.toLowerCase().includes(keyword) ||
@@ -32,7 +55,7 @@ export default function AdminFinance() {
             const matchesType = typeFilter === 'ALL' || transaction.type === typeFilter;
             return matchesQuery && matchesType;
         });
-    }, [query, typeFilter]);
+    }, [rows, query, typeFilter]);
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
@@ -45,9 +68,9 @@ export default function AdminFinance() {
         };
     }
 
-    const totalIncome = transactions.filter((t) => t.type === 'INCOME').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpense = transactions.filter((t) => t.type !== 'INCOME').reduce((sum, t) => sum + t.amount, 0);
-    const totalFee = transactions.filter((t) => t.type === 'SYSTEM_FEE').reduce((sum, t) => sum + t.amount, 0);
+    const totalIncome = rows.filter((t) => t.type === 'INCOME').reduce((sum, t) => sum + t.amount, 0);
+    const totalExpense = rows.filter((t) => t.type !== 'INCOME').reduce((sum, t) => sum + t.amount, 0);
+    const totalFee = rows.filter((t) => t.type === 'SYSTEM_FEE').reduce((sum, t) => sum + t.amount, 0);
     const profit = totalIncome - totalExpense;
 
     return (
@@ -223,7 +246,11 @@ export default function AdminFinance() {
                                     const category = transactionCategoryMeta[transaction.category];
                                     const isIncome = transaction.type === 'INCOME';
                                     return (
-                                        <tr key={transaction.id}>
+                                        <tr
+                                            key={transaction.id}
+                                            onClick={() => openTxDetail(transaction)}
+                                            title="Nhấp để xem sổ cái giao dịch"
+                                        >
                                             <td>
                                                 <Badge label={type.label} tone={type.tone} />
                                             </td>
@@ -247,6 +274,162 @@ export default function AdminFinance() {
                     <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onChange={setPage} />
                 )}
             </Card>
+
+            {toast && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 24,
+                        zIndex: 99,
+                        background: '#1f2937',
+                        color: '#fff',
+                        padding: '12px 20px',
+                        borderRadius: 10,
+                        fontSize: 13,
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                    }}
+                >
+                    <Check size={16} color="#10b981" />
+                    <span>{toast}</span>
+                </div>
+            )}
+
+            {selectedTx && (
+                <Modal
+                    title={`Sổ cái giao dịch #${selectedTx.id}`}
+                    description={`Chứng từ hạch toán · finance-service: transactions`}
+                    onClose={() => setSelectedTx(null)}
+                    footer={
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: 11, color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <ShieldCheck size={14} color="#10b981" /> Sổ cái kế toán bất biến (Immutable Ledger)
+                            </span>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="adm-btn" onClick={() => setSelectedTx(null)}>
+                                    Đóng
+                                </button>
+                                <button className="adm-btn adm-btn-primary" onClick={handleSaveNote}>
+                                    <Check size={14} /> Lưu giải trình
+                                </button>
+                            </div>
+                        </div>
+                    }
+                >
+                    <div
+                        style={{
+                            padding: '12px 14px',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            fontSize: 12.5,
+                            lineHeight: 1.5,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#334155',
+                        }}
+                    >
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <strong>Ràng buộc kế toán tài chính (finance-service: transactions):</strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                    Theo quy tắc toàn vẹn CSDL và luật kế toán, giao dịch đã ghi nhận không được phép xóa hoặc sửa đổi số tiền, loại giao dịch (INCOME / EXPENSE) và tài khoản nguồn. Bạn chỉ được phép bổ sung/cập nhật ghi chú giải trình nghiệp vụ.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="adm-form">
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Mã giao dịch (BIGSERIAL PK)</label>
+                                <input
+                                    className="adm-input"
+                                    value={`TX-${selectedTx.id}`}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Loại giao dịch</label>
+                                <input
+                                    className="adm-input"
+                                    value={transactionTypeMeta[selectedTx.type].label}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Số tiền hạch toán</label>
+                                <input
+                                    className="adm-input"
+                                    value={`${selectedTx.type === 'INCOME' ? '+' : '−'} ${formatCurrency(selectedTx.amount)}`}
+                                    disabled
+                                    style={{
+                                        background: '#f8fafc',
+                                        cursor: 'not-allowed',
+                                        fontWeight: 600,
+                                        color: selectedTx.type === 'INCOME' ? '#16a34a' : '#dc2626',
+                                    }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Phí hệ thống 5% (Ước tính)</label>
+                                <input
+                                    className="adm-input"
+                                    value={formatCurrency(Math.round(selectedTx.amount * 0.05))}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Hạng mục</label>
+                                <input
+                                    className="adm-input"
+                                    value={transactionCategoryMeta[selectedTx.category].label}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Kho liên kết</label>
+                                <input
+                                    className="adm-input"
+                                    value={selectedTx.warehouseName ?? 'Toàn hệ thống'}
+                                    disabled
+                                    style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field">
+                            <label>Thời điểm phát sinh</label>
+                            <input
+                                className="adm-input"
+                                value={formatDateTime(selectedTx.createdAt)}
+                                disabled
+                                style={{ background: '#f8fafc', cursor: 'not-allowed' }}
+                            />
+                        </div>
+                        <div className="adm-field">
+                            <label>Ghi chú & Giải trình kế toán</label>
+                            <textarea
+                                className="adm-input"
+                                rows={3}
+                                value={noteForm}
+                                onChange={(e) => setNoteForm(e.target.value)}
+                                placeholder="Nhập ghi chú giải trình giao dịch…"
+                            />
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }

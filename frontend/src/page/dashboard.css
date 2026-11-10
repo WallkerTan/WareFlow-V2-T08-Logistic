@@ -1,4 +1,4 @@
-.dashboard-page{min-height:100vh;display:grid;grid-template-columns:250px 1fr;background:#f5f7fb;color:#1d2942;font-family:Inter,system-ui,sans-serif}
+.dashboard-page{min-height:100vh;display:grid;grid-template-columns:250px 1fr;background:#f5f7fb;color:#1d2942;font-family:'Be Vietnam Pro','Inter',system-ui,sans-serif}
 .dashboard-sidebar{position:sticky;top:0;height:100vh;background:#fff;border-right:1px solid #e8ebf2;padding:27px 18px;display:flex;flex-direction:column}
 .dashboard-brand{display:flex;align-items:center;gap:7px;padding:0 8px;font-size:20px;font-weight:500;color:#263553;text-decoration:none}
 .dashboard-brand>span{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#4668ef;color:white;font-weight:800}

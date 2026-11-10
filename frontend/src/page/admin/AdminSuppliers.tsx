@@ -1,25 +1,91 @@
 import { useMemo, useState } from 'react';
-import { Download, Mail, Phone, Plus, Search, Truck } from 'lucide-react';
-import { Card, EmptyState, Pagination } from '../../components/admin/AdminUI';
-import { suppliers } from '../../data/adminData';
+import { Check, Download, Info, Mail, Phone, Plus, Search, ShieldAlert, Trash2, Truck } from 'lucide-react';
+import { Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
+import { suppliers as seedSuppliers } from '../../data/adminData';
+import type { Supplier } from '../../types/admin';
 import { formatDate, formatNumber } from '../../utils/format';
 
 const PAGE_SIZE = 6;
 
 export default function AdminSuppliers() {
+    const [rows, setRows] = useState<Supplier[]>(seedSuppliers);
     const [query, setQuery] = useState('');
     const [page, setPage] = useState(1);
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    const [editForm, setEditForm] = useState<{
+        name: string;
+        category: string;
+        companyName: string;
+        contactPerson: string;
+        phone: string;
+        email: string;
+    }>({
+        name: '',
+        category: '',
+        companyName: '',
+        contactPerson: '',
+        phone: '',
+        email: '',
+    });
+    const [confirmDelete, setConfirmDelete] = useState(false);
+    const [toast, setToast] = useState<string | null>(null);
+
+    const openSupplierDetail = (supplier: Supplier) => {
+        setSelectedSupplier(supplier);
+        setEditForm({
+            name: supplier.name,
+            category: supplier.category,
+            companyName: supplier.companyName,
+            contactPerson: supplier.contactPerson,
+            phone: supplier.phone,
+            email: supplier.email,
+        });
+        setConfirmDelete(false);
+    };
+
+    const handleSaveSupplier = () => {
+        if (!selectedSupplier) return;
+        setRows((prev) =>
+            prev.map((s) =>
+                s.id === selectedSupplier.id
+                    ? {
+                          ...s,
+                          ...editForm,
+                      }
+                    : s
+            )
+        );
+        setSelectedSupplier(null);
+        showToast(`Đã lưu thay đổi cho nhà cung cấp "${editForm.name}".`);
+    };
+
+    const handleDeleteSupplier = () => {
+        if (!selectedSupplier) return;
+        if (selectedSupplier.productCount > 0) {
+            alert('Ràng buộc CSDL: Nhà cung cấp đang liên kết sản phẩm, không thể xóa trực tiếp!');
+            return;
+        }
+        setRows((prev) => prev.filter((s) => s.id !== selectedSupplier.id));
+        const name = selectedSupplier.name;
+        setSelectedSupplier(null);
+        showToast(`Đã xóa nhà cung cấp "${name}" khỏi hệ thống.`);
+    };
+
+    const showToast = (msg: string) => {
+        setToast(msg);
+        setTimeout(() => setToast(null), 3500);
+    };
 
     const filtered = useMemo(() => {
         const keyword = query.trim().toLowerCase();
-        return suppliers.filter(
+        return rows.filter(
             (supplier) =>
                 !keyword ||
                 supplier.name.toLowerCase().includes(keyword) ||
                 supplier.category.toLowerCase().includes(keyword) ||
                 supplier.companyName.toLowerCase().includes(keyword),
         );
-    }, [query]);
+    }, [rows, query]);
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
@@ -32,7 +98,7 @@ export default function AdminSuppliers() {
         };
     }
 
-    const categories = new Set(suppliers.map((supplier) => supplier.category)).size;
+    const categories = new Set(rows.map((supplier) => supplier.category)).size;
 
     return (
         <>
@@ -59,7 +125,7 @@ export default function AdminSuppliers() {
                             <Truck size={17} />
                         </span>
                     </div>
-                    <div className="adm-stat-value">{suppliers.length}</div>
+                    <div className="adm-stat-value">{rows.length}</div>
                     <div className="adm-stat-foot">
                         <span>Đang hoạt động trên nền tảng</span>
                     </div>
@@ -83,7 +149,7 @@ export default function AdminSuppliers() {
                             <Truck size={17} />
                         </span>
                     </div>
-                    <div className="adm-stat-value">{formatNumber(suppliers.reduce((sum, supplier) => sum + supplier.productCount, 0))}</div>
+                    <div className="adm-stat-value">{formatNumber(rows.reduce((sum, supplier) => sum + supplier.productCount, 0))}</div>
                     <div className="adm-stat-foot">
                         <span>Đang được cung ứng</span>
                     </div>
@@ -130,7 +196,11 @@ export default function AdminSuppliers() {
                             </thead>
                             <tbody>
                                 {visible.map((supplier) => (
-                                    <tr key={supplier.id}>
+                                    <tr
+                                        key={supplier.id}
+                                        onClick={() => openSupplierDetail(supplier)}
+                                        title="Nhấp để xem chi tiết & chỉnh sửa"
+                                    >
                                         <td className="adm-cell-main">{supplier.name}</td>
                                         <td>{supplier.category}</td>
                                         <td>{supplier.companyName}</td>
@@ -156,6 +226,149 @@ export default function AdminSuppliers() {
                     <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onChange={setPage} />
                 )}
             </Card>
+
+            {toast && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        bottom: 24,
+                        right: 24,
+                        zIndex: 99,
+                        background: '#1f2937',
+                        color: '#fff',
+                        padding: '12px 20px',
+                        borderRadius: 10,
+                        fontSize: 13,
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                    }}
+                >
+                    <Check size={16} color="#10b981" />
+                    <span>{toast}</span>
+                </div>
+            )}
+
+            {selectedSupplier && (
+                <Modal
+                    title={`Hồ sơ nhà cung cấp: ${selectedSupplier.name}`}
+                    description={`ID: ${selectedSupplier.id} · core-service: suppliers`}
+                    onClose={() => setSelectedSupplier(null)}
+                    footer={
+                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                {selectedSupplier.productCount > 0 ? (
+                                    <span style={{ fontSize: 11, color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <ShieldAlert size={14} color="#f59e0b" /> Không thể xóa (Đang liên kết {selectedSupplier.productCount} sản phẩm)
+                                    </span>
+                                ) : confirmDelete ? (
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        <span style={{ fontSize: 12, color: '#ef4444' }}>Xác nhận xóa đối tác?</span>
+                                        <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={handleDeleteSupplier}>
+                                            Xóa vĩnh viễn
+                                        </button>
+                                        <button className="adm-btn adm-btn-sm" onClick={() => setConfirmDelete(false)}>
+                                            Hủy
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => setConfirmDelete(true)}>
+                                        <Trash2 size={14} /> Xóa nhà cung cấp
+                                    </button>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="adm-btn" onClick={() => setSelectedSupplier(null)}>
+                                    Hủy
+                                </button>
+                                <button className="adm-btn adm-btn-primary" onClick={handleSaveSupplier}>
+                                    <Check size={14} /> Lưu thay đổi
+                                </button>
+                            </div>
+                        </div>
+                    }
+                >
+                    <div
+                        style={{
+                            padding: '12px 14px',
+                            borderRadius: 8,
+                            marginBottom: 16,
+                            fontSize: 12.5,
+                            lineHeight: 1.5,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#334155',
+                        }}
+                    >
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div>
+                                <strong>Ràng buộc quan hệ CSDL (core-service: suppliers):</strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                    Nhà cung cấp liên kết với công ty ({selectedSupplier.companyName}) qua <code>company_id</code> và cung ứng danh mục hàng hóa (<code>products: JSONB</code>).
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="adm-form">
+                        <div className="adm-field">
+                            <label>Tên nhà cung cấp / Doanh nghiệp</label>
+                            <input
+                                className="adm-input"
+                                value={editForm.name}
+                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                            />
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Ngành hàng / Danh mục</label>
+                                <input
+                                    className="adm-input"
+                                    value={editForm.category}
+                                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Công ty đối tác</label>
+                                <input
+                                    className="adm-input"
+                                    value={editForm.companyName}
+                                    onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="adm-field">
+                            <label>Người đại diện liên hệ</label>
+                            <input
+                                className="adm-input"
+                                value={editForm.contactPerson}
+                                onChange={(e) => setEditForm({ ...editForm, contactPerson: e.target.value })}
+                            />
+                        </div>
+                        <div className="adm-field-grid">
+                            <div className="adm-field">
+                                <label>Số điện thoại</label>
+                                <input
+                                    className="adm-input"
+                                    value={editForm.phone}
+                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                />
+                            </div>
+                            <div className="adm-field">
+                                <label>Email liên hệ</label>
+                                <input
+                                    className="adm-input"
+                                    type="email"
+                                    value={editForm.email}
+                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }
