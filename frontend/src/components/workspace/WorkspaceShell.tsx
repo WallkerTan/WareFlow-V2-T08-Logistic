@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, ChevronRight, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import WareFlowFooter from '../common/WareFlowFooter';
 import "../../layout/main/main.css";
 import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
@@ -85,10 +86,7 @@ export default function WorkspaceShell({ config }: {
                 <main className="wf-content">
                     <Outlet />
                 </main>
-                <footer className="wf-footer">
-                    © {new Date().getFullYear()} WareFlow
-                    <span>{config.description}</span>
-                </footer>
+                <WareFlowFooter />
             </div>
         </div>);
 }

@@ -4,6 +4,8 @@ import { useDepots } from '../../data/warehouses';
 import type { Depot } from '../../data/warehouses';
 import { Modal } from 'antd';
 import warehousePhoto from '../../assets/warehouse-photo.jpg';
+import { Warehouse, MapPin, Building2, Boxes, Wallet, History, ArrowUpRight } from 'lucide-react';
+import './company-warehouses.css';
 
 export default function CompanyWarehouses() {
  const [query, setQuery] = useState('');
@@ -25,6 +27,16 @@ export default function CompanyWarehouses() {
  <dl className="company-warehouse-facts"><div><dt>Diện tích kho</dt><dd>{w.area.toLocaleString('vi-VN')} m²</dd></div><div><dt>{w.type === 'Cho thuê' ? 'Giá thuê / tháng' : 'Giá mua'}</dt><dd>{w.price.toLocaleString('vi-VN')} triệu đồng</dd></div></dl>
  <button className="wf-button wf-button-primary" onClick={() => setSelected(w)}>Xem chi tiết kho</button></div></article>)}</div>{!filtered.length && <div className="company-warehouse-empty"><strong>Chưa có kho phù hợp</strong><p>{query ? 'Thử tìm kiếm theo tên, mã kho hoặc địa chỉ khác.' : 'Công ty chưa có kho đang hoạt động được bàn giao.'}</p></div>}</section>
  <p className="wf-preview-note">Dữ liệu kho đồng bộ với trang quản trị trên cùng trình duyệt. Phân quyền và dữ liệu vận hành cần được kết nối với backend.</p>
- <Modal open={!!selectedWarehouse} onCancel={() => setSelected(null)} footer={null} title="Chi tiết kho công ty" width={650}>{selectedWarehouse && <div className="company-warehouse-details"><h2>{selectedWarehouse.name}</h2><p>{selectedWarehouse.id} · Đang hoạt động</p><p><b>Công ty quản lý:</b> {selectedWarehouse.company}<br /><b>Địa chỉ:</b> {selectedWarehouse.address}<br /><b>Diện tích:</b> {selectedWarehouse.area.toLocaleString('vi-VN')} m²<br /><b>Hình thức:</b> {selectedWarehouse.type}<br /><b>Giá:</b> {selectedWarehouse.price.toLocaleString('vi-VN')} triệu đồng{selectedWarehouse.type === 'Cho thuê' ? '/tháng' : ''}</p><hr /><h3>Sở hữu & bàn giao</h3><p>Nhân viên quản lý: Chưa có dữ liệu<br />Thời gian bàn giao: Chưa có dữ liệu<br />Hồ sơ hợp đồng: Chưa có dữ liệu</p><h3>Hàng hóa & tồn kho</h3><p>Chưa kết nối dữ liệu sản phẩm, số lượng tồn, lô hàng, hạn sử dụng và cảnh báo tồn tối thiểu.</p><h3>Ngân sách & thu chi</h3><p>Chưa có dữ liệu ngân sách được cấp, tổng thu, tổng chi và ngân sách còn lại.</p><h3>Lịch sử vận hành</h3><p>Chưa có dữ liệu phiếu nhập, xuất, điều chuyển và kiểm kê.</p></div>}</Modal>
+ <Modal className="warehouse-detail-modal" open={!!selectedWarehouse} onCancel={() => setSelected(null)} footer={null} title="Thông tin kho" width={800} centered>{selectedWarehouse && <div className="warehouse-detail">
+ <div className="warehouse-detail-hero"><span className="warehouse-detail-icon"><Warehouse size={28} /></span><div><span className="warehouse-detail-code">{selectedWarehouse.id} · {selectedWarehouse.region}</span><h2>{selectedWarehouse.name}</h2><p><MapPin size={14} />{selectedWarehouse.address}</p></div><span className="warehouse-detail-status">Đang hoạt động</span></div>
+ <dl className="warehouse-detail-stats"><div><dt>Diện tích sử dụng</dt><dd>{selectedWarehouse.area.toLocaleString('vi-VN')} <small>m²</small></dd></div><div><dt>{selectedWarehouse.type === 'Cho thuê' ? 'Giá thuê / tháng' : 'Giá mua'}</dt><dd>{selectedWarehouse.price.toLocaleString('vi-VN')} <small>triệu đồng</small></dd></div><div><dt>Hình thức sở hữu</dt><dd>{selectedWarehouse.type}</dd></div></dl>
+ <div className="warehouse-detail-owner"><Building2 size={20} /><div><span>Công ty quản lý</span><strong>{selectedWarehouse.company}</strong></div></div>
+ <div className="warehouse-detail-sections">
+ <section><h3><Building2 size={18} />Sở hữu & bàn giao</h3><dl><div><dt>Nhân viên quản lý</dt><dd>Chưa có dữ liệu</dd></div><div><dt>Thời gian bàn giao</dt><dd>Chưa có dữ liệu</dd></div><div><dt>Hồ sơ hợp đồng</dt><dd>Chưa có dữ liệu</dd></div></dl></section>
+ <section><h3><Boxes size={18} />Hàng hóa & tồn kho</h3><p>Theo dõi sản phẩm, lô hàng và số lượng tồn tại kho.</p><span className="warehouse-detail-pending">Chưa kết nối dữ liệu</span></section>
+ <section><h3><Wallet size={18} />Ngân sách & thu chi</h3><p>Thông tin ngân sách được cấp, thu chi và số dư của kho.</p><span className="warehouse-detail-pending">Chưa có dữ liệu</span></section>
+ <section><h3><History size={18} />Lịch sử vận hành</h3><p>Các hoạt động nhập, xuất, điều chuyển và kiểm kê.</p><span className="warehouse-detail-pending">Chưa có dữ liệu</span></section>
+ </div><div className="warehouse-detail-footer"><span>Thông tin kho đang được công ty quản lý.</span><button type="button" onClick={() => setSelected(null)}>Đóng chi tiết<ArrowUpRight size={15} /></button></div>
+ </div>}</Modal>
  </>;
 }

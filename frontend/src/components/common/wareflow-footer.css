@@ -1,0 +1,38 @@
+.wareflow-footer {
+    width:100%; min-width:0; margin-top:auto; padding:0; grid-column:1 / -1;
+    background:linear-gradient(110deg,#448efa 0%,#637afa 48%,#a443ee 100%);
+    color:#fff; font-family:inherit; font-size:13px; line-height:1.75;
+}
+.wareflow-footer * { box-sizing:border-box; }
+.wareflow-footer .wareflow-footer-top { display:flex; align-items:center; justify-content:space-between; gap:24px; padding:30px clamp(22px,3vw,48px); border-bottom:1px solid #ffffff40; }
+.wareflow-footer .wareflow-footer-brand { display:flex; align-items:center; gap:16px; min-width:0; color:#fff; text-decoration:none; }
+.wareflow-footer-logo { display:grid; place-items:center; width:64px; height:64px; flex-shrink:0; border-radius:16px; background:#fff; box-shadow:0 4px 16px #2549a51a; }
+.wareflow-footer-logo img { display:block; width:52px; height:52px; object-fit:contain; }
+.wareflow-footer-brand strong { display:block; font-size:21px; font-weight:650; line-height:1.5; letter-spacing:.3px; }
+.wareflow-footer-brand > span > span { display:block; margin-top:3px; color:#ffffffdb; font-size:14px; }
+.wareflow-footer .wareflow-footer-social { display:flex; flex-shrink:0; gap:12px; }
+.wareflow-footer-social a { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; background:#fff; color:#5262a7; transition:transform .15s,background .15s; }
+.wareflow-footer-social a:hover { transform:translateY(-2px); background:#edf3ff; }
+.wareflow-footer .wareflow-footer-info { display:grid; grid-template-columns:1.35fr 1.1fr 1fr; gap:32px; padding:28px clamp(22px,3vw,48px) 32px; }
+.wareflow-footer-info section { min-width:0; }
+.wareflow-footer .wareflow-footer-info h2 { display:flex; align-items:center; gap:8px; margin:0 0 10px; color:#fff; font-size:15px; font-weight:600; letter-spacing:normal; line-height:1.6; }
+.wareflow-footer-info svg { flex-shrink:0; opacity:.85; }
+.wareflow-footer-info p, .wareflow-footer-info address { margin:0; color:#ffffffe6; font:inherit; font-size:12px; line-height:1.9; }
+.wareflow-footer .wareflow-footer-info a { display:block; width:fit-content; max-width:100%; color:#ffffffe6; font-size:12px; text-decoration:none; overflow-wrap:anywhere; }
+.wareflow-footer-info a:hover { text-decoration:underline; }
+.wareflow-footer a:focus-visible { outline:2px solid #fff; outline-offset:5px; }
+.wareflow-footer .wareflow-footer-copyright { padding:10px 20px; background:#ffffff20; text-align:center; color:#fff; font-size:11px; }
+.auth-page > .wareflow-footer { margin-top:0; }
+@media(max-width:1000px) {
+    .wareflow-footer .wareflow-footer-info { grid-template-columns:1fr 1fr; gap:24px; }
+    .wareflow-footer-info section:first-child { grid-column:1 / -1; }
+}
+@media(max-width:600px) {
+    .wareflow-footer .wareflow-footer-top { flex-wrap:wrap; padding:24px 20px; gap:20px; }
+    .wareflow-footer-brand strong { font-size:18px; }
+    .wareflow-footer-brand > span > span { font-size:11px; }
+    .wareflow-footer-logo { width:52px; height:52px; border-radius:12px; }
+    .wareflow-footer-logo img { width:44px; height:44px; }
+    .wareflow-footer .wareflow-footer-info { grid-template-columns:1fr; padding:24px 20px; gap:24px; }
+    .wareflow-footer-info section:first-child { grid-column:auto; }
+}

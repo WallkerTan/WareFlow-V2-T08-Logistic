@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, Boxes, Check, Package, Truck, Warehouse } from 'lucide-react';
 import './auth.css';
+import WareFlowFooter from '../../components/common/WareFlowFooter';
 
 export default function AuthLayout() {
     const pathname = useLocation().pathname;
@@ -35,7 +36,7 @@ export default function AuthLayout() {
                 <nav className="auth-tabs" aria-label="Tài khoản"><Link to="/auth/login" aria-current={!isRegister ? 'page' : undefined}>Đăng nhập</Link><Link to="/auth/register" aria-current={isRegister ? 'page' : undefined}>Đăng ký công ty</Link></nav>
                 <Outlet />
             </div>
-            <footer className="auth-footer">© {new Date().getFullYear()} WareFlow<span>Nền tảng quản lý kho & logistics</span></footer>
         </main>
+        <WareFlowFooter />
     </div>;
 }
