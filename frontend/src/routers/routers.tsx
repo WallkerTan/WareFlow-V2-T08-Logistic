@@ -16,6 +16,7 @@ import CompanyEmployeesNewPage from "../page/company/CompanyEmployeesNewPage";
 import CompanyTransfersNewPage from "../page/company/CompanyTransfersNewPage";
 import StorehouseInventoryPage from "../page/storehouse/StorehouseInventoryPage";
 import StorehouseFinancePage from "../page/storehouse/StorehouseFinancePage";
+import StorehouseBudgetPage from "../page/storehouse/StorehouseBudgetPage";
 import StorehouseInboundNewPage from "../page/storehouse/StorehouseInboundNewPage";
 import StorehouseOutboundNewPage from "../page/storehouse/StorehouseOutboundNewPage";
 import StorehouseShipmentsPage from "../page/storehouse/StorehouseShipmentsPage";
@@ -147,6 +148,7 @@ const router = createBrowserRouter([
             { path: "lots", element: <StockLots /> },
             { path: "inventory", element: <StorehouseInventoryPage /> },
             { path: "finance", element: <StorehouseFinancePage /> },
+            { path: "budget", element: <StorehouseBudgetPage /> },
             { path: "profile", element: <StorehouseProfile /> },
             { path: "inbound", element: <StorehouseInboundPage /> },
             { path: "outbound", element: <StorehouseOutboundPage /> },
