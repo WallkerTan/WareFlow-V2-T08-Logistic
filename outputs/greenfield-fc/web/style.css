@@ -1,0 +1,6 @@
+body { font-family: Arial, sans-serif; max-width: 900px; margin: 32px auto; color: #17324d; }
+header { text-align: center; background: #eaf4f2; padding: 24px; border-radius: 12px; }
+.logo { width: 96px; height: 96px; object-fit: contain; }
+table { width: 100%; border-collapse: collapse; }
+th, td { border: 1px solid #9bb; padding: 10px; text-align: left; }
+th { background: #123b5d; color: white; }

@@ -507,3 +507,11 @@
 
 .auth-notice-success { color: #187454; background: #edf9f2; border-color: #bee6ce; }
 .auth-notice-error { color: #ab3445; background: #fff3f5; border-color: #f2ccd3; }
+
+.preview-chart-empty { min-height:105px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:10px; margin-top:12px; padding:18px; border:1px dashed #dfe6f4; border-radius:10px; background:#f8faff; color:#8792a5; text-align:center; font-size:11px; line-height:1.6; }
+.auth-page svg { flex-shrink:0; }
+.auth-aside, .auth-story, .preview-stats > div, .preview-delivery > div { min-width:0; }
+.preview-heading { gap:12px; flex-wrap:wrap; }
+.preview-delivery { gap:12px; }
+.auth-benefits { flex-wrap:wrap; }
+.auth-page .auth-footer { width:100%; padding:0; flex-wrap:wrap; }

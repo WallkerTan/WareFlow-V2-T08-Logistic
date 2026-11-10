@@ -11,7 +11,7 @@ import { PhoneCall } from "lucide-react";
 
 const LandingPage = () => {
     return (
-        <>
+        <div className="landing-page">
             {/* Header */}
             <header className="header">
                 <a className="brand" href="#top">
@@ -177,7 +177,7 @@ const LandingPage = () => {
 
             {/* Floating Contact & Quick Actions Button */}
             <FloatingContactButton />
-        </>
+        </div>
     );
 };
 

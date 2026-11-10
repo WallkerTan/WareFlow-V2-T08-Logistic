@@ -8,3 +8,28 @@
     margin-right: 10px;
     filter: drop-shadow(0 3px 8px rgba(37, 99, 235, 0.22));
 }
+
+/* Workspace typography must remain independent of marketing headings. */
+.wf-shell :is(h1,h2,h3) { letter-spacing:normal; line-height:1.4; overflow-wrap:break-word; }
+.wf-shell .wf-page-heading h1 { max-width:none; line-height:1.35; }
+.wf-shell .wf-page-heading { flex-wrap:wrap; }
+.wf-shell .workspace-welcome > div { min-width:0; }
+.wf-shell .workspace-welcome > svg { flex-shrink:0; }
+.wf-shell .wf-section-heading h2 { line-height:1.5; }
+.company-warehouse-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:20px; }
+.company-warehouse-card { overflow:hidden; border:1px solid #e5eaf1; border-radius:14px; background:#fff; display:flex; flex-direction:column; }
+.company-warehouse-cover { height:190px; background:#edf4f7; position:relative; }
+.company-warehouse-cover img { width:100%; height:100%; object-fit:cover; }
+.company-warehouse-cover > span { position:absolute; top:14px; left:14px; background:#fff; color:#15816d; border-radius:20px; padding:6px 12px; font-size:11px; font-weight:600; }
+.company-warehouse-body { padding:22px; display:flex; flex-direction:column; gap:12px; flex:1; }
+.company-warehouse-body h2 { font-size:18px; font-weight:700; margin:0; }
+.company-warehouse-body p { margin:0; color:#738096; font-size:12px; line-height:1.8; }
+.company-warehouse-meta { display:flex; align-items:center; justify-content:space-between; gap:12px; color:#738096; font-size:11px; }
+.company-warehouse-facts { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:16px 0; border-top:1px solid #edf0f5; }
+.company-warehouse-facts dt { color:#738096; font-size:11px; margin-bottom:6px; }
+.company-warehouse-facts dd { margin:0; color:#26384d; font-weight:600; font-size:14px; }
+.company-warehouse-body .wf-button { margin-top:auto; width:100%; }
+.company-warehouse-empty { text-align:center; padding:40px 20px; color:#738096; line-height:1.8; }
+.company-warehouse-details { line-height:1.9; }
+.company-warehouse-details h2 { font-size:22px; letter-spacing:normal; line-height:1.5; margin:16px 0 8px; }
+.company-warehouse-details h3 { font-size:15px; letter-spacing:normal; line-height:1.5; margin:20px 0 8px; }

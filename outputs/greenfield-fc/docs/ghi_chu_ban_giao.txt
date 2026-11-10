@@ -1,0 +1,11 @@
+GHI CHÚ BÀN GIAO – GREENFIELD FC
+
+Bộ tài nguyên dùng cho bài ôn tập IT108, chủ đề quản lý đội bóng.
+
+Tệp quan trọng:
+- Danh Sach Cau Thu.xlsx: dữ liệu cầu thủ, đội bóng và trận đấu.
+- Access.log: nhật ký truy cập website.
+- web/index.html: trang demo có lỗi cần phát hiện và xử lý.
+- .env: thông tin bí mật giả lập, không đưa lên GitHub.
+
+Đây là dữ liệu thực hành giả lập. Hãy làm việc trên bản sao nếu muốn giữ nguyên bộ tài nguyên ban đầu.
