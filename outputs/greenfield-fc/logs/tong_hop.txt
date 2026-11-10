@@ -1,6 +1,0 @@
-﻿=== BAO CAO GREENFIELD FC ===
-2026-10-28 18:03:22 GET /images/logo-sai.png status=404
-2026-10-28 18:07:44 GET /fixtures status=404
-2026-10-28 18:13:52 GET /favicon.ico status=404
-2026-10-28 18:32:18 GET /api/players status=404
-3
