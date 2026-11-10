@@ -1,33 +1,33 @@
-* {
+.landing-page * {
     box-sizing: border-box;
 }
-html {
+.landing-page {
     scroll-behavior: smooth;
 }
-body {
+.landing-page {
     margin: 0;
     color: #111b35;
     background: #fff;
     font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
 }
-a {
+.landing-page a {
     color: inherit;
     text-decoration: none;
 }
-.header,
-main > section:not(.cta),
-footer {
+.landing-page .header,
+.landing-page main > section:not(.cta),
+.landing-page footer {
     width: min(1180px, calc(100% - 48px));
     margin: auto;
 }
-.header {
+.landing-page .header {
     height: 94px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 30px;
 }
-.brand {
+.landing-page .brand {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -35,13 +35,13 @@ footer {
     font-weight: 700;
     letter-spacing: -1px;
 }
-.brand b,
-h1 em,
-h2 em {
+.landing-page .brand b,
+.landing-page h1 em,
+.landing-page h2 em {
     color: #4169e8;
     font-style: normal;
 }
-.brand-logo-img {
+.landing-page .brand-logo-img {
     width: 44px;
     height: 44px;
     object-fit: contain;
@@ -49,14 +49,14 @@ h2 em {
     filter: drop-shadow(0 4px 12px rgba(65, 105, 232, 0.28));
     transition: transform 0.25s ease;
 }
-.brand:hover .brand-logo-img {
+.landing-page .brand:hover .brand-logo-img {
     transform: rotate(6deg) scale(1.06);
 }
-.brand-logo-footer {
+.landing-page .brand-logo-footer {
     width: 34px;
     height: 34px;
 }
-.logo {
+.landing-page .logo {
     display: grid;
     place-items: center;
     width: 42px;
@@ -67,27 +67,27 @@ h2 em {
     font-size: 22px;
     box-shadow: 0 9px 22px #1826462a;
 }
-.header nav {
+.landing-page .header nav {
     display: flex;
     gap: 48px;
     margin-left: 100px;
     color: #596780;
     font-size: 15px;
 }
-.header nav a:hover,
-.login:hover {
+.landing-page .header nav a:hover,
+.landing-page .login:hover {
     color: #4169e8;
 }
-.header-actions {
+.landing-page .header-actions {
     display: flex;
     align-items: center;
     gap: 30px;
     font-size: 15px;
 }
-.login {
+.landing-page .login {
     font-weight: 700;
 }
-.button {
+.landing-page .button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -100,25 +100,25 @@ h2 em {
     font-weight: 700;
     box-shadow: 0 10px 22px #4169e82e;
 }
-.button-small {
+.landing-page .button-small {
     padding: 14px 20px;
     font-size: 14px;
 }
-.hero {
+.landing-page .hero {
     min-height: 650px;
     display: grid;
     grid-template-columns: 44% 56%;
     align-items: center;
     padding: 45px 0 90px;
 }
-.eyebrow {
+.landing-page .eyebrow {
     margin: 0 0 30px;
     color: #4169e8;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 2px;
 }
-.eyebrow i {
+.landing-page .eyebrow i {
     display: inline-block;
     width: 8px;
     height: 8px;
@@ -126,42 +126,42 @@ h2 em {
     border-radius: 50%;
     background: #49bdf4;
 }
-.hero-copy {
+.landing-page .hero-copy {
     position: relative;
     z-index: 2;
     padding-top: 20px;
 }
-h1 {
+.landing-page h1 {
     max-width: 540px;
     margin: 0 0 30px;
     font-size: clamp(58px, 6vw, 86px);
     line-height: 0.98;
     letter-spacing: -5px;
 }
-h2 {
+.landing-page h2 {
     margin: 0;
     font-size: 55px;
     line-height: 1.03;
     letter-spacing: -3px;
 }
-.intro {
+.landing-page .intro {
     max-width: 480px;
     margin: 0 0 38px;
     color: #455671;
     font-size: 19px;
     line-height: 1.7;
 }
-.actions {
+.landing-page .actions {
     display: flex;
     align-items: center;
     gap: 32px;
 }
-.watch {
+.landing-page .watch {
     color: #4c5e78;
     font-size: 15px;
     font-weight: 600;
 }
-.watch strong {
+.landing-page .watch strong {
     display: inline-grid;
     place-items: center;
     width: 20px;
@@ -172,16 +172,16 @@ h2 {
     color: #4169e8;
     font-size: 8px;
 }
-.note {
+.landing-page .note {
     margin-top: 24px;
     color: #8994a8;
     font-size: 12px;
 }
-.hero-visual {
+.landing-page .hero-visual {
     position: relative;
     min-width: 0;
 }
-.hero-visual:before {
+.landing-page .hero-visual:before {
     content: "";
     position: absolute;
     inset: 12% -13% -20% 4%;
@@ -189,7 +189,7 @@ h2 {
     filter: blur(70px);
     opacity: 0.7;
 }
-.dashboard {
+.landing-page .dashboard {
     position: relative;
     z-index: 1;
     width: 110%;
@@ -201,12 +201,12 @@ h2 {
     box-shadow: 0 28px 70px #162a5120;
     transform: rotate(-1.2deg);
 }
-.dashboard img {
+.landing-page .dashboard img {
     display: block;
     width: 100%;
     height: auto;
 }
-.browser-bar {
+.landing-page .browser-bar {
     height: 38px;
     padding: 0 14px;
     display: flex;
@@ -215,22 +215,22 @@ h2 {
     border-bottom: 1px solid #e6edf6;
     color: #a5b4c8;
 }
-.browser-bar i {
+.landing-page .browser-bar i {
     width: 5px;
     height: 5px;
     border-radius: 50%;
     background: #dbe5f0;
 }
-.browser-bar small {
+.landing-page .browser-bar small {
     flex: 1;
     text-align: center;
     font-size: 8px;
 }
-.browser-bar b {
+.landing-page .browser-bar b {
     font-size: 11px;
     letter-spacing: 2px;
 }
-.stat-card {
+.landing-page .stat-card {
     position: absolute;
     z-index: 2;
     display: flex;
@@ -243,31 +243,31 @@ h2 {
     background: #fff;
     box-shadow: 0 14px 35px #17294c1c;
 }
-.stat-card b {
+.landing-page .stat-card b {
     display: block;
     font-size: 18px;
 }
-.stat-card small {
+.landing-page .stat-card small {
     display: block;
     color: #8290a5;
     font-size: 10px;
 }
-.top-card {
+.landing-page .top-card {
     top: 15%;
     right: -4%;
 }
-.bottom-card {
+.landing-page .bottom-card {
     bottom: 9%;
     left: -8%;
 }
-.green-dot {
+.landing-page .green-dot {
     width: 10px;
     height: 10px;
     border-radius: 50%;
     background: #24b98b;
     box-shadow: 0 0 0 5px #24b98b1e;
 }
-.arrow {
+.landing-page .arrow {
     display: grid;
     place-items: center;
     width: 29px;
@@ -277,101 +277,101 @@ h2 {
     color: #4169e8;
     font-weight: 700;
 }
-.metrics {
+.landing-page .metrics {
     padding: 25px 0;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     border-top: 1px solid #e2e8f1;
     border-bottom: 1px solid #e2e8f1;
 }
-.metrics div {
+.landing-page .metrics div {
     padding: 0 28px;
     border-right: 1px solid #e2e8f1;
 }
-.metrics div:first-child {
+.landing-page .metrics div:first-child {
     padding-left: 0;
 }
-.metrics div:last-child {
+.landing-page .metrics div:last-child {
     border: 0;
 }
-.metrics b {
+.landing-page .metrics b {
     display: block;
     font-size: 29px;
 }
-.metrics small {
+.landing-page .metrics small {
     display: block;
     margin-top: 5px;
     color: #8792a4;
     font-size: 12px;
 }
-.features {
+.landing-page .features {
     padding: 125px 0;
 }
-.feature-grid {
+.landing-page .feature-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 18px;
     margin-top: 66px;
 }
-.feature-grid article {
+.landing-page .feature-grid article {
     min-height: 260px;
     padding: 30px;
     border: 1px solid #e2e8f1;
     border-radius: 18px;
 }
-.feature-grid article > span {
+.landing-page .feature-grid article > span {
     color: #a7b1c1;
     font-size: 13px;
 }
-.feature-grid h3 {
+.landing-page .feature-grid h3 {
     margin: 50px 0 12px;
     font-size: 20px;
 }
-.feature-grid p {
+.landing-page .feature-grid p {
     min-height: 68px;
     color: #63708a;
     font-size: 14px;
     line-height: 1.65;
 }
-.feature-grid a {
+.landing-page .feature-grid a {
     color: #4169e8;
     font-size: 13px;
     font-weight: 700;
 }
-.workflow {
+.landing-page .workflow {
     display: flex;
     justify-content: space-between;
     align-items: end;
     padding: 15px 0 130px;
 }
-.workflow > p {
+.landing-page .workflow > p {
     max-width: 355px;
     margin: 0 0 6px;
     color: #63708a;
     font-size: 17px;
     line-height: 1.65;
 }
-.cta {
+.landing-page .cta {
     padding: 110px 24px;
     text-align: center;
     background: #111b35;
     color: #fff;
 }
-.cta .eyebrow {
+.landing-page .cta .eyebrow {
     color: #8fa9ff;
 }
-.cta h2 {
+.landing-page .cta h2 {
     margin-bottom: 38px;
 }
-.cta h2 em {
+.landing-page .cta h2 em {
     color: #82a0ff;
 }
-.light {
+.landing-page .light {
     background: #fff;
     color: #4169e8;
     box-shadow: none;
 }
-footer {
+.landing-page footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -379,7 +379,7 @@ footer {
     color: #8b96a9;
     font-size: 12px;
 }
-footer .brand-logo-img {
+.landing-page footer .brand-logo-img {
     width: 44px;
     height: 44px;
     object-fit: contain;
@@ -387,121 +387,121 @@ footer .brand-logo-img {
     filter: drop-shadow(0 4px 12px rgba(65, 105, 232, 0.28));
     transition: transform 0.25s ease;
 }
-.brand:hover .brand-logo-img {
+.landing-page .brand:hover .brand-logo-img {
     transform: rotate(6deg) scale(1.06);
 }
-.brand-logo-footer {
+.landing-page .brand-logo-footer {
     width: 34px;
     height: 34px;
 }
-.logo {
+.landing-page .logo {
     width: 30px;
     height: 30px;
     font-size: 15px;
     border-radius: 8px;
 }
-footer .brand {
+.landing-page footer .brand {
     font-size: 18px;
 }
 @media (max-width: 900px) {
-    .header nav {
+    .landing-page .header nav {
         margin-left: 0;
         gap: 20px;
     }
-    .hero {
+    .landing-page .hero {
         grid-template-columns: 1fr;
         padding-top: 40px;
     }
-    .hero-copy {
+    .landing-page .hero-copy {
         padding-bottom: 55px;
     }
-    .dashboard {
+    .landing-page .dashboard {
         width: 100%;
         margin: 0;
     }
-    .top-card {
+    .landing-page .top-card {
         right: 0;
     }
-    .bottom-card {
+    .landing-page .bottom-card {
         left: 0;
     }
-    .feature-grid {
+    .landing-page .feature-grid {
         grid-template-columns: 1fr;
     }
-    .feature-grid article {
+    .landing-page .feature-grid article {
         min-height: auto;
     }
-    .feature-grid h3 {
+    .landing-page .feature-grid h3 {
         margin-top: 25px;
     }
-    .feature-grid p {
+    .landing-page .feature-grid p {
         min-height: auto;
     }
-    .workflow {
+    .landing-page .workflow {
         display: block;
     }
-    .workflow > p {
+    .landing-page .workflow > p {
         margin-top: 30px;
     }
 }
 @media (max-width: 620px) {
-    .header,
-    main > section:not(.cta),
-    footer {
+    .landing-page .header,
+    .landing-page main > section:not(.cta),
+    .landing-page footer {
         width: calc(100% - 32px);
     }
-    .header {
+    .landing-page .header {
         height: 78px;
     }
-    .brand {
+    .landing-page .brand {
         font-size: 20px;
     }
-    .header nav,
-    .login {
+    .landing-page .header nav,
+    .landing-page .login {
         display: none;
     }
-    .header .button-small {
+    .landing-page .header .button-small {
         padding: 11px 13px;
         font-size: 12px;
     }
-    h1 {
+    .landing-page h1 {
         font-size: 56px;
         letter-spacing: -3px;
     }
-    .intro {
+    .landing-page .intro {
         font-size: 17px;
     }
-    .actions {
+    .landing-page .actions {
         align-items: flex-start;
         flex-direction: column;
         gap: 22px;
     }
-    .metrics {
+    .landing-page .metrics {
         grid-template-columns: repeat(2, 1fr);
         gap: 20px 0;
     }
-    .metrics div {
+    .landing-page .metrics div {
         padding: 0 15px;
     }
-    .metrics div:first-child {
+    .landing-page .metrics div:first-child {
         padding-left: 0;
     }
-    .metrics div:nth-child(2) {
+    .landing-page .metrics div:nth-child(2) {
         border: 0;
     }
-    .features {
+    .landing-page .features {
         padding: 80px 0;
     }
-    .section-title h2,
-    .workflow h2,
-    .cta h2 {
+    .landing-page .section-title h2,
+    .landing-page .workflow h2,
+    .landing-page .cta h2 {
         font-size: 40px;
         letter-spacing: -2px;
     }
-    .workflow {
+    .landing-page .workflow {
         padding: 0 0 85px;
     }
-    footer {
+    .landing-page footer {
         gap: 18px;
         align-items: flex-start;
         flex-direction: column;
@@ -513,19 +513,19 @@ footer .brand {
    ================================================================ */
 
 /* --- Scroll Reveal Base --- */
-.reveal-box {
+.landing-page .reveal-box {
     opacity: 0;
     transform: translateY(28px);
     transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
     will-change: opacity, transform;
 }
 
-.reveal-box.is-visible {
+.landing-page .reveal-box.is-visible {
     opacity: 1;
     transform: translateY(0);
 }
 
-.section-subtitle {
+.landing-page .section-subtitle {
     max-width: 680px;
     margin: 16px auto 0;
     color: #5c6b84;
@@ -533,28 +533,28 @@ footer .brand {
     line-height: 1.6;
 }
 
-.text-center {
+.landing-page .text-center {
     text-align: center;
 }
 
 /* Secondary Button (Outline / Light) */
-.button-outline {
+.landing-page .button-outline {
     background: #f0f4ff;
     color: #4169e8;
     border: 1px solid #c7d7fe;
     box-shadow: none;
 }
-.button-outline:hover {
+.landing-page .button-outline:hover {
     background: #e2ebff;
     border-color: #4169e8;
 }
 
-.button-white {
+.landing-page .button-white {
     background: #ffffff;
     color: #4169e8;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
 }
-.button-white:hover {
+.landing-page .button-white:hover {
     background: #f8faff;
     transform: translateY(-2px);
 }
@@ -562,11 +562,11 @@ footer .brand {
 /* ================================================================
    1. PRODUCT SHOWCASE SECTION
    ================================================================ */
-.product-showcase-section {
+.landing-page .product-showcase-section {
     padding: 100px 0 60px;
 }
 
-.showcase-content-grid {
+.landing-page .showcase-content-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 56px;
@@ -574,17 +574,17 @@ footer .brand {
     margin-top: 50px;
 }
 
-.showcase-visual-wrapper {
+.landing-page .showcase-visual-wrapper {
     position: relative;
 }
 
-.showcase-image-card {
+.landing-page .showcase-image-card {
     position: relative;
     border-radius: 20px;
     overflow: visible;
 }
 
-.showcase-img {
+.landing-page .showcase-img {
     width: 100%;
     height: 420px;
     object-fit: cover;
@@ -593,7 +593,7 @@ footer .brand {
     border: 1px solid #e2e8f1;
 }
 
-.image-overlay-card {
+.landing-page .image-overlay-card {
     position: absolute;
     display: flex;
     align-items: center;
@@ -606,44 +606,44 @@ footer .brand {
     z-index: 2;
 }
 
-.image-card-top {
+.landing-page .image-card-top {
     top: -20px;
     right: -20px;
 }
 
-.image-card-bottom {
+.landing-page .image-card-bottom {
     bottom: -20px;
     left: -20px;
 }
 
-.icon-badge {
+.landing-page .icon-badge {
     display: grid;
     place-items: center;
     width: 38px;
     height: 38px;
     border-radius: 10px;
 }
-.icon-badge.blue {
+.landing-page .icon-badge.blue {
     background: #eef2ff;
     color: #4169e8;
 }
-.icon-badge.green {
+.landing-page .icon-badge.green {
     background: #ecfdf5;
     color: #10b981;
 }
 
-.image-overlay-card b {
+.landing-page .image-overlay-card b {
     display: block;
     font-size: 14px;
     color: #111b35;
 }
-.image-overlay-card small {
+.landing-page .image-overlay-card small {
     display: block;
     font-size: 11px;
     color: #63708a;
 }
 
-.showcase-badge {
+.landing-page .showcase-badge {
     display: inline-flex;
     align-items: center;
     gap: 8px;
@@ -656,7 +656,7 @@ footer .brand {
     margin-bottom: 18px;
 }
 
-.showcase-info-wrapper h3 {
+.landing-page .showcase-info-wrapper h3 {
     margin: 0 0 18px;
     font-size: 32px;
     line-height: 1.25;
@@ -664,20 +664,20 @@ footer .brand {
     color: #111b35;
 }
 
-.showcase-desc {
+.landing-page .showcase-desc {
     color: #55657e;
     font-size: 16px;
     line-height: 1.65;
     margin-bottom: 26px;
 }
 
-.highlights-list {
+.landing-page .highlights-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
 }
 
-.highlight-item {
+.landing-page .highlight-item {
     display: flex;
     align-items: flex-start;
     gap: 12px;
@@ -686,14 +686,14 @@ footer .brand {
     font-weight: 500;
 }
 
-.check-icon {
+.landing-page .check-icon {
     color: #10b981;
     flex-shrink: 0;
     margin-top: 2px;
 }
 
 /* Industries sub-box */
-.industries-card-container {
+.landing-page .industries-card-container {
     margin-top: 60px;
     padding: 36px 40px;
     background: #f8faff;
@@ -701,43 +701,43 @@ footer .brand {
     border-radius: 20px;
 }
 
-.industries-header {
+.landing-page .industries-header {
     margin-bottom: 28px;
     text-align: center;
 }
 
-.industries-header h4 {
+.landing-page .industries-header h4 {
     margin: 0 0 6px;
     font-size: 22px;
     color: #111b35;
 }
 
-.industries-header p {
+.landing-page .industries-header p {
     margin: 0;
     color: #6a7991;
     font-size: 14px;
 }
 
-.industries-grid {
+.landing-page .industries-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 18px;
 }
 
-.industry-box {
+.landing-page .industry-box {
     background: #ffffff;
     padding: 22px 20px;
     border-radius: 14px;
     border: 1px solid #e5ecf6;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
-.industry-box:hover {
+.landing-page .industry-box:hover {
     transform: translateY(-4px);
     box-shadow: 0 12px 26px rgba(65, 105, 232, 0.08);
     border-color: #c7d7fe;
 }
 
-.industry-index {
+.landing-page .industry-index {
     color: #4169e8;
     font-size: 12px;
     font-weight: 800;
@@ -745,13 +745,13 @@ footer .brand {
     margin-bottom: 8px;
 }
 
-.industry-box h5 {
+.landing-page .industry-box h5 {
     margin: 0 0 8px;
     font-size: 16px;
     color: #111b35;
 }
 
-.industry-box p {
+.landing-page .industry-box p {
     margin: 0;
     font-size: 13px;
     color: #63708a;
@@ -761,18 +761,18 @@ footer .brand {
 /* ================================================================
    2. FEATURES SHOWCASE SECTION
    ================================================================ */
-.features-showcase-section {
+.landing-page .features-showcase-section {
     padding: 100px 0 60px;
 }
 
-.features-card-grid {
+.landing-page .features-card-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 24px;
     margin-top: 50px;
 }
 
-.feature-modern-card {
+.landing-page .feature-modern-card {
     height: 100%;
     padding: 32px 28px;
     border-radius: 20px;
@@ -784,20 +784,20 @@ footer .brand {
     flex-direction: column;
 }
 
-.feature-modern-card:hover {
+.landing-page .feature-modern-card:hover {
     transform: translateY(-6px);
     box-shadow: 0 20px 45px rgba(65, 105, 232, 0.12);
     border-color: #bcd1fe;
 }
 
-.card-top-row {
+.landing-page .card-top-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
 }
 
-.feature-icon-box {
+.landing-page .feature-icon-box {
     display: grid;
     place-items: center;
     width: 54px;
@@ -807,12 +807,12 @@ footer .brand {
     color: #4169e8;
     transition: background 0.25s, color 0.25s;
 }
-.feature-modern-card:hover .feature-icon-box {
+.landing-page .feature-modern-card:hover .feature-icon-box {
     background: #4169e8;
     color: #ffffff;
 }
 
-.feature-tag {
+.landing-page .feature-tag {
     padding: 4px 10px;
     border-radius: 8px;
     background: #f1f5f9;
@@ -821,13 +821,13 @@ footer .brand {
     font-weight: 600;
 }
 
-.card-title-group h3 {
+.landing-page .card-title-group h3 {
     margin: 0 0 4px;
     font-size: 20px;
     color: #111b35;
 }
 
-.feature-subtitle {
+.landing-page .feature-subtitle {
     display: block;
     color: #8c9bb0;
     font-size: 12px;
@@ -835,7 +835,7 @@ footer .brand {
     margin-bottom: 14px;
 }
 
-.feature-desc {
+.landing-page .feature-desc {
     color: #55657e;
     font-size: 14px;
     line-height: 1.6;
@@ -843,7 +843,7 @@ footer .brand {
     flex-grow: 1;
 }
 
-.feature-benefits-list {
+.landing-page .feature-benefits-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -851,7 +851,7 @@ footer .brand {
     border-top: 1px dashed #e4ecf7;
 }
 
-.benefit-pill {
+.landing-page .benefit-pill {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -859,12 +859,12 @@ footer .brand {
     color: #2b3b55;
 }
 
-.pill-icon {
+.landing-page .pill-icon {
     color: #4169e8;
     flex-shrink: 0;
 }
 
-.features-bottom-cta-banner {
+.landing-page .features-bottom-cta-banner {
     margin-top: 50px;
     padding: 36px 44px;
     background: linear-gradient(135deg, #2b4ec9 0%, #152654 100%);
@@ -877,13 +877,13 @@ footer .brand {
     box-shadow: 0 20px 50px rgba(27, 52, 133, 0.25);
 }
 
-.features-bottom-cta-banner h4 {
+.landing-page .features-bottom-cta-banner h4 {
     margin: 0 0 6px;
     font-size: 22px;
     color: #ffffff;
 }
 
-.features-bottom-cta-banner p {
+.landing-page .features-bottom-cta-banner p {
     margin: 0;
     color: #c9d8ff;
     font-size: 14px;
@@ -892,11 +892,11 @@ footer .brand {
 /* ================================================================
    3. WORKFLOW PROCESS SECTION
    ================================================================ */
-.workflow-process-section {
+.landing-page .workflow-process-section {
     padding: 90px 0;
 }
 
-.workflow-steps-grid {
+.landing-page .workflow-steps-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 20px;
@@ -904,11 +904,11 @@ footer .brand {
     position: relative;
 }
 
-.workflow-step-col {
+.landing-page .workflow-step-col {
     position: relative;
 }
 
-.step-card {
+.landing-page .step-card {
     padding: 28px 22px;
     background: #ffffff;
     border: 1px solid #e3eaf5;
@@ -917,27 +917,27 @@ footer .brand {
     transition: transform 0.25s, box-shadow 0.25s;
     box-shadow: 0 4px 18px rgba(17, 27, 53, 0.04);
 }
-.step-card:hover {
+.landing-page .step-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 16px 36px rgba(65, 105, 232, 0.1);
     border-color: #bcd1fe;
 }
 
-.step-badge-row {
+.landing-page .step-badge-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 18px;
 }
 
-.step-number {
+.landing-page .step-number {
     font-size: 28px;
     font-weight: 800;
     color: #d1dcfa;
     letter-spacing: -1px;
 }
 
-.step-icon-circle {
+.landing-page .step-icon-circle {
     display: grid;
     place-items: center;
     width: 44px;
@@ -947,20 +947,20 @@ footer .brand {
     color: #4169e8;
 }
 
-.step-card h3 {
+.landing-page .step-card h3 {
     margin: 0 0 10px;
     font-size: 18px;
     color: #111b35;
 }
 
-.step-desc {
+.landing-page .step-desc {
     color: #5c6b84;
     font-size: 13px;
     line-height: 1.6;
     margin-bottom: 18px;
 }
 
-.step-highlight {
+.landing-page .step-highlight {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -972,22 +972,22 @@ footer .brand {
     font-weight: 600;
 }
 
-.highlight-check {
+.landing-page .highlight-check {
     color: #16a34a;
 }
 
-.step-connector-arrow {
+.landing-page .step-connector-arrow {
     display: none; /* Can be positioned absolute for desktop */
 }
 
 /* ================================================================
    4. COMPARISON SECTION
    ================================================================ */
-.comparison-section {
+.landing-page .comparison-section {
     padding: 90px 0;
 }
 
-.comparison-table-wrapper {
+.landing-page .comparison-table-wrapper {
     margin-top: 45px;
     background: #ffffff;
     border: 1px solid #e1e9f5;
@@ -996,7 +996,7 @@ footer .brand {
     box-shadow: 0 12px 40px rgba(17, 27, 53, 0.06);
 }
 
-.table-header-row {
+.landing-page .table-header-row {
     display: grid;
     grid-template-columns: 28% 36% 36%;
     background: #f8faff;
@@ -1008,7 +1008,7 @@ footer .brand {
     align-items: center;
 }
 
-.badge-old {
+.landing-page .badge-old {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -1019,7 +1019,7 @@ footer .brand {
     font-size: 13px;
 }
 
-.badge-new {
+.landing-page .badge-new {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -1030,7 +1030,7 @@ footer .brand {
     font-size: 13px;
 }
 
-.table-row {
+.landing-page .table-row {
     display: grid;
     grid-template-columns: 28% 36% 36%;
     padding: 22px 28px;
@@ -1039,19 +1039,19 @@ footer .brand {
     font-size: 14px;
     transition: background 0.2s;
 }
-.table-row:last-child {
+.landing-page .table-row:last-child {
     border-bottom: none;
 }
-.table-row:hover {
+.landing-page .table-row:hover {
     background: #fafcff;
 }
 
-.font-medium {
+.landing-page .font-medium {
     font-weight: 600;
     color: #111b35;
 }
 
-.text-danger {
+.landing-page .text-danger {
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -1059,13 +1059,13 @@ footer .brand {
     line-height: 1.5;
 }
 
-.status-icon-cross {
+.landing-page .status-icon-cross {
     color: #ef4444;
     flex-shrink: 0;
     margin-top: 2px;
 }
 
-.text-success {
+.landing-page .text-success {
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -1074,7 +1074,7 @@ footer .brand {
     line-height: 1.5;
 }
 
-.status-icon-check {
+.landing-page .status-icon-check {
     color: #10b981;
     flex-shrink: 0;
     margin-top: 2px;
@@ -1083,18 +1083,18 @@ footer .brand {
 /* ================================================================
    5. CONTACT SECTION & FORM
    ================================================================ */
-.contact-main-section {
+.landing-page .contact-main-section {
     padding: 100px 0 120px;
 }
 
-.contact-container-grid {
+.landing-page .contact-container-grid {
     display: grid;
     grid-template-columns: 42% 58%;
     gap: 40px;
     margin-top: 50px;
 }
 
-.info-card {
+.landing-page .info-card {
     background: #111b35;
     color: #ffffff;
     padding: 44px 38px;
@@ -1105,7 +1105,7 @@ footer .brand {
     box-shadow: 0 24px 60px rgba(17, 27, 53, 0.2);
 }
 
-.info-badge {
+.landing-page .info-badge {
     display: inline-block;
     align-self: flex-start;
     padding: 4px 12px;
@@ -1118,20 +1118,20 @@ footer .brand {
     border: 1px solid rgba(141, 168, 255, 0.3);
 }
 
-.info-card h3 {
+.landing-page .info-card h3 {
     margin: 0 0 12px;
     font-size: 26px;
     color: #ffffff;
 }
 
-.info-intro {
+.landing-page .info-intro {
     color: #9cb1d4;
     font-size: 15px;
     line-height: 1.6;
     margin-bottom: 32px;
 }
 
-.info-items-list {
+.landing-page .info-items-list {
     display: flex;
     flex-direction: column;
     gap: 22px;
@@ -1139,13 +1139,13 @@ footer .brand {
     flex-grow: 1;
 }
 
-.info-item {
+.landing-page .info-item {
     display: flex;
     align-items: flex-start;
     gap: 16px;
 }
 
-.info-icon {
+.landing-page .info-icon {
     display: grid;
     place-items: center;
     width: 44px;
@@ -1156,27 +1156,27 @@ footer .brand {
     flex-shrink: 0;
 }
 
-.info-item small {
+.landing-page .info-item small {
     display: block;
     color: #7c92ba;
     font-size: 12px;
     margin-bottom: 4px;
 }
 
-.info-item span,
-.info-link {
+.landing-page .info-item span,
+.landing-page .info-link {
     display: block;
     color: #ffffff;
     font-size: 15px;
     font-weight: 500;
     line-height: 1.45;
 }
-.info-link:hover {
+.landing-page .info-link:hover {
     color: #799dff;
     text-decoration: underline;
 }
 
-.info-footer-commit {
+.landing-page .info-footer-commit {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1186,13 +1186,13 @@ footer .brand {
     font-size: 12px;
 }
 
-.commit-icon {
+.landing-page .commit-icon {
     color: #10b981;
     flex-shrink: 0;
 }
 
 /* Form Panel */
-.form-card {
+.landing-page .form-card {
     background: #ffffff;
     border: 1px solid #e1eaf5;
     border-radius: 24px;
@@ -1200,49 +1200,49 @@ footer .brand {
     box-shadow: 0 16px 45px rgba(17, 27, 53, 0.06);
 }
 
-.form-heading {
+.landing-page .form-heading {
     margin-bottom: 28px;
 }
 
-.form-heading h4 {
+.landing-page .form-heading h4 {
     margin: 0 0 6px;
     font-size: 22px;
     color: #111b35;
 }
 
-.form-heading p {
+.landing-page .form-heading p {
     margin: 0;
     color: #63708a;
     font-size: 14px;
 }
 
-.contact-form {
+.landing-page .contact-form {
     display: flex;
     flex-direction: column;
     gap: 18px;
 }
 
-.form-row-2 {
+.landing-page .form-row-2 {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 18px;
 }
 
-.form-group {
+.landing-page .form-group {
     display: flex;
     flex-direction: column;
     gap: 6px;
 }
 
-.form-group label {
+.landing-page .form-group label {
     font-size: 13px;
     font-weight: 600;
     color: #1e293b;
 }
 
-.form-group input,
-.form-group select,
-.form-group textarea {
+.landing-page .form-group input,
+.landing-page .form-group select,
+.landing-page .form-group textarea {
     padding: 12px 16px;
     border: 1px solid #cbd5e1;
     border-radius: 10px;
@@ -1254,15 +1254,15 @@ footer .brand {
     font-family: inherit;
 }
 
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
+.landing-page .form-group input:focus,
+.landing-page .form-group select:focus,
+.landing-page .form-group textarea:focus {
     border-color: #4169e8;
     background: #ffffff;
     box-shadow: 0 0 0 3px rgba(65, 105, 232, 0.15);
 }
 
-.button-submit {
+.landing-page .button-submit {
     width: 100%;
     margin-top: 6px;
     padding: 15px;
@@ -1271,30 +1271,30 @@ footer .brand {
     border: none;
 }
 
-.form-privacy-note {
+.landing-page .form-privacy-note {
     text-align: center;
     color: #94a3b8;
     font-size: 12px;
     margin: 8px 0 0;
 }
 
-.form-success-state {
+.landing-page .form-success-state {
     text-align: center;
     padding: 40px 20px;
 }
 
-.success-icon-wrap {
+.landing-page .success-icon-wrap {
     color: #10b981;
     margin-bottom: 18px;
 }
 
-.form-success-state h3 {
+.landing-page .form-success-state h3 {
     font-size: 24px;
     margin: 0 0 10px;
     color: #111b35;
 }
 
-.form-success-state p {
+.landing-page .form-success-state p {
     color: #5b6982;
     font-size: 15px;
     line-height: 1.6;
@@ -1305,7 +1305,7 @@ footer .brand {
 /* ================================================================
    6. FLOATING ACTIONS (Quick Contact & Back-to-Top)
    ================================================================ */
-.floating-actions-container {
+.landing-page .floating-actions-container {
     position: fixed;
     bottom: 30px;
     right: 30px;
@@ -1316,7 +1316,7 @@ footer .brand {
     gap: 12px;
 }
 
-.floating-btn {
+.landing-page .floating-btn {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1325,12 +1325,12 @@ footer .brand {
     box-shadow: 0 10px 26px rgba(17, 27, 53, 0.2);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
-.floating-btn:hover {
+.landing-page .floating-btn:hover {
     transform: translateY(-3px) scale(1.02);
     box-shadow: 0 14px 32px rgba(17, 27, 53, 0.25);
 }
 
-.contact-quick-btn {
+.landing-page .contact-quick-btn {
     position: relative;
     padding: 13px 20px;
     border-radius: 30px;
@@ -1342,11 +1342,11 @@ footer .brand {
     text-decoration: none;
 }
 
-.floating-btn-text {
+.landing-page .floating-btn-text {
     letter-spacing: 0.3px;
 }
 
-.pulse-ring {
+.landing-page .pulse-ring {
     position: absolute;
     inset: -4px;
     border-radius: 34px;
@@ -1370,7 +1370,7 @@ footer .brand {
     }
 }
 
-.back-to-top-btn {
+.landing-page .back-to-top-btn {
     width: 42px;
     height: 42px;
     border-radius: 50%;
@@ -1378,7 +1378,7 @@ footer .brand {
     color: #111b35;
     border: 1px solid #e2e8f0;
 }
-.back-to-top-btn:hover {
+.landing-page .back-to-top-btn:hover {
     background: #f1f5f9;
 }
 
@@ -1386,62 +1386,83 @@ footer .brand {
    7. RESPONSIVE MEDIA QUERIES FOR NEW SECTIONS
    ================================================================ */
 @media (max-width: 1024px) {
-    .showcase-content-grid {
+    .landing-page .showcase-content-grid {
         grid-template-columns: 1fr;
         gap: 40px;
     }
-    .features-card-grid {
+    .landing-page .features-card-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .workflow-steps-grid {
+    .landing-page .workflow-steps-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .industries-grid {
+    .landing-page .industries-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    .contact-container-grid {
+    .landing-page .contact-container-grid {
         grid-template-columns: 1fr;
     }
 }
 
 @media (max-width: 768px) {
-    .features-card-grid {
+    .landing-page .features-card-grid {
         grid-template-columns: 1fr;
     }
-    .workflow-steps-grid {
+    .landing-page .workflow-steps-grid {
         grid-template-columns: 1fr;
     }
-    .industries-grid {
+    .landing-page .industries-grid {
         grid-template-columns: 1fr;
     }
-    .table-header-row,
-    .table-row {
+    .landing-page .table-header-row,
+    .landing-page .table-row {
         grid-template-columns: 1fr;
         gap: 12px;
     }
-    .features-bottom-cta-banner {
+    .landing-page .features-bottom-cta-banner {
         flex-direction: column;
         text-align: center;
         padding: 30px 24px;
     }
-    .form-row-2 {
+    .landing-page .form-row-2 {
         grid-template-columns: 1fr;
     }
-    .image-card-top,
-    .image-card-bottom {
+    .landing-page .image-card-top,
+    .landing-page .image-card-bottom {
         position: static;
         margin-top: 10px;
     }
-    .floating-btn-text {
+    .landing-page .floating-btn-text {
         display: none;
     }
-    .contact-quick-btn {
+    .landing-page .contact-quick-btn {
         width: 48px;
         height: 48px;
         padding: 0;
         border-radius: 50%;
     }
-    .pulse-ring {
+    .landing-page .pulse-ring {
         border-radius: 50%;
     }
+}
+
+/* Keep navigation readable as the available width changes. */
+.landing-page .header { gap:24px; }
+.landing-page .header .brand { flex-shrink:0; white-space:nowrap; }
+.landing-page .header .brand-logo-img { flex-shrink:0; }
+.landing-page .header nav { margin-left:0; gap:clamp(16px,3vw,40px); white-space:nowrap; }
+.landing-page .header-actions { flex-shrink:0; gap:20px; white-space:nowrap; }
+@media (max-width:1050px) {
+    .landing-page .header { gap:16px; }
+    .landing-page .header nav { gap:18px; font-size:14px; }
+    .landing-page .header-actions { gap:14px; }
+}
+@media (max-width:850px) {
+    .landing-page .header { height:auto; min-height:82px; flex-wrap:wrap; padding:16px 0; }
+    .landing-page .header nav { order:3; width:100%; justify-content:center; padding:10px 0 0; border-top:1px solid #edf0f5; }
+    .landing-page .header-actions { margin-left:auto; }
+}
+@media (max-width:620px) {
+    .landing-page .header nav { display:flex; gap:20px; font-size:12px; }
+    .landing-page footer > div { flex-wrap:wrap; }
 }
