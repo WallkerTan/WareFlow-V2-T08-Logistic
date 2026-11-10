@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight, Boxes, Check, Package, Truck, Warehouse } from 'lucide-react';
 import './auth.css';
+import WareFlowFooter from '../../components/common/WareFlowFooter';
 
 export default function AuthLayout() {
     const pathname = useLocation().pathname;
@@ -19,7 +20,7 @@ export default function AuthLayout() {
                 <div className="warehouse-preview" aria-label="Minh họa tổng quan quản lý kho">
                     <div className="preview-heading"><span><img src="/logo.png" alt="WF" className="mini-logo-img" /> Tổng quan kho hàng</span><span className="live-badge"><i /> Trực quan</span></div>
                     <div className="preview-stats"><div><span>Tổng sản phẩm</span><strong>— <Boxes size={19} /></strong><small>Được quản lý tập trung</small></div><div><span>Đơn đang xử lý</span><strong>— <Package size={19} /></strong><small>Theo dõi từng bước</small></div></div>
-                    <div className="preview-chart"><div className="chart-title"><span>Luồng hàng trong tuần</span><ArrowUpRight size={16} /></div><div className="chart-bars"><span>Chưa có dữ liệu hoạt động kho.</span></div></div>
+                    <div className="preview-chart"><div className="chart-title"><span>Luồng hàng trong tuần</span><ArrowUpRight size={16} /></div><div className="preview-chart-empty"><Boxes size={24} /><span>Chưa có dữ liệu hoạt động kho.</span></div></div>
                     <div className="preview-delivery"><span className="delivery-icon"><Truck size={19} /></span><div><strong>Sẵn sàng cho mọi đơn hàng</strong><span>Từ nhập kho đến giao hàng</span></div><span className="delivery-check"><Check size={15} /></span></div>
                 </div>
                 <div className="auth-benefits"><span><Check size={15} /> Quản lý tập trung</span><span><Check size={15} /> Vận hành liền mạch</span></div>
@@ -35,7 +36,7 @@ export default function AuthLayout() {
                 <nav className="auth-tabs" aria-label="Tài khoản"><Link to="/auth/login" aria-current={!isRegister ? 'page' : undefined}>Đăng nhập</Link><Link to="/auth/register" aria-current={isRegister ? 'page' : undefined}>Đăng ký công ty</Link></nav>
                 <Outlet />
             </div>
-            <footer className="auth-footer">© {new Date().getFullYear()} WareFlow<span>Nền tảng quản lý kho & logistics</span></footer>
         </main>
+        <WareFlowFooter />
     </div>;
 }
