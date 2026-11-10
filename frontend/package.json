@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "tsc -b && vite build && python C:/Users/admin/.gemini/antigravity/brain/91afd281-9b51-4f8f-9ec8-61072afad0e7/scratch/sync_frontend_to_vps.py",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:ui": "node tests/profiles.e2e.mjs"

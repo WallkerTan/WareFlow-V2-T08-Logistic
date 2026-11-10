@@ -1,2 +1,4 @@
-import { CompanyDashboard } from '../../components/workspace/WorkspacePages';
-export default function CompanyDashboardPage() { return (<CompanyDashboard />); }
+import { CompanyDashboard } from "../../components/workspace/WorkspacePages";
+export default function CompanyDashboardPage() {
+    return <CompanyDashboard />;
+}
