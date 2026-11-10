@@ -3,9 +3,9 @@ import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
 import { ArrowUpRight, ChevronRight, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import "../../layout/main/main.css";
-import "../../layout/main/roles.css";
 import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
+import "../../layout/main/roles.css";
 export type WorkspaceConfig = {
     role: "admin" | "company" | "storehouse";
     title: string;
@@ -33,7 +33,7 @@ export default function WorkspaceShell({ config }: {
     return (<div className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}>
             <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
                 <Link className="wf-brand" to={config.home} onClick={() => setExpanded(false)}>
-                    <span className="wf-brand-mark">W</span>ware
+                    <img src="/logo.png" alt="WareFlow" className="wf-brand-logo-img" />ware
                     <span>flow</span>
                 </Link>
                 <div className="wf-workspace">

@@ -4,34 +4,54 @@
  * to the real API without renaming anything.
  */
 
-export type CompanyStatus = 'PENDING' | 'ACTIVE' | 'LOCKED';
-export type CompanyBusinessModel = 'FOOD' | 'TECH' | 'APPLIANCE' | 'FASHION' | 'OTHER';
+export type CompanyStatus = "PENDING" | "ACTIVE" | "LOCKED";
+export type CompanyBusinessModel =
+    | "FOOD"
+    | "TECH"
+    | "APPLIANCE"
+    | "FASHION"
+    | "OTHER";
 
-export type UserRole = 'SYSTEM_ADMIN' | 'COMPANY_ADMIN' | 'WAREHOUSE_MANAGER';
-export type UserStatus = 'ACTIVE' | 'LOCKED';
+export type UserRole = "SYSTEM_ADMIN" | "COMPANY_ADMIN" | "WAREHOUSE_MANAGER";
+export type UserStatus = "ACTIVE" | "LOCKED";
 
-export type WarehouseStatus = 'AVAILABLE' | 'PENDING' | 'ACTIVE' | 'RETURNED';
-export type WarehouseType = 'BUY' | 'RENT';
+export type WarehouseStatus = "AVAILABLE" | "PENDING" | "ACTIVE" | "RETURNED";
+export type WarehouseType = "BUY" | "RENT";
 
-export type ShipmentStatus = 'CREATED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | 'RETURNED';
+export type ShipmentStatus =
+    | "CREATED"
+    | "IN_TRANSIT"
+    | "DELIVERED"
+    | "FAILED"
+    | "RETURNED";
 
-export type TransactionType = 'INCOME' | 'EXPENSE' | 'SYSTEM_FEE';
-export type TransactionCategory = 'SALE' | 'PURCHASE' | 'TRANSFER' | 'FEE' | 'OTHER';
+export type TransactionType = "INCOME" | "EXPENSE" | "SYSTEM_FEE";
+export type TransactionCategory =
+    | "SALE"
+    | "PURCHASE"
+    | "TRANSFER"
+    | "FEE"
+    | "OTHER";
 
-export type StockDocumentStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'DONE' | 'CANCELLED';
+export type StockDocumentStatus =
+    | "DRAFT"
+    | "PENDING_APPROVAL"
+    | "APPROVED"
+    | "DONE"
+    | "CANCELLED";
 export type StockDocumentType =
-    | 'PO'
-    | 'RECEIPT'
-    | 'EXPORT_SALE'
-    | 'EXPORT_TRANSFER'
-    | 'EXPORT_DESTROY'
-    | 'EXPORT_RETURN'
-    | 'ADJUST'
-    | 'STOCKTAKE';
+    | "PO"
+    | "RECEIPT"
+    | "EXPORT_SALE"
+    | "EXPORT_TRANSFER"
+    | "EXPORT_DESTROY"
+    | "EXPORT_RETURN"
+    | "ADJUST"
+    | "STOCKTAKE";
 
-export type NotificationScope = 'SYSTEM' | 'COMPANY' | 'WAREHOUSE';
+export type NotificationScope = "SYSTEM" | "COMPANY" | "WAREHOUSE";
 
-export type LotStatus = 'OK' | 'NEAR_EXPIRY' | 'EXPIRED' | 'DAMAGED';
+export type LotStatus = "OK" | "NEAR_EXPIRY" | "EXPIRED" | "DAMAGED";
 
 export type Company = {
     id: string;

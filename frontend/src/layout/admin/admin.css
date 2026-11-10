@@ -22,7 +22,7 @@
     min-height: 100dvh;
     background: var(--adm-canvas);
     color: var(--adm-ink);
-    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
 }
@@ -898,8 +898,17 @@
     border-bottom: 0;
 }
 
+.adm-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
 .adm-table tbody tr:hover td {
-    background: #fbfcff;
+    background: #f4f7fe;
+}
+
+.adm-table tbody tr:active td {
+    background: #ebf0fd;
 }
 
 .adm-table .adm-col-actions {
