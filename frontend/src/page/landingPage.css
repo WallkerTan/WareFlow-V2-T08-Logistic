@@ -1447,7 +1447,7 @@
 }
 
 /* Keep navigation readable as the available width changes. */
-.landing-page .header { gap:24px; }
+.landing-page .header { width:100%; max-width:none; padding-inline:clamp(20px,3.5vw,72px); gap:24px; border-bottom:1px solid #edf0f5; }
 .landing-page .header .brand { flex-shrink:0; white-space:nowrap; }
 .landing-page .header .brand-logo-img { flex-shrink:0; }
 .landing-page .header nav { margin-left:0; gap:clamp(16px,3vw,40px); white-space:nowrap; }
@@ -1458,7 +1458,7 @@
     .landing-page .header-actions { gap:14px; }
 }
 @media (max-width:850px) {
-    .landing-page .header { height:auto; min-height:82px; flex-wrap:wrap; padding:16px 0; }
+    .landing-page .header { height:auto; min-height:82px; flex-wrap:wrap; padding:16px 20px; }
     .landing-page .header nav { order:3; width:100%; justify-content:center; padding:10px 0 0; border-top:1px solid #edf0f5; }
     .landing-page .header-actions { margin-left:auto; }
 }

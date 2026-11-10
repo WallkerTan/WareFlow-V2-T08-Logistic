@@ -5,6 +5,7 @@ import {
     PackageMinus,
     Truck,
     History,
+    Wallet,
 } from "lucide-react";
 import WorkspaceShell from "../../components/workspace/WorkspaceShell";
 export default function StorehouseLayout() {
@@ -30,6 +31,11 @@ export default function StorehouseLayout() {
                         to: "/storehouse/inventory",
                         label: "Hàng hóa & thu chi",
                         icon: Boxes,
+                    },
+                    {
+                        to: "/storehouse/budget",
+                        label: "Ngân sách",
+                        icon: Wallet,
                     },
                     {
                         to: "/storehouse/inbound",
