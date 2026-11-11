@@ -33,3 +33,11 @@ management:
     web:
       exposure:
         include: health,info,refresh
+
+wareflow:
+  core-service-url: ${CORE_SERVICE_URL:http://localhost:8081}
+  inventory-service-url: ${INVENTORY_SERVICE_URL:http://localhost:8082}
+  http-timeout-ms: ${HTTP_TIMEOUT_MS:5000}
+  jwt:
+    secret: ${JWT_SECRET:Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+    issuer: ${JWT_ISSUER:wareflow-auth}

@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import java.math.*;
 import java.time.*;
-import java.time.format.*;
 import java.util.*;
 
 @Service @RequiredArgsConstructor @Transactional
@@ -23,6 +22,8 @@ public class FinanceService {
     private final BudgetRepository budgets;
     private final TransactionRepository transactions;
     private final FinanceAccessService access;
+    private final FinancePeriods periods;
+    private final FinanceReportRepository reports;
 
     public BudgetResponse createBudget(UUID companyId, BudgetRequest request) {
         period(request.period());
@@ -74,36 +75,17 @@ public class FinanceService {
     @Transactional(readOnly=true)
     public FinanceSummary summary(UUID companyId, UUID warehouseId, String period, Identity user) {
         access.warehouse(user, warehouseId, companyId);
-        Instant[] range = period(period);
-        List<Transaction> all = warehouseId == null
-                ? transactions.findByCompanyIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(companyId, range[0], range[1])
-                : transactions.findByCompanyIdAndWarehouseIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(companyId, warehouseId, range[0], range[1]);
-        BigDecimal income = sum(all, TransactionType.INCOME), expense = sum(all, TransactionType.EXPENSE), fee = sum(all, TransactionType.SYSTEM_FEE);
-        return new FinanceSummary(income, expense, fee, income.subtract(expense).subtract(fee));
+        return reports.summary(companyId, warehouseId, periods.parse(period));
     }
     private BudgetResponse budgetResponse(Budget budget) {
-        Instant[] range = period(budget.getPeriod());
-        List<Transaction> all = transactions.findByCompanyIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(budget.getCompanyId(), range[0], range[1]);
-        BigDecimal spent = all.stream().filter(t -> t.getType() == TransactionType.EXPENSE || t.getType() == TransactionType.SYSTEM_FEE)
-                .filter(t -> budget.getWarehouseId() == null || budget.getWarehouseId().equals(t.getWarehouseId()))
-                .map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add);
+        var totals = reports.summary(budget.getCompanyId(), budget.getWarehouseId(), periods.parse(budget.getPeriod()));
+        BigDecimal spent = totals.expense().add(totals.systemFee());
         return BudgetResponse.from(budget, spent);
     }
-    private BigDecimal sum(List<Transaction> all, TransactionType type) { return all.stream().filter(t -> t.getType() == type).map(Transaction::getAmount).reduce(BigDecimal.ZERO, BigDecimal::add); }
     private Instant[] period(String value) {
-        if (value == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "period is required (YYYY-MM, YYYY, or Q1-YYYY)");
-        try {
-            YearMonth month = YearMonth.parse(value); return bounds(month.atDay(1), month.plusMonths(1).atDay(1));
-        } catch (DateTimeParseException ignored) { }
-        try { Year year = Year.parse(value); return bounds(year.atDay(1), year.plusYears(1).atDay(1)); }
-        catch (DateTimeParseException ignored) { }
-        if (value.matches("Q[1-4]-\\d{4}")) {
-            int quarter = Integer.parseInt(value.substring(1, 2)); int year = Integer.parseInt(value.substring(3));
-            LocalDate start = LocalDate.of(year, (quarter - 1) * 3 + 1, 1); return bounds(start, start.plusMonths(3));
-        }
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid period; use YYYY-MM, YYYY, or Q1-YYYY");
+        var range = periods.parse(value);
+        return new Instant[]{range.from(), range.to()};
     }
-    private Instant[] bounds(LocalDate from, LocalDate to) { return new Instant[]{from.atStartOfDay(ZoneOffset.UTC).toInstant(), to.atStartOfDay(ZoneOffset.UTC).toInstant()}; }
     private void bad(String message) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
     private void conflict(String message) { throw new ResponseStatusException(HttpStatus.CONFLICT, message); }
     private ResponseStatusException notFound(String message) { return new ResponseStatusException(HttpStatus.NOT_FOUND, message); }
