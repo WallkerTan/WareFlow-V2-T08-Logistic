@@ -1,6 +1,7 @@
 package com.example.delivery_service.entity;
 
 import com.example.delivery_service.entity.enums.ShipmentStatus;
+import com.example.delivery_service.entity.enums.CodStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -14,7 +15,10 @@ import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "shipments")
+@Table(name = "shipments", uniqueConstraints = {
+    @UniqueConstraint(name = "uk_shipment_document", columnNames = "document_id"),
+    @UniqueConstraint(name = "uk_shipment_tracking", columnNames = {"warehouse_id", "carrier", "tracking_code"})
+})
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,6 +50,13 @@ public class Shipment {
     @Column(name = "cod_amount", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal codAmount = BigDecimal.ZERO;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cod_status")
+    private CodStatus codStatus;
+
+    private Instant collectedAt;
+    private UUID collectedBy;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")

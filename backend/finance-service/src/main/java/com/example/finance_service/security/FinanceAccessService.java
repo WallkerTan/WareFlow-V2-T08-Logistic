@@ -43,18 +43,23 @@ public class FinanceAccessService {
         return user.companyId();
     }
     public void warehouse(Identity user, UUID warehouseId, UUID companyId) {
+        if (warehouseId == null && "WAREHOUSE_MANAGER".equals(user.role()))
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "warehouseId is required");
         if (warehouseId == null) return;
         if ("SYSTEM_ADMIN".equals(user.role())) return;
         try {
-            var node = core.get().uri("/warehouses/{id}", warehouseId).header(HttpHeaders.AUTHORIZATION, user.authorization()).retrieve().body(com.fasterxml.jackson.databind.JsonNode.class);
-            if (node == null || !warehouseId.toString().equals(node.path("id").asText())) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found");
+            var node = core.get().uri("/warehouses/{id}", warehouseId).header(HttpHeaders.AUTHORIZATION, user.authorization()).retrieve().body(WarehouseScope.class);
+            if (node == null || !warehouseId.equals(node.id())) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Warehouse not found");
             if ("WAREHOUSE_MANAGER".equals(user.role())) {
-                if (!user.id().toString().equals(node.path("handover").path("managerId").asText())) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Warehouse is not assigned to you");
-                if (!companyId.toString().equals(node.path("ownerCompanyId").asText())) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Warehouse is outside company scope");
-            } else if (!companyId.toString().equals(node.path("ownerCompanyId").asText())) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Warehouse is outside company scope");
+                if (node.handover() == null || !user.id().equals(node.handover().managerId()))
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Warehouse is not assigned to you");
+            }
+            if (!companyId.equals(node.ownerCompanyId())) throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Warehouse is outside company scope");
         } catch (ResponseStatusException ex) { throw ex; }
         catch (RestClientResponseException ex) { throw new ResponseStatusException(ex.getStatusCode(), "Cannot verify warehouse access"); }
         catch (Exception ex) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Cannot verify warehouse access"); }
     }
     public record Identity(UUID id, UUID companyId, String role, String authorization) { }
+    public record WarehouseScope(UUID id, UUID ownerCompanyId, Handover handover) { }
+    public record Handover(UUID managerId) { }
 }

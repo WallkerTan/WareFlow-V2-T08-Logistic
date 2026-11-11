@@ -37,6 +37,8 @@ management:
         include: health,info,refresh
 
 wareflow:
+  finance:
+    timezone: ${FINANCE_TIMEZONE:Asia/Ho_Chi_Minh}
   core-service-url: ${CORE_SERVICE_URL:http://localhost:8081}
   jwt:
     secret: ${JWT_SECRET:Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
