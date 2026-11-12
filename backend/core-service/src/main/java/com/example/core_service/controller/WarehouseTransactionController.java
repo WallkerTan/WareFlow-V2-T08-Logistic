@@ -30,6 +30,8 @@ import java.util.UUID;
 public class WarehouseTransactionController {
 
     private final WarehouseTransactionService transactionService;
+    @GetMapping("/{id}") @PreAuthorize("isAuthenticated()")
+    public WarehouseTransactionResponse detail(@PathVariable UUID id){return transactionService.detail(id);}
 
     // ──────────────────────────────────────────────────────────────────────────
     // TẠO ĐỀ NGHỊ MUA / THUÊ KHO
@@ -42,7 +44,7 @@ public class WarehouseTransactionController {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('COMPANY_ADMIN', 'WAREHOUSE_MANAGER')")
+    @PreAuthorize("hasRole('COMPANY_ADMIN')")
     public WarehouseTransactionResponse create(
             @Valid @RequestBody CreateWarehouseTransactionRequest request
     ) {

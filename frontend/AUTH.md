@@ -1,5 +1,3 @@
-# Giao diện xác thực
+# Xác thực
 
-Trang đăng nhập và đăng ký công ty chỉ hiển thị giao diện, kiểm tra thông tin nhập . Không gọi API, không tạo phiên đăng nhập, không lưu tài khoản trong trình duyệt.
-
-Các trang hồ sơ dùng layout chính và component dùng chung. Xem PROFILE.md để biết cấu trúc dữ liệu.
+Đăng nhập/đăng ký gọi API core qua gateway. Route bảo vệ theo JWT và vai trò; đăng ký công ty chờ duyệt. Chi tiết cấu hình và kiểm tra tại [README](README.md).

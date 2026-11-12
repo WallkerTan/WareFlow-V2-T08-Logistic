@@ -48,4 +48,9 @@ public class Notification {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
+
+    private Instant emailSentAt;
+    private Instant emailRetryAt;
+    @Builder.Default
+    private int emailAttempts = 0;
 }

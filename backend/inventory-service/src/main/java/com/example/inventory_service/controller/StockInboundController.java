@@ -29,6 +29,7 @@ public class StockInboundController {
 
     private final StockInboundService inboundService;
     private final WarehouseAccessService access;
+    private final com.example.inventory_service.security.SupplierAccessClient suppliers;
 
     // ─────────────────────────────────────────────────────────────────────────
     // PO: ĐƠN ĐẶT HÀNG
@@ -41,6 +42,7 @@ public class StockInboundController {
             @PathVariable UUID warehouseId,
             @Valid @RequestBody CreatePurchaseOrderRequest request) {
         UserIdentity user = access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
+        suppliers.requireSupplier(authorization,request.supplierId());
         return inboundService.createPurchaseOrder(warehouseId, request, user);
     }
 
@@ -51,6 +53,7 @@ public class StockInboundController {
             @PathVariable UUID poId,
             @Valid @RequestBody CreatePurchaseOrderRequest request) {
         UserIdentity user = access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
+        suppliers.requireSupplier(authorization,request.supplierId());
         return inboundService.updatePurchaseOrder(warehouseId, poId, request, user);
     }
 
@@ -159,4 +162,3 @@ public class StockInboundController {
         return inboundService.getReceipt(warehouseId, receiptId);
     }
 }
-

@@ -28,6 +28,34 @@ public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
 
+    @Transactional(readOnly = true)
+    public Page<WarehouseResponse> getWarehouses(String search, WarehouseStatus status, WarehouseType type,
+            String region, java.math.BigDecimal minArea, java.math.BigDecimal maxArea,
+            java.math.BigDecimal minPrice, java.math.BigDecimal maxPrice, Pageable page) {
+        range(minArea,maxArea); range(minPrice,maxPrice);
+        Specification<Warehouse> filter=(root,q,cb)-> {
+            var p=new ArrayList<Predicate>();
+            if(search!=null&&!search.isBlank()) p.add(cb.or(cb.like(cb.lower(root.get("name")),"%"+search.trim().toLowerCase()+"%"),cb.like(cb.lower(root.get("region")),"%"+search.trim().toLowerCase()+"%")));
+            if(status!=null)p.add(cb.equal(root.get("status"),status));
+            if(type!=null)p.add(cb.equal(root.get("warehouseType"),type));
+            if(region!=null&&!region.isBlank())p.add(cb.like(cb.lower(root.get("region")),"%"+region.trim().toLowerCase()+"%"));
+            if(minArea!=null)p.add(cb.greaterThanOrEqualTo(root.get("area"),minArea));
+            if(maxArea!=null)p.add(cb.lessThanOrEqualTo(root.get("area"),maxArea));
+            if(minPrice!=null)p.add(cb.greaterThanOrEqualTo(root.get("price"),minPrice));
+            if(maxPrice!=null)p.add(cb.lessThanOrEqualTo(root.get("price"),maxPrice));
+            if(com.example.core_service.security.SecurityUtils.getCurrentUserRole()!=com.example.core_service.entity.enums.UserRole.SYSTEM_ADMIN) {
+                UUID company=com.example.core_service.security.SecurityUtils.getCurrentCompanyId();
+                p.add(company==null?cb.equal(root.get("status"),WarehouseStatus.AVAILABLE):cb.or(cb.equal(root.get("status"),WarehouseStatus.AVAILABLE),cb.equal(root.get("ownerCompany").get("id"),company)));
+            }
+            return cb.and(p.toArray(Predicate[]::new));
+        };
+        return warehouseRepository.findAll(filter,page).map(WarehouseResponse::fromEntity);
+    }
+    private void range(java.math.BigDecimal min,java.math.BigDecimal max) {
+        if((min!=null&&min.signum()<0)||(max!=null&&max.signum()<0)||(min!=null&&max!=null&&min.compareTo(max)>0))
+            throw ApiException.badRequest("Khoảng lọc không hợp lệ");
+    }
+
     /**
      * SYSTEM_ADMIN tạo kho hệ thống mới.
      * ownerCompany = null  →  kho chưa thuộc về tenant nào (kho sàn).
@@ -75,36 +103,7 @@ public class WarehouseService {
             String region,
             Pageable pageable
     ) {
-        Specification<Warehouse> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            // Tìm kiếm tên kho hoặc khu vực
-            if (search != null && !search.isBlank()) {
-                String pattern = "%" + search.trim().toLowerCase() + "%";
-                Predicate byName = cb.like(cb.lower(root.get("name")), pattern);
-                Predicate byRegion = cb.like(cb.lower(root.get("region")), pattern);
-                predicates.add(cb.or(byName, byRegion));
-            }
-
-            // Lọc theo trạng thái
-            if (status != null) {
-                predicates.add(cb.equal(root.get("status"), status));
-            }
-
-            // Lọc theo loại kho
-            if (warehouseType != null) {
-                predicates.add(cb.equal(root.get("warehouseType"), warehouseType));
-            }
-
-            // Lọc theo khu vực (chính xác hơn tìm kiếm tổng quát)
-            if (region != null && !region.isBlank()) {
-                predicates.add(cb.like(cb.lower(root.get("region")), "%" + region.trim().toLowerCase() + "%"));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
-
-        return warehouseRepository.findAll(spec, pageable).map(WarehouseResponse::fromEntity);
+        return getWarehouses(search,status,warehouseType,region,null,null,null,null,pageable);
     }
 
     /**
@@ -114,7 +113,10 @@ public class WarehouseService {
     public WarehouseResponse getWarehouseById(UUID id) {
         Warehouse warehouse = warehouseRepository.findById(id)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy kho với ID: " + id));
+        if (com.example.core_service.security.SecurityUtils.getCurrentUserRole() != com.example.core_service.entity.enums.UserRole.SYSTEM_ADMIN
+                && warehouse.getStatus() != WarehouseStatus.AVAILABLE
+                && (warehouse.getOwnerCompany() == null || !warehouse.getOwnerCompany().getId().equals(com.example.core_service.security.SecurityUtils.getCurrentCompanyId())))
+            throw ApiException.forbidden("Kho không thuộc công ty của bạn");
         return WarehouseResponse.fromEntity(warehouse);
     }
 }
-

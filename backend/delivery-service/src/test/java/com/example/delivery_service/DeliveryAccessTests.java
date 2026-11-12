@@ -50,9 +50,10 @@ class DeliveryAccessTests {
         assertEquals(403,assertThrows(ResponseStatusException.class,()->access.authorize(token("COMPANY_ADMIN",false),warehouse,true)).getStatusCode().value());
     }
     @Test void systemAdminReadOnlyAndCoreFailureClosed() {
+        server.expect(requestTo("http://service/auth/me")).andRespond(withSuccess());
+        server.expect(anything()).andRespond(withServerError());
         assertEquals(user,access.authorize(token("SYSTEM_ADMIN",false),warehouse,false));
         assertEquals(403,assertThrows(ResponseStatusException.class,()->access.authorize(token("SYSTEM_ADMIN",false),warehouse,true)).getStatusCode().value());
-        server.expect(anything()).andRespond(withServerError());
         assertEquals(503,assertThrows(ResponseStatusException.class,()->access.authorize(token("COMPANY_ADMIN",false),warehouse,true)).getStatusCode().value());
     }
     @Test void inventoryValidatesWarehouseTypeAndStatus() {

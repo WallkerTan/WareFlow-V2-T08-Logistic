@@ -2,6 +2,17 @@ server:
   port: 8081
 
 spring:
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   application:
     name: core-service
   config:
@@ -25,16 +36,19 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 wareflow:
+  email:
+    enabled: ${EMAIL_ENABLED:false}
+    from: ${SMTP_FROM:no-reply@wareflow.local}
   jwt:
     # Base64 encoded, tối thiểu 32 bytes. Override bằng biến môi trường khi deploy.
     secret: ${JWT_SECRET:Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
     access-token-ttl: PT8H
-    issuer: wareflow-auth
+    issuer: ${JWT_ISSUER:wareflow-auth}
 
 cloudinary:
-  cloud-name: ${CLOUDINARY_CLOUD_NAME:dx4ym1xrj}
-  api-key: ${CLOUDINARY_API_KEY:278296519696876}
-  api-secret: ${CLOUDINARY_API_SECRET:278296519696876}
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+  api-key: ${CLOUDINARY_API_KEY:}
+  api-secret: ${CLOUDINARY_API_SECRET:}
 
 logging:
   config: classpath:logback-spring.xml

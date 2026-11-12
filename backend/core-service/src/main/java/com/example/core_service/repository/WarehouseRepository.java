@@ -11,5 +11,7 @@ import java.util.UUID;
 public interface WarehouseRepository extends JpaRepository<Warehouse, UUID>, JpaSpecificationExecutor<Warehouse> {
 
     boolean existsByNameIgnoreCase(String name);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select w from Warehouse w where w.id = :id")
+    java.util.Optional<Warehouse> lockById(UUID id);
 }
-

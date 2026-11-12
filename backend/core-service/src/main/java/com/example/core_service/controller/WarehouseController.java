@@ -58,9 +58,13 @@ public class WarehouseController {
             @RequestParam(required = false) WarehouseStatus status,
             @RequestParam(required = false) WarehouseType warehouseType,
             @RequestParam(required = false) String region,
+            @RequestParam(required = false) java.math.BigDecimal minArea,
+            @RequestParam(required = false) java.math.BigDecimal maxArea,
+            @RequestParam(required = false) java.math.BigDecimal minPrice,
+            @RequestParam(required = false) java.math.BigDecimal maxPrice,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        return warehouseService.getWarehouses(search, status, warehouseType, region, pageable);
+        return warehouseService.getWarehouses(search, status, warehouseType, region, minArea, maxArea, minPrice, maxPrice, pageable);
     }
 
     /**
@@ -73,4 +77,3 @@ public class WarehouseController {
         return warehouseService.getWarehouseById(id);
     }
 }
-

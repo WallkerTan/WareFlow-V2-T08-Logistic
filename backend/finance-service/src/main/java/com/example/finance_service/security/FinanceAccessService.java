@@ -28,10 +28,20 @@ public class FinanceAccessService {
             String role = c.get("role", String.class); UUID id = UUID.fromString(c.getSubject());
             String company = c.get("companyId", String.class);
             UUID companyId = company == null || company.isBlank() ? null : UUID.fromString(company);
-            for (String allowed : roles) if (allowed.equals(role)) return new Identity(id, companyId, role, authorization);
+            for (String allowed : roles) if (allowed.equals(role)) {
+                verifyAccount(authorization);
+                return new Identity(id, companyId, role, authorization);
+            }
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Role is not allowed");
         } catch (ResponseStatusException ex) { throw ex; }
         catch (Exception ex) { throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token"); }
+    }
+    private void verifyAccount(String authorization) {
+        try { core.get().uri("/auth/me").header(HttpHeaders.AUTHORIZATION,authorization).retrieve().toBodilessEntity(); }
+        catch (RestClientResponseException ex) {
+            int code=ex.getStatusCode().value();
+            throw new ResponseStatusException(code==401?HttpStatus.UNAUTHORIZED:code==403?HttpStatus.FORBIDDEN:HttpStatus.SERVICE_UNAVAILABLE,"Cannot verify active account");
+        } catch (RestClientException ex) {throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Cannot reach core-service");}
     }
     public UUID company(Identity user, UUID requested) {
         if ("SYSTEM_ADMIN".equals(user.role())) {

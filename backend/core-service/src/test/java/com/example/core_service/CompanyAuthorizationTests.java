@@ -32,6 +32,7 @@ class CompanyAuthorizationTests {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired private com.example.core_service.repository.CompanyRepository companies;
     private String companyAdminToken;
     private String otherCompanyAdminToken;
     private String systemAdminToken;
@@ -114,7 +115,10 @@ class CompanyAuthorizationTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value(UserRole.COMPANY_ADMIN.name()))
                 .andReturn();
-        return objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponse.class);
+        var registered = objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponse.class);
+        var company = companies.findById(registered.companyId()).orElseThrow();
+        company.setStatus(com.example.core_service.entity.enums.CompanyStatus.ACTIVE); companies.save(company);
+        return new AuthResponse("Bearer", login(email,"12345678"), null, registered.userId(), email, registered.fullName(), registered.role(), registered.companyId(), registered.companyName());
     }
 
     private String login(String email, String password) throws Exception {
@@ -128,21 +132,11 @@ class CompanyAuthorizationTests {
 
     private String registerWarehouseManager() throws Exception {
         String email = "manager-" + UUID.randomUUID() + "@wareflow.vn";
-        MvcResult result = mockMvc.perform(post("/auth/register-warehouse-manager")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "email", email,
-                                "password", "12345678",
-                                "fullName", "Test Warehouse Manager",
-                                "profileType", "INDIVIDUAL",
-                                "role", UserRole.WAREHOUSE_MANAGER.name(),
-                                "individualProfile", Map.of("phone", "0900000000")
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponse.class).accessToken();
+        mockMvc.perform(post("/employees").header("Authorization",bearer(companyAdminToken))
+                .contentType(MediaType.APPLICATION_JSON).content(objectMapper.writeValueAsString(Map.of("email",email,"password","12345678","fullName","Manager"))))
+                .andExpect(status().isCreated());
+        return login(email,"12345678");
     }
-
     private String bearer(String token) {
         return "Bearer " + token;
     }

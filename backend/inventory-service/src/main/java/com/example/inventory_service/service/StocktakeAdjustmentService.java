@@ -26,8 +26,17 @@ public class StocktakeAdjustmentService {
 
     public StockDocumentResponse createStocktake(UUID warehouseId, CreateStocktakeRequest request, UserIdentity user) {
         Set<String> seen = new HashSet<>();
+        Set<UUID> productCounts = new HashSet<>();
+        Set<UUID> lotCounts = new HashSet<>();
         List<Map<String, Object>> lines = new ArrayList<>();
         for (var input : request.lines()) {
+            if (input.lotId() == null) {
+                if (lotCounts.contains(input.productId())) bad("Không kiểm kê tổng sản phẩm và từng lô trong cùng phiếu");
+                productCounts.add(input.productId());
+            } else {
+                if (productCounts.contains(input.productId())) bad("Không kiểm kê tổng sản phẩm và từng lô trong cùng phiếu");
+                lotCounts.add(input.productId());
+            }
             Product product = products.findByIdAndWarehouseIdAndDeletedAtIsNull(input.productId(), warehouseId)
                     .orElseThrow(() -> notFound("Product not found in warehouse"));
             String key = input.lotId() == null ? "product:" + product.getId() : "lot:" + input.lotId();
@@ -88,6 +97,7 @@ public class StocktakeAdjustmentService {
                 if (doc.getStatus() == StockDocumentStatus.DONE) return StockDocumentResponse.from(doc);
                 requireStatus(doc, StockDocumentStatus.APPROVED);
                 if (type == StockDocumentType.ADJUST) applyAdjustment(doc, user);
+                else if (type == StockDocumentType.STOCKTAKE) generateAdjustment(doc, user);
                 doc.setStatus(StockDocumentStatus.DONE);
             }
             case "reject" -> { requireStatus(doc, StockDocumentStatus.PENDING_APPROVAL); doc.setStatus(StockDocumentStatus.CANCELLED); }
@@ -109,6 +119,8 @@ public class StocktakeAdjustmentService {
         for (var line : ordered) {
             StockLot lot = lot(doc.getWarehouseId(), UUID.fromString(line.get("lotId").toString()));
             BigDecimal delta = new BigDecimal(line.get("delta").toString());
+            if (line.get("expectedQuantity") != null && lot.getQuantity().compareTo(new BigDecimal(line.get("expectedQuantity").toString())) != 0)
+                conflict("Tồn kho đã thay đổi sau kiểm kê, cần kiểm kê lại");
             if (delta.signum() < 0 && lot.getQuantity().add(delta).compareTo(lot.getReserved()) < 0)
                 conflict("Adjustment cannot reduce stock below reserved quantity");
         }
@@ -120,6 +132,36 @@ public class StocktakeAdjustmentService {
                     .product(lot.getProduct()).lot(lot).documentType(doc.getType().name()).documentId(doc.getId())
                     .qtyChange(delta).actorId(user.id()).note("Adjustment " + doc.getId()).build());
         }
+    }
+
+    private void generateAdjustment(StockDocument stocktake, UserIdentity user) {
+        if (stocktake.getApproval() != null && stocktake.getApproval().containsKey("adjustmentId")) return;
+        List<Map<String,Object>> lines = new ArrayList<>();
+        Set<UUID> selected = new HashSet<>();
+        for (var count : stocktake.getLines()) {
+            BigDecimal variance = new BigDecimal(count.get("variance").toString());
+            if (variance.signum() == 0) continue;
+            UUID lotId;
+            if (count.get("lotId") != null) lotId = UUID.fromString(count.get("lotId").toString());
+            else {
+                var candidates = lots.findByProduct_IdAndDeletedAtIsNull(UUID.fromString(count.get("productId").toString()));
+                if (candidates.size() != 1) bad("Sản phẩm có nhiều lô hoặc chưa có lô: phải kiểm kê theo lô để điều chỉnh");
+                lotId = candidates.getFirst().getId();
+            }
+            if (!selected.add(lotId)) bad("Kiểm kê trùng lô và tổng sản phẩm");
+            StockLot lot = lot(stocktake.getWarehouseId(),lotId);
+            BigDecimal expected = new BigDecimal(count.get("systemQuantity").toString());
+            if (lot.getQuantity().compareTo(expected) != 0) conflict("Tồn kho đã thay đổi sau kiểm kê, cần kiểm kê lại");
+            Map<String,Object> line = new LinkedHashMap<>();
+            line.put("lotId",lotId.toString());line.put("productId",lot.getProduct().getId().toString());
+            line.put("sku",lot.getProduct().getSku());line.put("lotCode",lot.getLotCode());line.put("delta",variance);line.put("expectedQuantity",expected);lines.add(line);
+        }
+        if (lines.isEmpty()) return;
+        var adjust = documents.save(StockDocument.builder().warehouseId(stocktake.getWarehouseId())
+                .type(StockDocumentType.ADJUST).status(StockDocumentStatus.PENDING_APPROVAL).createdBy(user.id()).lines(lines)
+                .approval(Map.of("stocktakeId",stocktake.getId().toString(),"generatedAt",Instant.now().toString())).build());
+        Map<String,Object> audit = new LinkedHashMap<>(stocktake.getApproval()==null?Map.of():stocktake.getApproval());
+        audit.put("adjustmentId",adjust.getId().toString());stocktake.setApproval(audit);
     }
 
     @Transactional(readOnly = true)

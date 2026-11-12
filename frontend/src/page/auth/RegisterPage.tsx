@@ -1,2 +1,3 @@
-import { Link } from 'react-router-dom';
-export default function RegisterPage() { return <form className="auth-form" onSubmit={e => e.preventDefault()}><div className="wf-fields">{['Tên công ty', 'Mã số thuế', 'Người đại diện', 'Số điện thoại', 'Email công ty', 'Mật khẩu', 'Xác nhận mật khẩu'].map(f => <label className="wf-field" key={f}><span>{f}</span><input type={f.toLowerCase().includes('mật khẩu') ? 'password' : f.includes('Email') ? 'email' : 'text'} placeholder={'Nhập ' + f.toLowerCase()}/></label>)}</div><label><input type="checkbox"/> Tôi đồng ý với điều khoản sử dụng WareFlow</label><button type="button" className="adm-btn adm-btn-primary" disabled>Đăng ký công ty (bản mẫu)</button><Link to="/auth/login">Đã có tài khoản? Đăng nhập</Link></form>; }
+import RegisterForm from '../../components/form/RegisterForm';
+import { authApi } from '../../services/authApi';
+export default function RegisterPage() { return <RegisterForm onSubmit={authApi.registerCompany} />; }

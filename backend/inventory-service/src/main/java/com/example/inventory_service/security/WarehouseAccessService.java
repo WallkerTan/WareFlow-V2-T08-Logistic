@@ -81,23 +81,26 @@ public class WarehouseAccessService {
         }
 
         if ("SYSTEM_ADMIN".equals(role)) {
+            try { coreClient.get().uri("/auth/me").header(HttpHeaders.AUTHORIZATION,authorization).retrieve().toBodilessEntity(); }
+            catch (RestClientResponseException ex) { throw new ResponseStatusException(ex.getStatusCode().value()==403?HttpStatus.FORBIDDEN:ex.getStatusCode().value()==401?HttpStatus.UNAUTHORIZED:HttpStatus.SERVICE_UNAVAILABLE,"Không xác minh được tài khoản hệ thống"); }
+            catch (org.springframework.web.client.RestClientException ex) {throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Không kết nối được core-service");}
             return new UserIdentity(userId, companyId, role);
         }
 
         try {
             var warehouse = coreClient.get().uri("/warehouses/{id}", warehouseId)
-                    .header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(com.fasterxml.jackson.databind.JsonNode.class);
-            if (warehouse == null || !warehouse.path("id").asText().equals(warehouseId.toString())) {
+                    .header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(WarehouseScope.class);
+            if (warehouse == null || !warehouseId.equals(warehouse.id())) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy kho");
             }
             if ("WAREHOUSE_MANAGER".equals(role)) {
-                String manager = warehouse.path("handover").path("managerId").asText("");
-                if (!userId.toString().equals(manager)) {
+                UUID manager = warehouse.handover() == null ? null : warehouse.handover().managerId();
+                if (!userId.equals(manager) || companyId == null || !companyId.equals(warehouse.ownerCompanyId())) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không được phân công quản lý kho này");
                 }
             } else {
-                String ownerCompany = warehouse.path("ownerCompanyId").asText("");
-                if (companyId == null || !companyId.toString().equals(ownerCompany)) {
+                UUID ownerCompany = warehouse.ownerCompanyId();
+                if (companyId == null || !companyId.equals(ownerCompany)) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kho không thuộc công ty của bạn");
                 }
             }
@@ -117,4 +120,6 @@ public class WarehouseAccessService {
     }
 
     public record UserIdentity(UUID id, UUID companyId, String role) { }
+    public record WarehouseScope(UUID id, UUID ownerCompanyId, Handover handover) { }
+    public record Handover(UUID managerId) { }
 }

@@ -10,17 +10,17 @@ import warehousePhoto from "../../assets/warehouse-photo.jpg";
 
 export const ProductShowcase: React.FC = () => {
     const industries = [
-        { label: "Bán lẻ & E-Commerce", desc: "Xử lý hàng nghìn đơn/ngày, tự động đồng bộ tồn kho đa kênh" },
-        { label: "Sản xuất & Chế biến", desc: "Kiểm soát nguyên vật liệu, thành phẩm và định mức BOM chính xác" },
-        { label: "Chuỗi phân phối & 3PL", desc: "Quản lý nhiều kho vệ tinh, phân luồng tuyến giao hàng tối ưu" },
-        { label: "Thực phẩm & Dược phẩm", desc: "Quản lý nghiêm ngặt theo Lô (Batch) và Hạn sử dụng (FEFO/FIFO)" },
+        { label: "Bán lẻ & E-Commerce", desc: "Quản lý sản phẩm, nhập hàng và xuất bán" },
+        { label: "Sản xuất & Chế biến", desc: "Theo dõi danh mục, lô hàng và biến động tồn" },
+        { label: "Chuỗi phân phối & 3PL", desc: "Quản lý nhiều kho và phiếu điều chuyển" },
+        { label: "Thực phẩm & Dược phẩm", desc: "Theo dõi lô, hạn sử dụng và hàng hư hỏng" },
     ];
 
     const highlights = [
-        "Kiểm soát chính xác 99.9% vị trí hàng hóa theo Ô/Kệ (Bin/Rack location)",
-        "Giảm 45% thời gian soạn hàng (picking & packing) với lộ trình thông minh",
+        "Theo dõi số lượng thực tế, số lượng giữ và số lượng khả dụng",
+        "Soạn hàng và đóng gói trước khi hoàn tất phiếu xuất bán",
         "Tự động cảnh báo khi tồn kho chạm ngưỡng an toàn hoặc sắp hết hạn",
-        "Báo cáo giá trị vốn lưu động và dòng tiền tồn kho thời gian thực",
+        "Báo cáo thu chi theo kỳ và ngân sách theo kho",
     ];
 
     return (
@@ -54,8 +54,8 @@ export const ProductShowcase: React.FC = () => {
                                 <QrCode size={18} />
                             </span>
                             <div>
-                                <b>Quét mã Barcode / QR</b>
-                                <small>Tốc độ nhận diện 0.2s</small>
+                                <b>Danh mục sản phẩm</b>
+                                <small>SKU và mã vạch</small>
                             </div>
                         </div>
 
@@ -64,8 +64,8 @@ export const ProductShowcase: React.FC = () => {
                                 <TrendingUp size={18} />
                             </span>
                             <div>
-                                <b>Tiết kiệm 35% chi phí</b>
-                                <small>Tối ưu hóa năng lực chứa kho</small>
+                                <b>Quản lý theo lô</b>
+                                <small>Theo dõi hạn sử dụng</small>
                             </div>
                         </div>
                     </div>
@@ -76,9 +76,9 @@ export const ProductShowcase: React.FC = () => {
                         <div className="showcase-badge">
                             <Sparkles size={16} /> Thế hệ phần mềm WMS Cloud 2026
                         </div>
-                        <h3>Loại bỏ 100% sự rời rạc trong vận hành kho hàng</h3>
+                        <h3>Kết nối nghiệp vụ kho và tài chính</h3>
                         <p className="showcase-desc">
-                            Với giao diện trực quan, đồng bộ dữ liệu tức thời và khả năng kết nối linh hoạt giữa các phòng ban, WareFlow giúp đội ngũ của bạn làm việc ăn ý, loại bỏ hoàn toàn tình trạng thất thoát hàng hóa, sai sót đơn hàng và tắc nghẽn giao vận.
+                            Các màn hình dùng dữ liệu từ máy chủ và phân quyền theo quản trị hệ thống, quản trị công ty và nhân viên quản lý kho.
                         </p>
 
                         <div className="highlights-list">

@@ -109,6 +109,8 @@ class StockOutboundServiceTests {
     @Test void completionDeductsAndReleasesOnlyItsReservation() {
         loadDoc(); loadLot(); saveDoc(); doc.setStatus(StockDocumentStatus.APPROVED);
         lot.setReserved(new BigDecimal("6"));
+        service.transition(warehouse, id, "pick", null, user);
+        service.transition(warehouse, id, "pack", null, user);
         service.transition(warehouse, id, "complete", null, user);
         assertEquals(new BigDecimal("6"), lot.getQuantity());
         assertEquals(new BigDecimal("2"), lot.getReserved());
@@ -118,6 +120,12 @@ class StockOutboundServiceTests {
         loadDoc(); doc.setStatus(StockDocumentStatus.DONE);
         assertEquals(StockDocumentStatus.DONE, service.transition(warehouse, id, "complete", null, user).status());
         verifyNoInteractions(lots, movements);
+    }
+    @Test void cannotPackBeforePickingOrCompleteBeforePacking() {
+        loadDoc(); doc.setStatus(StockDocumentStatus.APPROVED);
+        assertConflict(() -> service.transition(warehouse,id,"pack",null,user));
+        assertConflict(() -> service.transition(warehouse,id,"complete",null,user));
+        verifyNoInteractions(lots,movements);
     }
     @Test void cancellationReleasesReservationEvenWhenLotHasExpired() {
         loadDoc(); loadLot(); saveDoc(); doc.setStatus(StockDocumentStatus.APPROVED);

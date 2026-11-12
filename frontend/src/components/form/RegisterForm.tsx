@@ -14,7 +14,7 @@ export type RegisterValues = {
     confirmPassword: string;
     accepted: boolean;
 };
-type Props = { onSubmit?: (values: RegisterValues) => Promise<unknown> };
+type Props = { onSubmit: (values: RegisterValues) => Promise<unknown> };
 
 export default function RegisterForm({ onSubmit }: Props) {
     "use no memo";
@@ -41,14 +41,9 @@ export default function RegisterForm({ onSubmit }: Props) {
         setMessage("");
         setSuccess(false);
         try {
-            if (onSubmit) {
-                await onSubmit(values);
-                setSuccess(true);
-                setMessage("Yêu cầu đã được xử lý.");
-            } else
-                setMessage(
-                    "Đây là bản giao diện. Chưa gửi yêu cầu đăng ký công ty đến máy chủ.",
-                );
+            await onSubmit(values);
+            setSuccess(true);
+            setMessage("Đăng ký công ty thành công. Vui lòng chờ quản trị hệ thống phê duyệt trước khi đăng nhập.");
         } catch (error) {
             setMessage(
                 error instanceof Error

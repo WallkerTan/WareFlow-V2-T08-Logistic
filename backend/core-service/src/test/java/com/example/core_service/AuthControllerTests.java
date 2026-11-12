@@ -35,6 +35,7 @@ class AuthControllerTests {
     private ObjectMapper objectMapper;
 
     private String email;
+    @Autowired private com.example.core_service.repository.CompanyRepository companies;
 
     @BeforeEach
     void setUp() {
@@ -57,8 +58,7 @@ class AuthControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
                 .andExpect(jsonPath("$.role").value(UserRole.COMPANY_ADMIN.name()))
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.companyId").isNotEmpty())
@@ -66,7 +66,14 @@ class AuthControllerTests {
 
         String registerToken = objectMapper.readValue(registerResult.getResponse().getContentAsString(), AuthResponse.class)
                 .accessToken();
-        assertThat(registerToken).isNotBlank();
+        assertThat(registerToken).isNull();
+        var registered = objectMapper.readValue(registerResult.getResponse().getContentAsString(), AuthResponse.class);
+        mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(Map.of("email", email, "password", "12345678"))))
+                .andExpect(status().isForbidden());
+        var company = companies.findById(registered.companyId()).orElseThrow();
+        company.setStatus(com.example.core_service.entity.enums.CompanyStatus.ACTIVE);
+        companies.save(company);
 
         // 2. Đăng nhập
         String loginBody = objectMapper.writeValueAsString(Map.of(
