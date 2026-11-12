@@ -25,8 +25,8 @@ public class NotificationController {
      */
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    public List<Notification> getMyNotifications() {
-        return notificationService.getCurrentUserNotifications();
+    public List<View> getMyNotifications() {
+        return notificationService.getCurrentUserNotifications().stream().map(n -> new View(n.getId(),n.getType(),n.getTitle(),n.getScope().name(),n.getPayload(),n.getIsRead(),n.getCreatedAt())).toList();
     }
 
     @GetMapping("/unread-count")
@@ -50,5 +50,5 @@ public class NotificationController {
     public int markAllAsRead() {
         return notificationService.markAllCurrentUserNotificationsAsRead();
     }
+    public record View(Long id,String type,String title,String scope,java.util.Map<String,Object> payload,Boolean isRead,java.time.Instant createdAt) { }
 }
-

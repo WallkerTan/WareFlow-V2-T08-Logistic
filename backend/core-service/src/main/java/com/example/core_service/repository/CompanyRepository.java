@@ -13,6 +13,9 @@ import java.util.UUID;
 
 @Repository 
 public interface CompanyRepository extends JpaRepository<Company, UUID>, JpaSpecificationExecutor<Company> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Company c where c.id = :id")
+    Optional<Company> lockById(UUID id);
 
     boolean existsByNameIgnoreCase(String name);
 

@@ -15,29 +15,29 @@ export const WorkflowSection: React.FC = () => {
             num: "01",
             icon: <Download size={24} />,
             title: "Tiếp Nhận & Kiểm Đếm",
-            desc: "Quét mã Barcode/QR đối chiếu đơn đặt hàng. Tự động phát hiện chênh lệch thừa/thiếu hoặc hàng lỗi ngay tại cửa nhập.",
-            highlight: "Chính xác 100% đầu vào"
+            desc: "Lập và duyệt đơn mua hàng, ghi nhận số lượng nhận thực tế, lô và hạn sử dụng.",
+            highlight: "Nhận hàng theo PO"
         },
         {
             num: "02",
             icon: <Layers size={24} />,
-            title: "Phân Bổ Vị Trí Ô / Kệ",
-            desc: "Hệ thống gợi ý vị trí lưu kho tối ưu theo tần suất luân chuyển (Fast/Slow moving) và tính chất bảo quản của từng sản phẩm.",
-            highlight: "Tối ưu 40% diện tích"
+            title: "Kiểm Soát Tồn Kho",
+            desc: "Theo dõi tồn thực tế và khả dụng; lập phiếu kiểm kê, duyệt điều chỉnh khi có chênh lệch.",
+            highlight: "Theo lô và hạn dùng"
         },
         {
             num: "03",
             icon: <PackageCheck size={24} />,
             title: "Soạn Hàng & Đóng Gói",
-            desc: "Lộ trình nhặt hàng (Pick list) được tính toán theo đường đi ngắn nhất trong kho. Kiểm tra chéo trước khi niêm phong đóng gói.",
-            highlight: "Gấp 2 lần tốc độ soạn"
+            desc: "Duyệt phiếu xuất bán, ghi nhận soạn hàng rồi đóng gói trước khi hoàn tất.",
+            highlight: "Kiểm soát từng bước"
         },
         {
             num: "04",
             icon: <Truck size={24} />,
             title: "Xuất Kho & Giao Vận",
-            desc: "Tạo phiếu giao hàng, bàn giao cho tài xế hoặc đối tác 3PL. Cập nhật mã vận đơn và hành trình giao nhận tức thời cho khách hàng.",
-            highlight: "Theo dõi thời gian thực"
+            desc: "Tạo vận đơn cho phiếu xuất bán đã hoàn tất, cập nhật trạng thái và thu COD.",
+            highlight: "Lịch sử vận đơn"
         }
     ];
 

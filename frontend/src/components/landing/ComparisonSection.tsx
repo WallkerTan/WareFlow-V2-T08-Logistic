@@ -4,36 +4,11 @@ import { Check, X, Award } from "lucide-react";
 
 export const ComparisonSection: React.FC = () => {
     const comparisons = [
-        {
-            criteria: "Độ chính xác tồn kho",
-            traditional: "70% - 85%, thường xuyên thất thoát và lệch số liệu",
-            wareflow: "99.9%, kiểm soát chi tiết theo Barcode, QR và Serial",
-            advantage: true
-        },
-        {
-            criteria: "Thời gian xử lý 1 đơn hàng",
-            traditional: "20 - 30 phút (tìm hàng thủ công, ghi chép sổ sách)",
-            wareflow: "Dưới 3 phút nhờ lộ trình nhặt hàng tự động",
-            advantage: true
-        },
-        {
-            criteria: "Quản lý Lô & Hạn sử dụng",
-            traditional: "Dễ bỏ sót hàng cận date, gây hủy hàng lãng phí vốn",
-            wareflow: "Tự động cảnh báo FEFO/FIFO, không lo hàng quá hạn",
-            advantage: true
-        },
-        {
-            criteria: "Báo cáo & Ra quyết định",
-            traditional: "Chờ kế toán tổng hợp vài ngày đến cuối tháng",
-            wareflow: "Xem Dashboard thời gian thực bất kỳ lúc nào trên điện thoại/máy tính",
-            advantage: true
-        },
-        {
-            criteria: "Khả năng mở rộng đa kho",
-            traditional: "Rối loạn thông tin khi mở thêm kho chi nhánh",
-            wareflow: "Mở rộng không giới hạn điểm kho chỉ với vài cú nhấp chuột",
-            advantage: true
-        }
+        {criteria:'Tồn kho',traditional:'Tổng hợp số liệu từ các bảng riêng',wareflow:'Xem tồn thực tế, đã giữ và khả dụng theo kho'},
+        {criteria:'Phê duyệt',traditional:'Trao đổi và ghi chép riêng',wareflow:'Theo dõi trạng thái phiếu và người phê duyệt'},
+        {criteria:'Lô và hạn dùng',traditional:'Theo dõi thủ công từng lô',wareflow:'Danh sách lô và cảnh báo cận hạn'},
+        {criteria:'Tài chính',traditional:'Tổng hợp thu chi thủ công',wareflow:'Ngân sách, đề nghị chi và báo cáo theo kỳ'},
+        {criteria:'Phân quyền',traditional:'Chia sẻ tệp và quyền truy cập thủ công',wareflow:'Tách quyền hệ thống, công ty và người quản lý kho'},
     ];
 
     return (

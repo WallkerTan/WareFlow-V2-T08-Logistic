@@ -18,12 +18,23 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor @Transactional
 public class FinanceService {
-    private static final BigDecimal FEE_RATE = new BigDecimal("0.05");
     private final BudgetRepository budgets;
     private final TransactionRepository transactions;
     private final FinanceAccessService access;
     private final FinancePeriods periods;
     private final FinanceReportRepository reports;
+    private final FinanceAuditRepository audits;
+
+    public void recordAudit(UUID companyId,UUID actor,String action,String target,Map<String,Object> details){
+        FinanceAudit a=new FinanceAudit();a.setCompanyId(companyId);a.setActorId(actor);a.setAction(action);a.setTargetId(target);a.setDetails(details);a.setCreatedAt(Instant.now());audits.save(a);
+    }
+    public BudgetResponse createBudget(UUID companyId,BudgetRequest request,Identity actor){
+        var result=createBudget(companyId,request);recordAudit(companyId,actor.id(),"CREATE_BUDGET",result.id().toString(),Map.of("allocated",request.allocated(),"period",request.period()));return result;
+    }
+    public BudgetResponse updateBudget(UUID companyId,UUID id,BudgetRequest request,Identity actor){
+        var previous=budgets.findByIdAndCompanyId(id,companyId).orElseThrow(()->notFound("Budget not found"));
+        var before=previous.getAllocated();var result=updateBudget(companyId,id,request);recordAudit(companyId,actor.id(),"UPDATE_BUDGET",id.toString(),Map.of("previousAllocated",before,"allocated",request.allocated(),"period",request.period()));return result;
+    }
 
     public BudgetResponse createBudget(UUID companyId, BudgetRequest request) {
         period(request.period());
@@ -50,13 +61,7 @@ public class FinanceService {
         Transaction tx = transactions.save(Transaction.builder().companyId(companyId).warehouseId(request.warehouseId())
                 .type(request.type()).category(request.category()).amount(request.amount().setScale(2, RoundingMode.HALF_UP))
                 .refDocumentId(request.refDocumentId()).note(request.note()).build());
-        if (request.type() == TransactionType.INCOME && request.category() == TransactionCategory.SALE) {
-            BigDecimal fee = tx.getAmount().multiply(FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-            if (fee.signum() > 0 && (tx.getRefDocumentId() == null || !transactions.existsByCompanyIdAndRefDocumentIdAndType(companyId, tx.getRefDocumentId(), TransactionType.SYSTEM_FEE))) {
-                transactions.save(Transaction.builder().companyId(companyId).warehouseId(tx.getWarehouseId()).type(TransactionType.SYSTEM_FEE)
-                        .category(TransactionCategory.FEE).amount(fee).refDocumentId(tx.getRefDocumentId()).note("5% platform fee for transaction " + tx.getId()).build());
-            }
-        }
+        recordAudit(companyId,user.id(),"CREATE_TRANSACTION",tx.getId().toString(),Map.of("type",request.type().name(),"amount",request.amount(),"category",request.category().name()));
         return TransactionResponse.from(tx);
     }
     @Transactional(readOnly=true)

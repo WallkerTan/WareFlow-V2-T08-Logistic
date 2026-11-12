@@ -23,6 +23,27 @@ import java.util.stream.Collectors;
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String,Object>> denied(Exception ex) {
+        return ResponseEntity.status(403).body(buildBody(HttpStatus.FORBIDDEN,"Không có quyền truy cập",null));
+    }
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<Map<String,Object>> status(org.springframework.web.server.ResponseStatusException ex) {
+        var status=HttpStatus.valueOf(ex.getStatusCode().value());
+        return ResponseEntity.status(status).body(buildBody(status,ex.getReason(),null));
+    }
+    @ExceptionHandler({org.springframework.dao.DataIntegrityViolationException.class,org.springframework.dao.OptimisticLockingFailureException.class})
+    public ResponseEntity<Map<String,Object>> conflict(Exception ex) {
+        return ResponseEntity.status(409).body(buildBody(HttpStatus.CONFLICT,"Dữ liệu trùng hoặc đã thay đổi, vui lòng tải lại",null));
+    }
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String,Object>> oversized(Exception ex) {
+        return ResponseEntity.status(413).body(buildBody(HttpStatus.CONTENT_TOO_LARGE,"Ảnh vượt quá giới hạn 10MB",null));
+    }
+    @ExceptionHandler({org.springframework.web.bind.MissingServletRequestParameterException.class,org.springframework.web.multipart.support.MissingServletRequestPartException.class})
+    public ResponseEntity<Map<String,Object>> missing(Exception ex) {
+        return ResponseEntity.badRequest().body(buildBody(HttpStatus.BAD_REQUEST,"Thiếu tham số bắt buộc",null));
+    }
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApiException(ApiException ex) {

@@ -59,6 +59,7 @@ public class WarehouseTransactionService {
     private final SystemLogService               systemLogService;
     private final NotificationService            notificationService;
     private final InventorySnapshotClient        inventorySnapshotClient;
+    private final com.example.core_service.repository.FinanceEventRepository financeEvents;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. TẠO ĐỀ NGHỊ MUA / THUÊ KHO
@@ -72,7 +73,7 @@ public class WarehouseTransactionService {
     public WarehouseTransactionResponse create(CreateWarehouseTransactionRequest request) {
         UserPrincipal current = SecurityUtils.getCurrentUser();
 
-        if (current.getRole() == UserRole.SYSTEM_ADMIN) {
+        if (current.getRole() != UserRole.COMPANY_ADMIN) {
             throw ApiException.badRequest("Quản trị viên hệ thống không thể gửi đề nghị mua/thuê");
         }
         if (current.getCompanyId() == null) {
@@ -82,7 +83,7 @@ public class WarehouseTransactionService {
             throw ApiException.badRequest("Chỉ hỗ trợ đề nghị BUY hoặc RENT");
         }
 
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+        Warehouse warehouse = warehouseRepository.lockById(request.getWarehouseId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy kho"));
 
         if (warehouse.getStatus() != WarehouseStatus.AVAILABLE) {
@@ -97,8 +98,9 @@ public class WarehouseTransactionService {
             throw ApiException.badRequest("Công ty không thể gửi đề nghị cho kho của chính mình");
         }
 
-        Company company = companyRepository.findById(current.getCompanyId())
+        Company company = companyRepository.lockById(current.getCompanyId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy công ty của tài khoản"));
+        if (company.getStatus() != com.example.core_service.entity.enums.CompanyStatus.ACTIVE) throw ApiException.forbidden("Công ty chưa hoạt động");
 
         WarehouseTransaction transaction = WarehouseTransaction.builder()
                 .warehouse(warehouse)
@@ -110,6 +112,8 @@ public class WarehouseTransactionService {
                 .build();
 
         WarehouseTransaction saved = transactionRepository.save(transaction);
+        warehouse.setStatus(WarehouseStatus.PENDING);
+        warehouseRepository.save(warehouse);
 
         // Ghi log
         systemLogService.recordLog(
@@ -177,6 +181,12 @@ public class WarehouseTransactionService {
     // 3. THƯƠNG LƯỢNG GIÁ
     // ─────────────────────────────────────────────────────────────────────────
 
+    @Transactional(readOnly=true)
+    public WarehouseTransactionResponse detail(UUID id) {
+        var transaction=transactionRepository.findById(id).orElseThrow(()->ApiException.notFound("Không tìm thấy giao dịch kho"));
+        ensureParticipant(transaction,SecurityUtils.getCurrentUser());return WarehouseTransactionResponse.fromEntity(transaction);
+    }
+
     @Transactional
     public WarehouseTransactionResponse negotiate(UUID id, NegotiateWarehouseTransactionRequest request) {
         WarehouseTransaction transaction = getTransaction(id);
@@ -240,8 +250,17 @@ public class WarehouseTransactionService {
         User approver = userRepository.findById(current.getId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy người duyệt"));
 
-        Warehouse warehouse = transaction.getWarehouse();
-        Company buyerCompany = transaction.getCompany();
+        Warehouse warehouse = warehouseRepository.lockById(transaction.getWarehouse().getId()).orElseThrow(() -> ApiException.notFound("Không tìm thấy kho"));
+        Company buyerCompany = companyRepository.lockById(transaction.getCompany().getId()).orElseThrow(() -> ApiException.notFound("Không tìm thấy công ty"));
+        if (buyerCompany.getStatus() != com.example.core_service.entity.enums.CompanyStatus.ACTIVE) throw ApiException.forbidden("Công ty chưa hoạt động");
+        if (warehouse.getStatus() != WarehouseStatus.PENDING && warehouse.getStatus() != WarehouseStatus.AVAILABLE)
+            throw ApiException.conflict("Kho không còn khả dụng cho đề nghị này");
+        java.math.BigDecimal price = transaction.getOfferedPrice() == null ? warehouse.getPrice() : transaction.getOfferedPrice();
+        if (price == null || price.signum() < 0) throw ApiException.badRequest("Giá giao dịch không hợp lệ");
+        transaction.setOfferedPrice(price);
+        transaction.setPlatformFee(price.multiply(new java.math.BigDecimal("0.05")).setScale(2,java.math.RoundingMode.HALF_UP));
+        transaction.setCompletedAt(Instant.now());
+        financeEvents.save(com.example.core_service.entity.FinanceEvent.of(transaction));
 
         // ── Chuyển quyền sở hữu kho ──
         warehouse.setOwnerCompany(buyerCompany);
@@ -383,12 +402,15 @@ public class WarehouseTransactionService {
         if (manager.getRole() != UserRole.WAREHOUSE_MANAGER) {
             throw ApiException.badRequest("Nhân viên được chọn không có vai trò WAREHOUSE_MANAGER");
         }
+        if (manager.getStatus() != com.example.core_service.entity.enums.UserStatus.ACTIVE) throw ApiException.badRequest("Nhân viên đã bị khóa");
         if (manager.getCompany() == null || !manager.getCompany().getId().equals(current.getCompanyId())) {
             throw ApiException.forbidden("Nhân viên quản lý phải thuộc cùng công ty");
         }
 
         // Lấy snapshot tồn kho từ inventory-service (graceful fail)
         Map<String, Object> stockSnapshot = inventorySnapshotClient.getStockSnapshot(warehouse.getId());
+        if (!Boolean.TRUE.equals(stockSnapshot.get("available")))
+            throw new ApiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"Chưa lấy được tồn kho để bàn giao; vui lòng thử lại khi inventory-service hoạt động");
 
         // Lưu handover vào JSONB
         Map<String, Object> handoverData = new LinkedHashMap<>();
@@ -426,16 +448,6 @@ public class WarehouseTransactionService {
                 Map.of("warehouseId", warehouse.getId().toString(),
                        "warehouseName", warehouse.getName(),
                        "handoverTime", handoverData.get("handoverTime").toString())
-        );
-
-        // Thông báo system
-        notificationService.broadcastSystem(
-                "WAREHOUSE_HANDOVER_COMPLETED",
-                "Bàn giao kho hoàn tất",
-                Map.of("warehouseId", warehouse.getId().toString(),
-                       "warehouseName", warehouse.getName(),
-                       "companyName", warehouse.getOwnerCompany().getName(),
-                       "managerName", manager.getFullName())
         );
 
         log.info("Bàn giao kho {} cho nhân viên {} thành công (giao dịch {})",
@@ -651,7 +663,7 @@ public class WarehouseTransactionService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private WarehouseTransaction getTransaction(UUID id) {
-        return transactionRepository.findById(id)
+        return transactionRepository.lockById(id)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy đề nghị giao dịch"));
     }
 
@@ -667,11 +679,7 @@ public class WarehouseTransactionService {
 
     private void ensureCanDecide(WarehouseTransaction transaction, UserPrincipal current) {
         if (current.getRole() == UserRole.SYSTEM_ADMIN) return;
-        UUID ownerId = transaction.getWarehouse().getOwnerCompany() != null
-                ? transaction.getWarehouse().getOwnerCompany().getId() : null;
-        if (current.getRole() == UserRole.COMPANY_ADMIN && ownerId != null && ownerId.equals(current.getCompanyId()))
-            return;
-        throw ApiException.forbidden("Chỉ quản trị viên hệ thống hoặc chủ kho mới có thể duyệt");
+        throw ApiException.forbidden("Chỉ quản trị viên hệ thống được duyệt giao dịch kho");
     }
 
     private void ensureOpen(WarehouseTransaction transaction) {

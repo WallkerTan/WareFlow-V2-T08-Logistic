@@ -1,2 +1,0 @@
-import { DataPage } from '../../components/workspace/WorkspacePages';
-export default function StorehouseShipmentsPage() { return (<DataPage title="Giao hàng & vận đơn" columns={['Mã vận đơn', 'Người nhận', 'Đơn vị vận chuyển', 'Điểm đến', 'Ngày giao', 'Trạng thái']} rows={[["VD-2401", "Công ty Đông Á", "Giao hàng nhanh", "Thủ Đức", "04/11/2026", "Đang giao"], ["VD-2400", "Cửa hàng An Phú", "Viettel Post", "Long An", "03/11/2026", "Đã giao"]]} action={{ to: '/storehouse/shipments/new', label: 'Tạo vận đơn' }}/>); }

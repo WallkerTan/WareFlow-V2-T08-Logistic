@@ -18,20 +18,21 @@ public class BudgetController {
             @RequestParam(required=false) UUID companyId, @Valid @RequestBody BudgetRequest request) {
         var user = access.authenticate(auth, "COMPANY_ADMIN", "SYSTEM_ADMIN");
         UUID scope = access.company(user, companyId); access.warehouse(user, request.warehouseId(), scope);
-        return finance.createBudget(scope, request);
+        return finance.createBudget(scope, request, user);
     }
     @PutMapping("/{id}")
     public BudgetResponse update(@RequestHeader(value="Authorization", required=false) String auth,
             @PathVariable UUID id, @RequestParam(required=false) UUID companyId, @Valid @RequestBody BudgetRequest request) {
         var user = access.authenticate(auth, "COMPANY_ADMIN", "SYSTEM_ADMIN");
         UUID scope = access.company(user, companyId); access.warehouse(user, request.warehouseId(), scope);
-        return finance.updateBudget(scope, id, request);
+        return finance.updateBudget(scope, id, request, user);
     }
     @GetMapping
     public List<BudgetResponse> list(@RequestHeader(value="Authorization", required=false) String auth,
-            @RequestParam(required=false) UUID companyId, @RequestParam(required=false) String period) {
+            @RequestParam(required=false) UUID companyId, @RequestParam(required=false) UUID warehouseId, @RequestParam(required=false) String period) {
         var user = access.authenticate(auth, "COMPANY_ADMIN", "WAREHOUSE_MANAGER", "SYSTEM_ADMIN");
         UUID scope = access.company(user, companyId);
-        return finance.budgets(scope, period);
+        access.warehouse(user, warehouseId, scope);
+        return finance.budgets(scope, period).stream().filter(b -> warehouseId == null || warehouseId.equals(b.warehouseId())).toList();
     }
 }

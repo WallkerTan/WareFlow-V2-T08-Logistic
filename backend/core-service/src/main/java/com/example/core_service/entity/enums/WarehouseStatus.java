@@ -4,5 +4,6 @@ public enum WarehouseStatus {
     AVAILABLE,
     PENDING,
     ACTIVE,
-    RETURNED
+    RETURNED,
+    ARCHIVED
 }

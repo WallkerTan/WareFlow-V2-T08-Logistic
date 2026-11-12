@@ -46,7 +46,7 @@ public class StockOutboundController {
         return outbound.get(warehouseId, id);
     }
 
-    @PostMapping("/{id}/{action:submit|approve|reject|cancel|complete}")
+    @PostMapping("/{id}/{action:submit|approve|reject|cancel|complete|pick|pack}")
     public StockDocumentResponse transition(@RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable UUID warehouseId, @PathVariable UUID id, @PathVariable String action,
             @RequestBody(required = false) ApprovalDecisionRequest request) {

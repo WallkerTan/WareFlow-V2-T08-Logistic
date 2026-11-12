@@ -34,8 +34,12 @@ class FinanceReportHttpTests {
     FinanceService finance;
     MockRestServiceServer core;
     MockMvc mvc;
+    boolean accountActive=true;
     @BeforeEach void setup() {
         var builder=RestClient.builder().baseUrl("http://core");
+        builder.requestInterceptor((request,body,execution) -> request.getURI().getPath().equals("/auth/me")
+                ? new org.springframework.mock.http.client.MockClientHttpResponse(new byte[0], accountActive ? org.springframework.http.HttpStatus.OK : org.springframework.http.HttpStatus.FORBIDDEN)
+                : execution.execute(request,body));
         core=MockRestServiceServer.bindTo(builder).build();
         access=new FinanceAccessService(SECRET,"wareflow-auth","http://core");
         ReflectionTestUtils.setField(access,"core",builder.build());
@@ -77,6 +81,12 @@ class FinanceReportHttpTests {
             .andExpect(status().isOk()).andExpect(jsonPath("$.timezone").value("Asia/Ho_Chi_Minh"))
             .andExpect(jsonPath("$.points[0].date").value("2026-11-01"))
             .andExpect(jsonPath("$.points[0].net").value(9));
+    }
+    @Test void lockedAccountCannotReadCompanyWideReportsWithExistingToken() throws Exception {
+        accountActive=false;
+        mvc.perform(get("/reports/finance/timeseries").param("period","2026")
+            .header("Authorization",token("COMPANY_ADMIN",false))).andExpect(status().isForbidden());
+        verifyNoInteractions(reports,finance);
     }
     @Test void reportServicesRejectManagerWithoutWarehouse() {
         var manager=access.authenticate(token("WAREHOUSE_MANAGER",false),"WAREHOUSE_MANAGER");

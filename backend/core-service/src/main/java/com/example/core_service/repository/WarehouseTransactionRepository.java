@@ -10,4 +10,7 @@ import java.util.UUID;
 @Repository
 public interface WarehouseTransactionRepository extends JpaRepository<WarehouseTransaction, UUID>,
         JpaSpecificationExecutor<WarehouseTransaction> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @org.springframework.data.jpa.repository.Query("select t from WarehouseTransaction t where t.id = :id")
+    java.util.Optional<WarehouseTransaction> lockById(UUID id);
 }

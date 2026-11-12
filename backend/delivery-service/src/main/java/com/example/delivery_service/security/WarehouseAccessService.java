@@ -36,7 +36,12 @@ public class WarehouseAccessService {
         } catch (Exception ex) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token không hợp lệ hoặc hết hạn");
         }
-        if (!write && "SYSTEM_ADMIN".equals(role)) return userId;
+        if (!write && "SYSTEM_ADMIN".equals(role)) {
+            try { core.get().uri("/auth/me").header(HttpHeaders.AUTHORIZATION,token).retrieve().toBodilessEntity(); }
+            catch(RestClientResponseException ex){int code=ex.getStatusCode().value();throw new ResponseStatusException(code==401?HttpStatus.UNAUTHORIZED:code==403?HttpStatus.FORBIDDEN:HttpStatus.SERVICE_UNAVAILABLE,"Không xác minh được tài khoản");}
+            catch(RestClientException ex){throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Không kết nối được core-service");}
+            return userId;
+        }
         if (!"WAREHOUSE_MANAGER".equals(role) && !"COMPANY_ADMIN".equals(role))
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền thao tác vận đơn");
         try {

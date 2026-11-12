@@ -6,31 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "deploy": "tsc -b && vite build && python C:/Users/admin/.gemini/antigravity/brain/91afd281-9b51-4f8f-9ec8-61072afad0e7/scratch/sync_frontend_to_vps.py",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:ui": "node tests/profiles.e2e.mjs"
+    "test:ui": "node tests/api-workflows.e2e.mjs"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.9.2",
-    "@reduxjs/toolkit": "^2.13.0",
     "@tailwindcss/vite": "^4.3.3",
     "antd": "^6.6.8",
-    "axios": "^1.21.0",
-    "clsx": "^2.1.1",
-    "dayjs": "^1.11.23",
-    "jwt-decode": "^4.0.0",
     "lucide-react": "^1.63.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0",
-    "react-hot-toast": "^2.6.1",
-    "react-redux": "^9.3.1",
     "react-router-dom": "^7.18.5",
     "recharts": "^3.10.1",
-    "tailwind-merge": "^3.7.0",
-    "tailwindcss": "^4.3.3",
-    "zod": "^4.6.7"
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

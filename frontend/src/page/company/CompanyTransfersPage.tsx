@@ -1,2 +1,0 @@
-import { DataPage } from '../../components/workspace/WorkspacePages';
-export default function CompanyTransfersPage() { return (<DataPage title="Điều chuyển hàng hóa" columns={['Mã phiếu', 'Kho xuất', 'Kho nhận', 'Sản phẩm', 'Số lượng', 'Trạng thái']} rows={[["DC-001", "Bình Dương", "Thủ Đức", "Gạo ST25", "120", "Đang vận chuyển"], ["DC-002", "Thủ Đức", "Long An", "Bình giữ nhiệt", "50", "Chờ duyệt"]]} action={{ to: '/company/transfers/new', label: 'Tạo điều chuyển' }}/>); }

@@ -79,8 +79,15 @@ public class StockOutboundService {
             case "complete" -> {
                 if (status == StockDocumentStatus.DONE) return StockDocumentResponse.from(doc);
                 requireStatus(status, StockDocumentStatus.APPROVED);
+                if (doc.getType() == StockDocumentType.EXPORT_SALE && !doc.getApproval().containsKey("packAt"))
+                    conflict("Đơn bán hàng phải lấy hàng và đóng gói trước khi hoàn tất");
                 changeStock(doc, user, true, false);
                 doc.setStatus(StockDocumentStatus.DONE);
+            }
+            case "pick", "pack" -> {
+                requireStatus(status, StockDocumentStatus.APPROVED);
+                if (action.equals("pack") && !doc.getApproval().containsKey("pickAt")) conflict("Phải lấy hàng trước khi đóng gói");
+                if (doc.getApproval().containsKey(action + "At")) return StockDocumentResponse.from(doc);
             }
             case "reject", "cancel" -> {
                 if (status == StockDocumentStatus.DONE || status == StockDocumentStatus.CANCELLED) conflict("Export is already closed");

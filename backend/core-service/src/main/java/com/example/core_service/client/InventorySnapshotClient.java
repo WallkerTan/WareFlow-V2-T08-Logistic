@@ -23,6 +23,8 @@ import java.util.UUID;
 public class InventorySnapshotClient {
 
     private final DiscoveryClient discoveryClient;
+    @org.springframework.beans.factory.annotation.Value("${INVENTORY_SERVICE_URL:http://localhost:8082}")
+    private String inventoryUrl;
 
     /**
      * Lấy danh sách sản phẩm/tồn kho hiện tại của kho từ inventory-service.
@@ -34,18 +36,21 @@ public class InventorySnapshotClient {
     public Map<String, Object> getStockSnapshot(UUID warehouseId) {
         try {
             List<ServiceInstance> instances = discoveryClient.getInstances("inventory-service");
-            if (instances == null || instances.isEmpty()) {
-                log.warn("Không tìm thấy instance nào của inventory-service, bỏ qua snapshot tồn kho");
-                return buildEmptySnapshot("inventory-service không khả dụng");
-            }
-
-            // Chọn instance đầu tiên (load balancing đơn giản)
-            ServiceInstance instance = instances.get(0);
-            String baseUrl = instance.getUri().toString();
-            String url = baseUrl + "/api/inventory/warehouses/" + warehouseId + "/snapshot";
+            String baseUrl = instances == null || instances.isEmpty() ? inventoryUrl : instances.getFirst().getUri().toString();
+            String url = baseUrl + "/warehouses/" + warehouseId + "/snapshot";
 
             RestTemplate restTemplate = new RestTemplate();
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(5000); factory.setReadTimeout(10000);
+            restTemplate.setRequestFactory(factory);
+            var headers = new org.springframework.http.HttpHeaders();
+            var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+            if (attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servlet) {
+                String authorization=servlet.getRequest().getHeader("Authorization");
+                if(authorization!=null) headers.set("Authorization", authorization);
+            }
+            Map<String,Object> response=restTemplate.exchange(url,org.springframework.http.HttpMethod.GET,
+                    new org.springframework.http.HttpEntity<>(headers),Map.class).getBody();
 
             if (response != null) {
                 log.info("Lấy snapshot tồn kho thành công từ inventory-service cho warehouseId={}", warehouseId);
@@ -71,4 +76,3 @@ public class InventorySnapshotClient {
         return snapshot;
     }
 }
-

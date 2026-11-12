@@ -21,6 +21,8 @@ public class TransactionController {
             @RequestParam(required=false) UUID companyId, @Valid @RequestBody TransactionRequest request) {
         var user = access.authenticate(auth, "COMPANY_ADMIN", "WAREHOUSE_MANAGER", "SYSTEM_ADMIN");
         UUID scope = access.company(user, companyId);
+        if ("WAREHOUSE_MANAGER".equals(user.role()) && request.type() == TransactionType.EXPENSE)
+            throw new org.springframework.web.server.ResponseStatusException(HttpStatus.FORBIDDEN,"Tạo đề nghị chi qua /expense-requests để công ty phê duyệt");
         if ("WAREHOUSE_MANAGER".equals(user.role()) && request.warehouseId() == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "warehouseId is required");
         return finance.createTransaction(scope, request, user);
     }
