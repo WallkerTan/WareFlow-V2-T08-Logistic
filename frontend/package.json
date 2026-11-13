@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "deploy": "tsc -b && vite build && python deploy.py",
     "lint": "eslint .",
     "preview": "vite preview",
     "test:ui": "node tests/api-workflows.e2e.mjs",
