@@ -27,13 +27,14 @@ export async function request<T>(service: Service, path: string, options: Reques
         if (!response.ok) {
             if (response.status === 401 && token) clearAuthSession();
             const data = await response.json().catch(() => null) as { message?: string; detail?: string } | null;
-            throw new ApiError(response.status, data?.message || data?.detail || ({ 401: 'Phiên đăng nhập đã hết hạn.', 403: 'Bạn không có quyền thực hiện thao tác này.', 404: 'Không tìm thấy dữ liệu.', 409: 'Dữ liệu đã thay đổi hoặc đang được sử dụng.', 503: 'Dịch vụ đang không sẵn sàng.' }[response.status] || `Yêu cầu thất bại (${response.status}).`));
+            throw new ApiError(response.status, data?.message || data?.detail || ({ 401: 'Phiên đăng nhập đã hết hạn.', 403: 'Bạn không có quyền thực hiện thao tác này.', 404: 'Không tìm thấy dữ liệu.', 409: 'Dữ liệu đã thay đổi hoặc đang được sử dụng.', 413: 'Ảnh vượt quá dung lượng cho phép.', 500: 'Máy chủ đang gặp lỗi. Vui lòng thử lại.', 502: 'Chưa kết nối được dịch vụ. Vui lòng thử lại.', 503: 'Dịch vụ đang không sẵn sàng.', 504: 'Dịch vụ phản hồi quá lâu. Vui lòng thử lại.' }[response.status] || `Yêu cầu thất bại (${response.status}).`));
         }
         if (response.status === 204 || response.headers.get('content-length') === '0') return undefined as T;
         const text = await response.text();
         if (!text) return undefined as T;
         if (!response.headers.get('content-type')?.includes('json')) throw new Error('API trả về nội dung không hợp lệ. Kiểm tra địa chỉ gateway.');
-        return JSON.parse(text) as T;
+        try { return JSON.parse(text) as T; }
+        catch (cause) { throw new Error('Máy chủ trả về dữ liệu không hợp lệ. Vui lòng thử lại.', { cause }); }
     } catch (error) {
         if (controller.signal.aborted) throw new Error('Máy chủ phản hồi quá lâu. Vui lòng thử lại.', { cause: error });
         if (error instanceof TypeError) throw new Error('Không kết nối được máy chủ. Vui lòng kiểm tra kết nối và thử lại.', { cause: error });
@@ -43,13 +44,24 @@ export async function request<T>(service: Service, path: string, options: Reques
 export function mutate<T = unknown>(service: Service, path: string, method: string, body?: unknown) {
     return request<T>(service, path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
 }
+/** Supports both PageImpl and Spring Data's stable PagedModel response, never invents rows. */
+export function normalizeCollection<T>(value: unknown): Page<T> | T[] {
+    const validRows = (items: unknown): items is T[] => Array.isArray(items) && items.every(row => row !== null && typeof row === 'object' && !Array.isArray(row));
+    if (validRows(value)) return value;
+    const source = object(value); const meta = source.page ? object(source.page) : source;
+    if (!validRows(source.content) || !['totalPages', 'totalElements', 'number', 'size'].every(key => Number.isSafeInteger(meta[key]) && Number(meta[key]) >= (key === 'size' ? 1 : 0)))
+        throw new Error('Máy chủ trả về danh sách không hợp lệ. Vui lòng tải lại.');
+    return { content: source.content, totalPages: Number(meta.totalPages), totalElements: Number(meta.totalElements), number: Number(meta.number), size: Number(meta.size) };
+}
 export async function allPages<T>(service: Service, path: string, signal?: AbortSignal): Promise<T[]> {
     const separator = path.includes('?') ? '&' : '?';
-    const first = await request<Page<T> | T[]>(service, `${path}${separator}page=0&size=100`, { signal });
+    const first = normalizeCollection<T>(await request<unknown>(service, `${path}${separator}page=0&size=100`, { signal }));
     if (Array.isArray(first)) return first;
     const result = [...first.content];
     for (let page = 1; page < first.totalPages; page++) {
-        const next = await request<Page<T>>(service, `${path}${separator}page=${page}&size=100`, { signal }); result.push(...next.content);
+        const next = normalizeCollection<T>(await request<unknown>(service, `${path}${separator}page=${page}&size=100`, { signal }));
+        if (Array.isArray(next) || next.number !== page) throw new Error('Không tải được đầy đủ danh sách. Vui lòng thử lại.');
+        result.push(...next.content);
     }
     return result;
 }

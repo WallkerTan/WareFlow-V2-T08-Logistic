@@ -515,3 +515,5 @@
 .preview-delivery { gap:12px; }
 .auth-benefits { flex-wrap:wrap; }
 .auth-page .auth-footer { width:100%; padding:0; flex-wrap:wrap; }
+
+.auth-function-list{display:grid;gap:22px;padding:22px 8px}.auth-function-list>div{display:flex;gap:14px;align-items:flex-start}.auth-function-list svg{color:#7cb5ff;flex-shrink:0;margin-top:3px}.auth-function-list strong{font-size:14px;color:#e8f0fc}.auth-function-list p{font-size:12px!important;margin:5px 0 0!important;line-height:1.7!important;color:#a5b8d0!important}

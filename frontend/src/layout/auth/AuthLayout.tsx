@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { ArrowLeft, ArrowUpRight, Boxes, Check, Package, Truck, Warehouse } from 'lucide-react';
+import { ArrowLeft, Boxes, Check, Package, Truck, Warehouse } from 'lucide-react';
 import './auth.css';
 
 export default function AuthLayout() {
@@ -16,12 +16,7 @@ export default function AuthLayout() {
                 <span className="auth-eyebrow"><span /> QUẢN LÝ KHO THẾ HỆ MỚI</span>
                 <h1>Vận hành kho<br /><em>thông minh</em> hơn.</h1>
                 <p>Kết nối hàng tồn, đơn hàng và logistics trong một nền tảng. Để mỗi quyết định đều đi trước một bước.</p>
-                <div className="warehouse-preview" aria-label="Minh họa tổng quan quản lý kho">
-                    <div className="preview-heading"><span><img src="/logo.png" alt="WF" className="mini-logo-img" /> Tổng quan kho hàng</span><span className="live-badge"><i /> Trực quan</span></div>
-                    <div className="preview-stats"><div><span>Tổng sản phẩm</span><strong>— <Boxes size={19} /></strong><small>Được quản lý tập trung</small></div><div><span>Đơn đang xử lý</span><strong>— <Package size={19} /></strong><small>Theo dõi từng bước</small></div></div>
-                    <div className="preview-chart"><div className="chart-title"><span>Luồng hàng trong tuần</span><ArrowUpRight size={16} /></div><div className="preview-chart-empty"><Boxes size={24} /><span>Chưa có dữ liệu hoạt động kho.</span></div></div>
-                    <div className="preview-delivery"><span className="delivery-icon"><Truck size={19} /></span><div><strong>Sẵn sàng cho mọi đơn hàng</strong><span>Từ nhập kho đến giao hàng</span></div><span className="delivery-check"><Check size={15} /></span></div>
-                </div>
+                <section className="warehouse-preview" aria-label="Chức năng WareFlow"><div className="preview-heading"><span><img src="/logo.png" alt="WF" className="mini-logo-img"/>Quản lý kho và giao nhận</span></div><div className="auth-function-list">{[{icon:Boxes,title:'Hàng hóa và tồn kho',description:'Theo dõi sản phẩm, lô và hạn sử dụng.'},{icon:Package,title:'Nhập, xuất và phê duyệt',description:'Xử lý phiếu theo quyền được cấp.'},{icon:Truck,title:'Giao hàng và thu hộ',description:'Theo dõi vận đơn và ghi nhận COD.'}].map(item=><div key={item.title}><item.icon size={21}/><div><strong>{item.title}</strong><p>{item.description}</p></div></div>)}</div></section>
                 <div className="auth-benefits"><span><Check size={15} /> Quản lý tập trung</span><span><Check size={15} /> Vận hành liền mạch</span></div>
             </div>
             <p className="aside-footer"><Warehouse size={16} /> Một nền tảng. Toàn bộ chuỗi vận hành.</p>

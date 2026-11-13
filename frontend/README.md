@@ -42,3 +42,14 @@ Danh mục chức năng đối chiếu yêu cầu và toàn bộ API: [CHUC-NANG
 Nhận hàng hoàn: vận đơn RETURNED → Nhập hàng hoàn → chọn tình trạng. Kho ghi phiếu nhập và SALES_RETURN, giữ nguồn lô, chống nhận trùng; không tự điều chỉnh tài chính.
 
 Giao diện và cách thực hiện các luồng: [FEATURES.md](FEATURES.md). Test browser đã bổ sung gallery, lịch sử nhận PO, truy vết lô, kỳ quý, ngân sách/đề nghị chi, thông báo, nhật ký, xác nhận và form mobile. Trang giới thiệu được tải riêng để giảm bundle workspace.
+
+## Kiểm tra kết nối API và dọn dữ liệu mẫu
+
+Ứng dụng dùng API thật cho dữ liệu nghiệp vụ; dữ liệu fixture chỉ nằm trong thư mục tests và không được import vào src. Đã bỏ các component mẫu không được sử dụng, Redux rỗng và 10 thư viện dư. Không xóa dữ liệu trong cơ sở dữ liệu.
+
+Dev và preview đều chuyển /api tới API_PROXY_TARGET. Có thể chạy npm run build rồi npm run preview để kiểm tra bản build với gateway. Khi triển khai production, cấu hình reverse proxy /api hoặc VITE_API_BASE_URL lúc build như hướng dẫn trên.
+
+- npm run test:api: kiểm tra JWT, multipart, lỗi, phân trang Spring PageImpl/PagedModel và danh sách mảng.
+- npm run test:live: gọi gateway thật qua http://127.0.0.1:5173/api, không giả lập API hay tạo dữ liệu. Đổi LIVE_API_BASE_URL nếu dùng cổng khác. Nếu cần kiểm tra danh sách được bảo vệ, cung cấp LIVE_API_TOKEN hoặc LIVE_API_EMAIL và LIVE_API_PASSWORD trong biến môi trường của phiên chạy; không ghi mật khẩu/token vào repository.
+
+Khi BE trả lỗi, HTML hoặc danh sách sai cấu trúc, FE hiển thị lỗi; không thay bằng dữ liệu demo hay thông báo danh sách rỗng. Các danh mục phân biệt service và đường dẫn để tránh giữ nhầm dữ liệu khi đổi màn hình.

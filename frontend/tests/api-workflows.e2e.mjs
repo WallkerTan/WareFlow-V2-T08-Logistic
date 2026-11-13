@@ -16,7 +16,7 @@ const wh = { id: 'w1', name: 'API warehouse', ownerCompanyId: 'c1', warehouseTyp
 const employees = [], products = [], purchaseOrders = [], shipments = [], transfers = [], budgets = [], expenses = [];
 const notifications=[{id:1,title:'Thông báo kiểm thử',isRead:false,payload:{message:'Kiểm tra chi tiết thông báo'},createdAt:'2026-11-13T00:00:00Z'}];
 const sale = { id: 'sale1', warehouseId: 'w1', type: 'EXPORT_SALE', status: 'DONE', approval: { pickAt: '2026-11-01', packAt: '2026-11-01' }, lines: [], createdAt: '2026-11-01T10:00:00Z' };
-let socket, role = 'COMPANY_ADMIN', failProducts = false;
+let socket, role = 'COMPANY_ADMIN', failProducts = false, badProducts = false;
 const session = () => ({ accessToken: 'test-token', tokenType: 'Bearer', expiresAt: new Date(Date.now() + 3600000).toISOString(), userId: 'u1', email: 'owner@example.com', fullName: 'API user', role, companyId: 'c1', companyName: 'API company' });
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aF1cAAAAASUVORK5CYII=';
 const uploadedUrl = `data:image/png;base64,${png}`;
@@ -38,7 +38,7 @@ try {
         else if (route === 'core/auth/register-company') data = { ...session(), accessToken: null, status: 'PENDING' };
         else {
             assert.equal((req.headers.Authorization || req.headers.authorization), 'Bearer test-token', route + ' bearer');
-            if (route === 'core/warehouses/my-company' || route === 'core/warehouses') data = page([wh, {...wh,id:'w2',name:'Other manager warehouse',handover:{managerId:'u2'}}]);
+            if (route === 'core/warehouses/my-company' || route === 'core/warehouses') data = {content:[wh, {...wh,id:'w2',name:'Other manager warehouse',handover:{managerId:'u2'}}],page:{number:0,size:100,totalElements:2,totalPages:1}};
             else if (route === 'core/users/me') data = { ...session(), avatar: null, profile: {} };
             else if (route === 'core/companies/my-company') data = { id: 'c1', name: 'API company', businessModel: 'FOOD', profile: {} };
             else if (route === 'core/companies') data = page([{ id: 'c1', name: 'API company', status: 'ACTIVE', businessModel: 'FOOD' }]);
@@ -48,7 +48,7 @@ try {
             else if (route === 'core/employees/e1') { Object.assign(employees[0], body); data = employees[0]; }
             else if (route === 'core/upload/image') { assert.match(req.headers['Content-Type'] || req.headers['content-type'], /^multipart\/form-data; boundary=/); data = { secureUrl: uploadedUrl, publicId: 'test/product' }; }
             else if (route === 'inventory/warehouses/w1/products') {
-                if (failProducts) { status = 503; data = { message: 'Inventory unavailable test' }; }
+                if (badProducts) { data = {}; } else if (failProducts) { status = 503; data = { message: 'Inventory unavailable test' }; }
                 else if (req.method === 'POST') { data = { ...body, id: 'p1', quantity: 0, available: 0 }; products.push(data); }
                 else data = page(products);
             }
@@ -128,6 +128,7 @@ try {
     shipments.splice(0,shipments.length,{id:'returned1',documentId:'sale-returned',warehouseId:'w1',carrier:'API carrier',trackingCode:'RETURN-API',status:'RETURNED',codAmount:0,codStatus:'NOT_REQUIRED',history:[]});
     await navigate('/storehouse/shipments'); await until('document.body.innerText.includes("RETURN-API")'); await click('Nhập hàng hoàn'); await until('!!document.querySelector(".adm-modal")'); await click('Lưu','document.querySelector(".adm-modal")'); await until('document.body.innerText.includes("Phiếu nhập hàng hoàn")'); await evaluate('document.querySelector(".adm-modal-close").click()'); await until('!document.querySelector(".adm-modal")'); assert.ok(calls.some(c=>c.route==='inventory/warehouses/w1/sales-returns'&&c.method==='POST'));console.log('PASS returned shipment restock defaults to quarantined goods');
     failProducts = true; await navigate('/storehouse/inventory'); await until('document.body.innerText.includes("Inventory unavailable test")'); assert.equal(await evaluate('document.body.innerText.includes("Uploaded product")'), false); failProducts = false; console.log('PASS server errors never fall back to demo data');
+    badProducts = true; await navigate('/storehouse/inventory'); await until('document.body.innerText.includes("Máy chủ trả về danh sách không hợp lệ")'); assert.equal(await evaluate('document.body.innerText.includes("Uploaded product")'), false); badProducts = false; console.log('PASS malformed lists show API errors');
     const managerRoutes = ['dashboard','transfers','inventory','lots','alerts','inbound','receipts','outbound','stocktakes','adjustments','shipments','history','finance','budget','suppliers','products','customers','profile','notifications'];
     const companyRoutes = ['dashboard','warehouses','marketplace','warehouse-transactions','inventory','lots','alerts','suppliers','products','customers','employees','finance','transfers','inbound','receipts','outbound','stocktakes','adjustments','history','shipments','approvals','profile','notifications','logs'];
     const adminRoutes = ['dashboard','companies','warehouses','suppliers','products','warehouse-transactions','finance','inventory','lots','alerts','inbound','receipts','outbound','stocktakes','adjustments','history','shipments','logs','notifications','profile'];

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { mutate, query, rows, text } from '../../services/api';
+import { mutate, query, rows, text, normalizeCollection } from '../../services/api';
 import type { Row, Page, Service } from '../../services/api';
 import { useApi } from '../../hook/useApi';
 import Editor from './Editor';
@@ -18,7 +18,7 @@ export default function Resource({ title, service = 'core', path, columns, field
     const [editing, setEditing] = useState<Row | null | undefined>(() => canCreate && location.pathname.endsWith('/new') ? null : undefined);
     const [view,setView]=useState<Row|null>(null); const [removing,setRemoving]=useState<Row|null>(null); const [notice,setNotice]=useState('');
     const separator = path.includes('?') ? '&' : '?';
-    const resource = useApi<Page<Row> | Row[]>(service, `${path}${separator}${query({ page, size: 20, search: searchMode==='server'?search:undefined }).slice(1)}`);
+    const resource = useApi<Page<Row> | Row[]>(service, `${path}${separator}${query({ page, size: 20, search: searchMode==='server'?search:undefined }).slice(1)}`, normalizeCollection<Row>);
     const pageData = Array.isArray(resource.data) ? resource.data : resource.data?.content || [];
     const data = (Array.isArray(resource.data)||searchMode==='page') && search ? pageData.filter(r=>text(r).toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi'))) : pageData;
     return <><Heading title={title} description={description}><Refresh onClick={resource.reload} disabled={resource.loading} />{canCreate && fields && <Add onClick={() => setEditing(null)} />}</Heading>
