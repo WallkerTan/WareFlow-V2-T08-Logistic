@@ -1,0 +1,9 @@
+
+# Local runtime / IDE output
+.idea/
+**/logs/
+
+# Keep environment credentials local
+.env
+.env.*
+!.env.example

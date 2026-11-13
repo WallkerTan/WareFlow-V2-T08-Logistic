@@ -57,4 +57,8 @@ public class WarehouseTransaction {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
+    @Column(precision=15,scale=2)
+    private BigDecimal platformFee;
+    private Instant completedAt;
+    @Version @Column(nullable=false,columnDefinition="bigint default 0") private Long version;
 }

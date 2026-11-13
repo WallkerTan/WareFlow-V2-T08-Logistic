@@ -2,7 +2,10 @@ package com.example.core_service.controller;
 
 import com.example.core_service.dto.request.LoginRequest;
 import com.example.core_service.dto.request.RegisterCompanyRequest;
+import com.example.core_service.dto.request.RegisterWarehouseManagerRequest;
 import com.example.core_service.dto.response.AuthResponse;
+import com.example.core_service.log.AuditLog;
+import com.example.core_service.security.UserPrincipal;
 import com.example.core_service.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,27 +27,43 @@ public class AuthController {
 
     /**
      * Đăng ký công ty mới kèm tài khoản quản trị (COMPANY_ADMIN).
-     * Trả về luôn access token để đăng nhập ngay.
+     * Công ty chờ duyệt; chưa cấp access token.
      */
     @PostMapping("/register-company")
     @ResponseStatus(HttpStatus.CREATED)
+    @AuditLog(action = "REGISTER_COMPANY", targetType = "Company", description = "Đăng ký công ty mới kèm tài khoản COMPANY_ADMIN")
     public AuthResponse registerCompany(@Valid @RequestBody RegisterCompanyRequest request) {
         return authService.registerCompany(request);
+    }
+
+    /**
+     * Đăng ký tài khoản WAREHOUSE_MANAGER kèm hồ sơ công ty hoặc cá nhân.
+     * Trả về luôn access token để đăng nhập ngay.
+     */
+    @PostMapping("/register-warehouse-manager")
+    @ResponseStatus(HttpStatus.CREATED)
+    @AuditLog(action = "REGISTER_WAREHOUSE_MANAGER", targetType = "User", description = "Đăng ký tài khoản quản lý kho")
+    public AuthResponse registerWarehouseManager(@Valid @RequestBody RegisterWarehouseManagerRequest request) {
+        return authService.registerWarehouseManager(request);
     }
 
     /**
      * Đăng nhập bằng email + mật khẩu, trả về JWT access token.
      */
     @PostMapping("/login")
+    @AuditLog(action = "LOGIN", targetType = "User", description = "Đăng nhập hệ thống")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
 
     /**
-     * Thông tin người dùng hiện tại (yêu cầu header Authorization: Bearer &lt;token&gt;).
+     * Thông tin người dùng hiện tại (yêu cầu header Authorization: Bearer <token>).
      */
     @GetMapping("/me")
     public AuthResponse me(Authentication authentication) {
-        return authService.getCurrentUser((String) authentication.getPrincipal());
+        String userId = authentication.getPrincipal() instanceof UserPrincipal p
+                ? p.getId().toString()
+                : String.valueOf(authentication.getPrincipal());
+        return authService.getCurrentUser(userId);
     }
 }

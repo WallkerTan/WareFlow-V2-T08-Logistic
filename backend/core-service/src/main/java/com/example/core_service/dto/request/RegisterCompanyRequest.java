@@ -22,8 +22,13 @@ public class RegisterCompanyRequest {
     @Size(max = 255, message = "Tên công ty tối đa 255 ký tự")
     private String companyName;
 
-    @NotNull(message = "Mô hình kinh doanh không được để trống")
+    @Size(max=20)
+    @jakarta.validation.constraints.Pattern(regexp="^$|[0-9]{10}(-?[0-9]{3})?", message="Mã số thuế phải gồm 10 hoặc 13 chữ số")
+    private String taxCode;
+
     private CompanyBusinessModel businessModel;
+    @Size(max=2000)
+    private String businessDescription;
 
     @NotBlank(message = "Email không được để trống")
     @Email(message = "Email không hợp lệ")

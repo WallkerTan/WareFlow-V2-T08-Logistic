@@ -1,0 +1,462 @@
+/* ==========================================================================
+   WareFlow Role Color & Layout Theming
+   Applies coordinated color schemes to Admin, Company, and Storehouse layouts.
+   ========================================================================== */
+
+/* ---------- Role Variable Tokens ---------- */
+.admin-shell.wf-role-admin,
+.wf-role-admin {
+    --workspace-accent: #2967e8;
+    --workspace-dark: #1d4ed8;
+    --workspace-tint: #edf3ff;
+    --workspace-border: #d4e2fc;
+    --workspace-glow: rgba(41, 103, 232, 0.22);
+    --adm-blue: #2967e8;
+    --adm-blue-dark: #1d4ed8;
+    --adm-blue-soft: #edf3ff;
+}
+
+.admin-shell.wf-role-company,
+.wf-role-company {
+    --workspace-accent: #17846b;
+    --workspace-dark: #116350;
+    --workspace-tint: #eaf6f1;
+    --workspace-border: #c6e6db;
+    --workspace-glow: rgba(23, 132, 107, 0.25);
+    --adm-blue: #17846b;
+    --adm-blue-dark: #116350;
+    --adm-blue-soft: #eaf6f1;
+}
+
+.admin-shell.wf-role-storehouse,
+.wf-role-storehouse {
+    --workspace-accent: #7955c1;
+    --workspace-dark: #5e3da3;
+    --workspace-tint: #f3edfc;
+    --workspace-border: #dfd0f6;
+    --workspace-glow: rgba(121, 85, 193, 0.25);
+    --adm-blue: #7955c1;
+    --adm-blue-dark: #5e3da3;
+    --adm-blue-soft: #f3edfc;
+}
+
+/* ---------- Structural Layout ---------- */
+.wf-shell .wf-content {
+    margin: 0 auto;
+    flex: 1;
+}
+
+.wf-shell .wf-brand {
+    white-space: nowrap;
+}
+
+/* ---------- Admin Role Navigation ---------- */
+.wf-role-admin .wf-sidebar {
+    background: #101f36;
+    border: 0;
+}
+.wf-role-admin .wf-brand {
+    color: #fff;
+}
+.wf-role-admin .wf-brand > span:last-child {
+    color: #70a5ff;
+}
+.wf-role-admin .wf-workspace {
+    background: #1b2c43;
+    border-color: #2b3a50;
+    color: #8eadd1;
+}
+.wf-role-admin .wf-workspace strong,
+.wf-role-admin .wf-sidebar-bottom strong {
+    color: #dfe8f6;
+}
+.wf-role-admin .wf-sidebar nav a {
+    color: #9cabc0;
+}
+.wf-role-admin .wf-sidebar nav a:hover {
+    background: #20334e;
+}
+.wf-role-admin .wf-sidebar nav a.active {
+    background: #2b67e9;
+    color: white;
+}
+.wf-role-admin .wf-sidebar-bottom {
+    border-color: #2b3a50;
+}
+
+/* ---------- Company & Storehouse Navigation ---------- */
+.wf-role-company .wf-brand > span:last-child,
+.wf-role-storehouse .wf-brand > span:last-child {
+    color: var(--workspace-accent);
+}
+
+.wf-role-company .wf-brand-mark,
+.wf-role-storehouse .wf-brand-mark {
+    background: var(--workspace-accent);
+}
+
+.wf-role-company .wf-sidebar nav a.active,
+.wf-role-storehouse .wf-sidebar nav a.active {
+    background: var(--workspace-tint);
+    color: var(--workspace-accent);
+    font-weight: 600;
+}
+
+.wf-role-company .wf-workspace,
+.wf-role-storehouse .wf-workspace {
+    background: var(--workspace-tint);
+    border-color: var(--workspace-border);
+    color: var(--workspace-accent);
+}
+
+.wf-role-company .wf-mini-mark,
+.wf-role-storehouse .wf-mini-mark {
+    background: var(--workspace-tint) !important;
+    color: var(--workspace-accent) !important;
+}
+
+/* ---------- Topbar & Actions ---------- */
+.wf-shell .wf-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 9;
+    gap: 12px;
+}
+
+.wf-breadcrumb,
+.wf-topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: #8b99ac;
+    min-width: 0;
+}
+
+.wf-breadcrumb > span {
+    color: #52647e;
+}
+
+.wf-topbar .wf-breadcrumb a {
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.wf-role-company .wf-breadcrumb a:hover,
+.wf-role-storehouse .wf-breadcrumb a:hover {
+    color: var(--workspace-accent) !important;
+}
+
+.wf-menu-button {
+    border: 0;
+    background: transparent;
+    color: #7b8da5;
+    padding: 5px;
+    display: none;
+    cursor: pointer;
+}
+
+.wf-role-badge {
+    background: var(--workspace-tint);
+    color: var(--workspace-accent);
+    border: 1px solid var(--workspace-border);
+    border-radius: 5px;
+    padding: 6px 9px;
+    font-size: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.wf-account > span {
+    display: grid;
+    place-items: center;
+    width: 31px;
+    height: 31px;
+    border-radius: 50%;
+    background: var(--workspace-tint);
+    color: var(--workspace-accent);
+    border: 1px solid var(--workspace-border);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.wf-topbar-actions .wf-signin {
+    font-size: 11px;
+}
+
+.wf-menu-button:focus-visible {
+    outline: 3px solid var(--workspace-border);
+    outline-offset: 2px;
+}
+
+/* ---------- Role Content Color Overrides ---------- */
+
+/* PRIMARY BUTTONS */
+.wf-role-company .adm-btn-primary,
+.wf-role-storehouse .adm-btn-primary,
+.wf-role-company .wf-button-primary,
+.wf-role-storehouse .wf-button-primary {
+    background: var(--workspace-accent) !important;
+    border-color: var(--workspace-accent) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px var(--workspace-glow) !important;
+}
+
+.wf-role-company .adm-btn-primary:hover,
+.wf-role-storehouse .adm-btn-primary:hover,
+.wf-role-company .wf-button-primary:hover,
+.wf-role-storehouse .wf-button-primary:hover {
+    background: var(--workspace-dark) !important;
+    border-color: var(--workspace-dark) !important;
+    color: #ffffff !important;
+}
+
+/* WELCOME BANNER */
+.wf-role-company .workspace-welcome,
+.wf-role-storehouse .workspace-welcome {
+    background: linear-gradient(115deg, var(--workspace-tint), #ffffff) !important;
+    border: 1px solid var(--workspace-border) !important;
+    color: var(--workspace-accent) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.03) !important;
+}
+.wf-role-company .workspace-welcome h2,
+.wf-role-storehouse .workspace-welcome h2 {
+    color: #172139 !important;
+}
+.wf-role-company .workspace-welcome p,
+.wf-role-storehouse .workspace-welcome p {
+    color: #5c6b84 !important;
+}
+
+/* STAT CARDS */
+.wf-role-company .adm-stat-icon,
+.wf-role-storehouse .adm-stat-icon {
+    background: var(--workspace-tint) !important;
+    color: var(--workspace-accent) !important;
+}
+.wf-role-company .adm-stat-icon.is-success,
+.wf-role-storehouse .adm-stat-icon.is-success {
+    background: #eaf8f0 !important;
+    color: #1f9d78 !important;
+}
+.wf-role-company .adm-stat-icon.is-warning,
+.wf-role-storehouse .adm-stat-icon.is-warning {
+    background: #fff7e8 !important;
+    color: #d99220 !important;
+}
+.wf-role-company .adm-stat-icon.is-purple,
+.wf-role-storehouse .adm-stat-icon.is-purple {
+    background: #f3edfc !important;
+    color: #7955c1 !important;
+}
+
+/* DATA TABLE LINKS & HIGHLIGHTS */
+.wf-role-company .workspace-table td:first-child,
+.wf-role-storehouse .workspace-table td:first-child {
+    color: var(--workspace-accent) !important;
+    font-weight: 600;
+}
+.wf-role-company .workspace-table tbody tr:hover,
+.wf-role-storehouse .workspace-table tbody tr:hover {
+    background: var(--workspace-tint) !important;
+}
+.wf-role-company .workspace-table input:focus-visible,
+.wf-role-storehouse .workspace-table input:focus-visible {
+    outline: 2px solid var(--workspace-accent) !important;
+}
+
+/* QUICK LINKS & SWITCHER */
+.wf-role-company .workspace-quick a,
+.wf-role-storehouse .workspace-quick a {
+    color: var(--workspace-accent) !important;
+    font-weight: 600;
+}
+.wf-role-company .workspace-quick a:hover,
+.wf-role-storehouse .workspace-quick a:hover {
+    color: var(--workspace-dark) !important;
+}
+.wf-role-company .workspace-switch a:hover,
+.wf-role-storehouse .workspace-switch a:hover {
+    color: var(--workspace-accent) !important;
+}
+
+/* BUDGETS PROGRESS BAR */
+.wf-role-company .workspace-budgets progress,
+.wf-role-storehouse .workspace-budgets progress {
+    accent-color: var(--workspace-accent) !important;
+}
+.wf-role-company .adm-progress i,
+.wf-role-storehouse .adm-progress i {
+    background: var(--workspace-accent) !important;
+}
+
+/* BADGES & TABS */
+.wf-role-company .adm-badge-info,
+.wf-role-storehouse .adm-badge-info {
+    background: var(--workspace-tint) !important;
+    color: var(--workspace-accent) !important;
+}
+.wf-role-company .adm-tab.is-active,
+.wf-role-storehouse .adm-tab.is-active {
+    color: var(--workspace-accent) !important;
+    border-bottom-color: var(--workspace-accent) !important;
+}
+.wf-role-company .adm-pagination-num.is-active,
+.wf-role-storehouse .adm-pagination-num.is-active {
+    background: var(--workspace-accent) !important;
+    border-color: var(--workspace-accent) !important;
+    color: #ffffff !important;
+}
+
+/* EYEBROWS & HEADING LABELS */
+.wf-role-company .wf-eyebrow,
+.wf-role-company .workspace-eyebrow,
+.wf-role-storehouse .wf-eyebrow,
+.wf-role-storehouse .workspace-eyebrow {
+    color: var(--workspace-accent) !important;
+    font-weight: 700;
+}
+
+/* PROFILE BANNERS & SECTIONS */
+.wf-role-company .wf-profile-banner,
+.wf-role-storehouse .wf-profile-banner {
+    background: linear-gradient(110deg, var(--workspace-tint), #ffffff) !important;
+    border: 1px solid var(--workspace-border) !important;
+}
+.wf-role-company .wf-profile-icon,
+.wf-role-storehouse .wf-profile-icon {
+    background: #ffffff !important;
+    border: 1px solid var(--workspace-border) !important;
+    color: var(--workspace-accent) !important;
+    box-shadow: 0 6px 16px var(--workspace-glow) !important;
+}
+.wf-role-company .wf-section-number,
+.wf-role-storehouse .wf-section-number {
+    background: var(--workspace-tint) !important;
+    color: var(--workspace-accent) !important;
+    border-color: var(--workspace-border) !important;
+}
+.wf-role-company .wf-aside-icon,
+.wf-role-storehouse .wf-aside-icon {
+    background: var(--workspace-tint) !important;
+    color: var(--workspace-accent) !important;
+}
+
+/* NOTICES */
+.wf-role-company .wf-notice,
+.wf-role-storehouse .wf-notice {
+    background: var(--workspace-tint) !important;
+    color: var(--workspace-dark) !important;
+    border-color: var(--workspace-border) !important;
+}
+.wf-role-company .wf-notice a,
+.wf-role-storehouse .wf-notice a {
+    color: var(--workspace-accent) !important;
+    font-weight: 600;
+}
+
+/* FORM FIELDS FOCUS */
+.wf-role-company .wf-field input:focus,
+.wf-role-company .wf-field select:focus,
+.wf-role-company .wf-field textarea:focus,
+.wf-role-company .workspace-toolbar input:focus,
+.wf-role-storehouse .wf-field input:focus,
+.wf-role-storehouse .wf-field select:focus,
+.wf-role-storehouse .wf-field textarea:focus,
+.wf-role-storehouse .workspace-toolbar input:focus {
+    border-color: var(--workspace-accent) !important;
+    box-shadow: 0 0 0 3px var(--workspace-glow) !important;
+}
+
+/* ---------- Warehouses Subpage Alignment ---------- */
+.wf-shell .wm-page .wm-context {
+    height: 42px;
+    margin-bottom: 24px;
+    justify-content: flex-end;
+    border-bottom: 0;
+}
+.wf-shell .wm-page .wm-context > span {
+    display: none;
+}
+.wf-shell .wm-page .wm-context .wm-avatar {
+    display: none;
+}
+.wf-role-admin:has(.wm-page) .wf-content {
+    max-width: 1600px;
+    padding: 0 36px 16px;
+}
+
+/* ---------- Responsive Breakpoints ---------- */
+@media (max-width: 1100px) {
+    .wf-topbar-actions .wf-signin {
+        display: none;
+    }
+}
+
+@media (max-width: 700px) {
+    .wf-shell .wf-sidebar {
+        display: none;
+        position: fixed;
+        top: 56px;
+        bottom: 0;
+        width: 260px;
+        overflow-y: auto;
+        border-right: 1px solid #e5eaf1;
+        padding: 24px 18px;
+        box-shadow: 10px 0 30px #10213a20;
+    }
+    .wf-menu-open .wf-sidebar {
+        display: flex;
+    }
+    .wf-shell .wf-sidebar .wf-workspace {
+        display: flex;
+        margin: 25px 0;
+    }
+    .wf-shell .wf-sidebar .wf-nav-label {
+        display: block;
+    }
+    .wf-shell .wf-sidebar nav {
+        display: grid;
+        margin: 0;
+        overflow: visible;
+        gap: 7px;
+    }
+    .wf-shell .wf-sidebar nav a {
+        font-size: 12px;
+        padding: 13px 10px;
+    }
+    .wf-shell .wf-sidebar-bottom {
+        display: flex;
+    }
+    .wf-menu-button {
+        display: grid;
+        place-items: center;
+    }
+    .wf-shell .wf-topbar {
+        height: 56px;
+        padding: 0 12px;
+    }
+    .wf-breadcrumb {
+        gap: 7px;
+        font-size: 10px;
+        flex: 1;
+        overflow: hidden;
+    }
+    .wf-topbar .wf-breadcrumb a {
+        font-size: 10px;
+    }
+    .wf-breadcrumb > span {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+    .wf-role-badge {
+        display: none;
+    }
+    .wf-topbar-actions {
+        gap: 7px;
+    }
+    .wf-role-admin:has(.wm-page) .wf-content {
+        padding: 0 16px 10px;
+    }
+}

@@ -581,3 +581,285 @@ Chạy từ thư mục `backend/`:
    * Giao tiếp đồng bộ giữa các service (nếu cần dữ liệu đối tác) thông qua Spring Cloud OpenFeign hoặc REST Client thông qua Eureka ID (`lb://<service-name>`).
    * Giao tiếp bất đồng bộ qua Message Queue (Kafka/RabbitMQ) cho các sự kiện biến động kho, thanh toán.
 
+
+
+---
+
+## 8. Authentication (JWT), Phân Quyền Role & Khóa/Mở Công Ty
+
+### 8.1. Cơ chế Xác thực & Token Payload
+* **Thuật toán**: HMAC-SHA256 (`io.jsonwebtoken:jjwt`).
+* **Thời gian sống Access Token**: 8 giờ (`access-token-ttl: PT8H`).
+* **Payload Claims**:
+  * `sub`: User ID (`UUID`).
+  * `email`: Email người dùng.
+  * `role`: Vai trò (`SYSTEM_ADMIN`, `COMPANY_ADMIN`, `WAREHOUSE_MANAGER`).
+  * `companyId`: UUID công ty sở hữu (hoặc `null` nếu là `SYSTEM_ADMIN`).
+* **Principal trong Spring Security**: `UserPrincipal` (chứa `id`, `email`, `role`, `companyId`) tích hợp sẵn helper `SecurityUtils`.
+
+### 8.2. Tài khoản Khởi tạo Mặc định (Data Seeder)
+Khi hệ thống chạy lần đầu, `DataInitializer` tự động tạo tài khoản quản trị cao nhất nếu chưa tồn tại:
+* **Email**: `admin@wareflow.com`
+* **Mật khẩu**: `admin123`
+* **Vai trò**: `SYSTEM_ADMIN`
+* **Trạng thái**: `ACTIVE`
+
+### 8.3. Danh sách Endpoint Xác thực & Quản lý Công ty (Core Service)
+
+| Method | Endpoint | Quyền (Role) | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/core/auth/register-company` | Public | Đăng ký công ty mới kèm tài khoản `COMPANY_ADMIN` |
+| `POST` | `/api/core/auth/login` | Public | Đăng nhập email/password, nhận access token |
+| `GET` | `/api/core/auth/me` | Authenticated | Lấy thông tin user hiện tại từ token |
+| `GET` | `/api/core/companies` | `SYSTEM_ADMIN` | Lấy danh sách công ty (search, filter status/businessModel, paging) |
+| `GET` | `/api/core/companies/my-company` | `COMPANY_ADMIN` | Lấy thông tin công ty của tài khoản đang đăng nhập |
+| `GET` | `/api/core/companies/{id}` | `SYSTEM_ADMIN` / Owner `COMPANY_ADMIN` | Xem chi tiết 1 công ty |
+| `PATCH`| `/api/core/companies/{id}/status` | `SYSTEM_ADMIN` | Đổi trạng thái công ty (`ACTIVE`, `LOCKED`, `PENDING`) |
+| `PUT` | `/api/core/companies/{id}/lock` | `SYSTEM_ADMIN` | Khóa công ty nhanh chóng kèm lý do |
+| `PUT` | `/api/core/companies/{id}/unlock` | `SYSTEM_ADMIN` | Mở khóa hoạt động cho công ty |
+| `PUT` | `/api/core/companies/{id}` | `SYSTEM_ADMIN` / Owner `COMPANY_ADMIN` | Cập nhật hồ sơ công ty (phone, taxCode, address, logo,...) |
+
+### 8.4. Cơ chế Chặn Real-Time khi Công ty bị Khóa
+* Khi `SYSTEM_ADMIN` thực hiện Khóa (`LOCKED`):
+  1. Trạng thái `Company.status` chuyển thành `LOCKED`.
+  2. Ghi vết vào `SystemLog` (`action = LOCK_COMPANY`, lưu `metadata` và `actor`).
+  3. Bắn `Notification` phạm vi `COMPANY`.
+  4. **Cơ chế Real-Time Security Filter (`JwtAuthenticationFilter`)**: Ngay lập tức từ chối mọi request của các user thuộc công ty bị khóa với HTTP `403 Forbidden`, ngay cả khi JWT token của user đó vẫn còn hạn!
+
+---
+
+## 9. Tích Hợp Upload Media với Cloudinary
+
+### 9.1. Cấu hình
+* Thư viện: `com.cloudinary:cloudinary-http44:1.39.0`.
+* Thông tin cấu hình trong `application.yml` (hoặc biến môi trường):
+  * `cloudinary.cloud-name`: `dx4ym1xrj` (mặc định)
+  * `cloudinary.api-key`: `278296519696876`
+  * `cloudinary.api-secret`: `278296519696876`
+* Giới hạn kích thước file upload: tối đa **10MB** (`spring.servlet.multipart.max-file-size`).
+
+### 9.2. Danh sách Endpoint Upload
+
+| Method | Endpoint | Quyền | Params / Body | Phản hồi |
+| :--- | :--- | :--- | :--- | :--- |
+| `POST` | `/api/core/upload/image` | Authenticated | `file`: MultipartFile<br>`folder`: String (avatars, companies, products, warehouses) | `CloudinaryUploadResponse`:<br>`{ url, secureUrl, publicId, format, bytes }` |
+| `DELETE`| `/api/core/upload/image` | Authenticated | `publicId`: String | `{ message: "Đã xóa ảnh thành công", publicId: "..." }` |
+
+
+---
+
+## 10. Hệ Thống Ghi Log Hàng Ngày (Daily Rolling File Logging) & Nhật Ký Hệ Thống (System Audit Log)
+
+### 10.1. Cấu hình Thư mục Log & Luân Chuyển Theo Ngày (Daily Rolling Files)
+Toàn bộ hệ sinh thái Microservices WareFlow được cấu hình qua `logback-spring.xml` tự động tạo và lưu trữ log vào thư mục `logs/` theo từng ngày:
+* **Thư mục cơ sở**: `logs/${spring.application.name}/` (ví dụ `logs/core-service/`, `logs/inventory-service/`, ...).
+* **Các file log luân chuyển hàng ngày**:
+  1. **File log tổng hợp (`INFO`, `WARN`, `ERROR`)**:
+     * File hiện tại: `${APP_NAME}.log`
+     * File theo từng ngày: `${APP_NAME}-%d{yyyy-MM-dd}.log` (ví dụ `core-service-2026-11-01.log`)
+     * Thời gian lưu trữ: 30 ngày (`maxHistory: 30`), dung lượng tối đa 3GB (`totalSizeCap: 3GB`).
+  2. **File log lỗi riêng biệt (`ERROR`)**:
+     * File hiện tại: `${APP_NAME}-error.log`
+     * File theo từng ngày: `${APP_NAME}-error-%d{yyyy-MM-dd}.log`
+     * Giúp devops và lập trình viên tra cứu và phát hiện sự cố nhanh chóng.
+  3. **File nhật ký kiểm toán hệ thống (`AUDIT`)**:
+     * File theo từng ngày: `${APP_NAME}-audit-%d{yyyy-MM-dd}.log`
+     * Lưu trữ toàn bộ dấu vết hành động của người dùng và hệ thống trong 90 ngày.
+
+### 10.2. HTTP Request Logging Filter
+* `HttpLoggingFilter`: Tự động ghi nhận mọi request HTTP đến service ra file log hàng ngày với các thông tin: HTTP Method, Endpoint URI, Client IP, Mã trạng thái (HTTP Status), và Thời gian xử lý (`durationMs`).
+
+### 10.3. AOP Aspect Tự Động Ghi Nhật Ký (`@AuditLog`)
+* Bất kỳ phương thức nào gắn `@AuditLog(action = "...", description = "...", targetType = "...")` sẽ được `AuditLogAspect` tự động bắt:
+  * Trích xuất thông tin người dùng đang thực hiện (`actor`, `company`).
+  * Trích xuất địa chỉ IP (`X-Forwarded-For` / `X-Real-IP`), User-Agent.
+  * Ghi nhận trạng thái kết quả `SUCCESS` hoặc `FAILED` (kèm thông báo lỗi nếu có).
+  * Tự động lưu vào database bảng `system_logs` và ghi ra file log hàng ngày `core-service-audit-yyyy-MM-dd.log`.
+
+### 10.4. Danh sách API Nhật Ký Hệ Thống (System Log APIs)
+
+Tất cả các API được định tuyến qua Gateway: `http://localhost:8080/api/core/system-logs/**`
+
+| Method | Endpoint | Quyền (Role) | Mô tả & Tham số lọc theo ngày |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/core/system-logs` | `SYSTEM_ADMIN` | Tra cứu log toàn hệ thống.<br>Params: `date` (yyyy-MM-dd), `fromDate`, `toDate`, `action`, `companyId`, `actorId`, `search`, `page`, `size` |
+| `GET` | `/api/core/system-logs/my-company` | `COMPANY_ADMIN` | Tra cứu log công ty của mình theo ngày.<br>Params: `date` (yyyy-MM-dd), `fromDate`, `toDate`, `action`, `search`, `page`, `size` |
+| `GET` | `/api/core/system-logs/{id}` | `SYSTEM_ADMIN` / `COMPANY_ADMIN` (Owner) | Xem chi tiết 1 bản ghi nhật ký kiểm toán |
+| `GET` | `/api/core/system-logs/statistics` | `SYSTEM_ADMIN` | Thống kê số lượng log theo từng ngày trong N ngày gần nhất (param `days`, mặc định 7 ngày) |
+| `GET` | `/api/core/system-logs/my-company/statistics` | `COMPANY_ADMIN` | Thống kê số lượng log của công ty theo từng ngày trong N ngày gần nhất (param `days`) |
+
+
+---
+
+## 11. Luồng Bàn Giao Kho & Chuyển Quyền Sở Hữu (Warehouse Handover & Ownership Transfer)
+
+### 11.1. Tổng quan Luồng Nghiệp Vụ
+
+```
+COMPANY_ADMIN gửi đề nghị mua/thuê
+     ↓  POST /api/core/warehouse-transactions
+     ↓  status = PENDING, warehouse.status = AVAILABLE (không đổi)
+
+[Tuỳ chọn] Thương lượng giá
+     ↓  POST /api/core/warehouse-transactions/{id}/negotiations
+     ↓  status = NEGOTIATING
+
+SYSTEM_ADMIN duyệt → CHUYỂN QUYỀN SỞ HỮU
+     ↓  POST /api/core/warehouse-transactions/{id}/approve
+     ↓  warehouse.owner_company_id = company_id (người mua)
+     ↓  warehouse.status = ACTIVE
+     ↓  transaction.status = COMPLETED
+     ↓  system_log: BUY_WAREHOUSE / RENT_WAREHOUSE
+     ↓  notification: COMPANY (thông báo duyệt) + SYSTEM (broadcast)
+
+COMPANY_ADMIN bàn giao kho cho nhân viên
+     ↓  POST /api/core/warehouse-transactions/{id}/handover
+     ↓  Body: { managerId: UUID, note: String? }
+     ↓  Kiểm tra manager có role = WAREHOUSE_MANAGER, cùng company
+     ↓  Gọi inventory-service lấy snapshot tồn kho
+     ↓  warehouse.handover = { managerId, managerName, handoverTime, stockSnapshot, ... }
+     ↓  system_log: WAREHOUSE_HANDOVER
+     ↓  notification: manager (WAREHOUSE) + SYSTEM (broadcast)
+
+[LUỒNG TRẢ KHO]
+COMPANY_ADMIN yêu cầu trả kho
+     ↓  POST /api/core/warehouse-transactions/warehouses/{warehouseId}/return
+     ↓  Tạo transaction type=RETURN, status=PENDING
+     ↓  notification: SYSTEM (thông báo admin)
+
+SYSTEM_ADMIN duyệt trả kho
+     ↓  POST /api/core/warehouse-transactions/{id}/approve-return
+     ↓  warehouse.owner_company_id = null
+     ↓  RENT → warehouse.status = AVAILABLE (tái sử dụng)
+     ↓  BUY  → warehouse.status = RETURNED  (lưu trữ lịch sử)
+     ↓  warehouse.handover = null
+     ↓  transaction.status = COMPLETED
+     ↓  system_log: RETURN_WAREHOUSE
+     ↓  notification: COMPANY (xác nhận) + SYSTEM (broadcast)
+```
+
+### 11.2. Danh sách API Giao Dịch Kho
+
+Tất cả endpoint qua Gateway: `http://localhost:8080/api/core/warehouse-transactions/**`
+
+| Method | Endpoint | Role | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/core/warehouse-transactions` | `COMPANY_ADMIN`, `WAREHOUSE_MANAGER` | Tạo đề nghị mua/thuê kho |
+| `GET` | `/api/core/warehouse-transactions` | Authenticated | Danh sách giao dịch (filter: `status`, phân trang) |
+| `POST` | `/api/core/warehouse-transactions/{id}/negotiations` | Authenticated (participant) | Gửi tin thương lượng giá |
+| `POST` | `/api/core/warehouse-transactions/{id}/approve` | `SYSTEM_ADMIN`, `COMPANY_ADMIN` (chủ kho) | Duyệt giao dịch → chuyển quyền sở hữu + ACTIVE |
+| `POST` | `/api/core/warehouse-transactions/{id}/reject` | `SYSTEM_ADMIN`, `COMPANY_ADMIN` (chủ kho) | Từ chối giao dịch. Param: `reason` |
+| `POST` | `/api/core/warehouse-transactions/{id}/handover` | `COMPANY_ADMIN` | Bàn giao kho: gán manager + lưu snapshot tồn kho |
+| `POST` | `/api/core/warehouse-transactions/warehouses/{warehouseId}/return` | `COMPANY_ADMIN` | Yêu cầu trả kho |
+| `POST` | `/api/core/warehouse-transactions/{id}/approve-return` | `SYSTEM_ADMIN` | Duyệt trả kho → thu hồi quyền sở hữu |
+| `POST` | `/api/core/warehouse-transactions/{id}/reject-return` | `SYSTEM_ADMIN` | Từ chối trả kho. Param: `reason` |
+
+### 11.3. Cấu trúc `warehouses.handover` (JSONB)
+
+```json
+{
+  "managerId": "uuid-of-warehouse-manager",
+  "managerName": "Nguyễn Văn A",
+  "managerEmail": "manager@company.com",
+  "assignedBy": "uuid-of-company-admin",
+  "handoverTime": "2026-11-03T10:00:00Z",
+  "transactionId": "uuid-of-transaction",
+  "stockSnapshot": {
+    "available": true,
+    "items": [...],
+    "totalItems": 150
+  },
+  "note": "Bàn giao theo hợp đồng số XYZ"
+}
+```
+
+### 11.4. Cross-Service: Lấy Snapshot Tồn Kho
+
+- **Client**: `InventorySnapshotClient` (sử dụng `DiscoveryClient` + `RestTemplate`)
+- **Service đích**: `inventory-service` tại `GET /api/inventory/warehouses/{warehouseId}/snapshot`
+- **Graceful degradation**: Nếu `inventory-service` không khả dụng → lưu snapshot rỗng kèm ghi chú lý do, không block luồng bàn giao.
+
+### 11.5. System Log Actions liên quan đến Kho
+
+| Action | Trigger |
+| :--- | :--- |
+| `REQUEST_BUY_WAREHOUSE` | Tạo đề nghị mua kho |
+| `REQUEST_RENT_WAREHOUSE` | Tạo đề nghị thuê kho |
+| `BUY_WAREHOUSE` | Admin duyệt giao dịch mua |
+| `RENT_WAREHOUSE` | Admin duyệt giao dịch thuê |
+| `WAREHOUSE_HANDOVER` | Bàn giao kho cho warehouse_manager |
+| `REQUEST_RETURN_WAREHOUSE` | Yêu cầu trả kho |
+| `RETURN_WAREHOUSE` | Admin duyệt trả kho |
+
+### 11.6. API Kho (Warehouse)
+
+| Method | Endpoint | Role | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/core/warehouses` | `SYSTEM_ADMIN` | Tạo kho hệ thống mới (ownerCompany = null, status = AVAILABLE) |
+| `GET` | `/api/core/warehouses` | Authenticated | Danh sách kho (filter: `search`, `status`, `warehouseType`, `region`) |
+| `GET` | `/api/core/warehouses/{id}` | Authenticated | Chi tiết kho |
+
+### 11.7. API Thông Báo (Notification)
+
+| Method | Endpoint | Role | Mô tả |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/core/notifications` | Authenticated | Danh sách thông báo của user hiện tại |
+| `PATCH` | `/api/core/notifications/{id}/read` | Authenticated | Đánh dấu thông báo đã đọc |
+
+
+---
+
+## 12. Nghiệp Vụ Nhập Hàng (Inbound / INV-08: Purchase Order & Goods Receipt)
+
+### 12.1. Tổng Quan Quy Trình Nhập Hàng
+
+```
+[Phần 1: Đơn Đặt Hàng - PO]
+1. WAREHOUSE_MANAGER / COMPANY_ADMIN tạo đơn PO (DRAFT)
+   POST /api/inventory/warehouses/{warehouseId}/purchase-orders
+   Body: lines (productId, qty, price), supplierName, note
+   → Tính tổng tiền (totalAmount).
+
+2. Gửi duyệt đơn đặt hàng
+   POST /api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/submit
+   → Nếu totalAmount >= largeSpendingThreshold (mục 2.8: Chi tiêu lớn >= 20.000.000 VNĐ):
+     chuyển trạng thái PENDING_APPROVAL kèm đánh dấu bắt buộc qua trung tâm phê duyệt công ty.
+   → Nếu chi tiêu nhỏ hoặc do COMPANY_ADMIN tạo: tự động duyệt hoặc chờ duyệt nội bộ.
+
+3. Phê duyệt đơn đặt hàng (mục 2.8: Trung tâm phê duyệt công ty)
+   POST /api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/approve
+   → COMPANY_ADMIN thực hiện phê duyệt chi tiêu công ty.
+   → status: PENDING_APPROVAL → APPROVED.
+   (Hoặc từ chối: POST /api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/reject → CANCELLED)
+
+[Phần 2: Nhận Hàng Thực Tế - Goods Receipt]
+4. Đối chiếu với PO và nhận hàng vào kho
+   POST /api/inventory/warehouses/{warehouseId}/receipts
+   Body: poId, lines (productId, receivedQty, lotCode, expiryDate, condition)
+   → Đối chiếu số lượng đặt (orderedQty) và số lượng nhận (receivedQty).
+   → Tính độ lệch: diff = receivedQty - orderedQty (VD: đặt 100, nhận 95 → diff = -5).
+   → Cập nhật hoặc tạo mới StockLot trong bảng `stock_lots` (lotCode, expiryDate, quantity += receivedQty).
+   → Ghi nhật ký biến động kho `stock_movements` (documentType = 'RECEIPT', qtyChange = +receivedQty).
+   → Tạo phiếu StockDocument (type = RECEIPT, status = DONE).
+   → Đổi trạng thái đơn PO sang DONE.
+```
+
+### 12.2. Danh Sách Endpoint Nhập Hàng (INV-08)
+
+Tất cả các endpoint đi qua Gateway với prefix: `http://localhost:8080/api/inventory/**`
+
+| Method | Endpoint | Quyền (Role) | Mô Tả |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Tạo đơn đặt hàng PO mới (`status = DRAFT`) |
+| `PUT` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Chỉnh sửa PO khi đang ở trạng thái `DRAFT` |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/submit` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Gửi duyệt PO (`DRAFT` → `PENDING_APPROVAL`) |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/approve` | `COMPANY_ADMIN`, `SYSTEM_ADMIN` | Phê duyệt PO (mục 2.8: chi tiêu lớn) |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/reject` | `COMPANY_ADMIN`, `SYSTEM_ADMIN` | Từ chối PO (`PENDING_APPROVAL` → `CANCELLED`) |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/cancel` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Hủy PO khi chưa nhận hàng |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/purchase-orders` | Authenticated | Danh sách PO (lọc `status`, phân trang) |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}` | Authenticated | Xem chi tiết 1 đơn PO |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/purchase-orders/{id}/receipts` | Authenticated | Danh sách các phiếu nhận hàng đối chiếu của PO |
+| `POST` | `/api/inventory/warehouses/{warehouseId}/receipts` | `WAREHOUSE_MANAGER`, `COMPANY_ADMIN` | Nhận hàng theo PO, ghi nhận chênh lệch và cập nhật lô |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/receipts` | Authenticated | Danh sách phiếu nhận hàng |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/receipts/{id}` | Authenticated | Chi tiết phiếu nhận hàng |
+| `GET` | `/api/inventory/warehouses/{warehouseId}/snapshot` | Authenticated / Internal | Snapshot tồn kho phục vụ bàn giao kho |

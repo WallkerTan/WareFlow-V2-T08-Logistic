@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:16-alpine
@@ -75,6 +73,22 @@ services:
     ports:
       - "8081:8081"
     environment:
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@wareflow.local}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
+      FINANCE_SERVICE_URL: http://finance-service:8083
+      INVENTORY_SERVICE_URL: http://inventory-service:8082
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@wareflow.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wareflow_core
@@ -85,6 +99,7 @@ services:
       CONFIG_SERVER_HOST: config-server
       CONFIG_SERVER_PORT: 8888
       JWT_SECRET: ${JWT_SECRET:-Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+      JWT_ISSUER: ${JWT_ISSUER:-wareflow-auth}
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,6 +116,7 @@ services:
     ports:
       - "8082:8082"
     environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wareflow_inventory
@@ -110,10 +126,16 @@ services:
       EUREKA_PORT: 8761
       CONFIG_SERVER_HOST: config-server
       CONFIG_SERVER_PORT: 8888
+      DELIVERY_SERVICE_URL: http://delivery-service:8084
+      CORE_SERVICE_URL: http://core-service:8081
+      JWT_SECRET: ${JWT_SECRET:-Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+      JWT_ISSUER: ${JWT_ISSUER:-wareflow-auth}
     depends_on:
       postgres:
         condition: service_healthy
       eureka-server:
+        condition: service_started
+      core-service:
         condition: service_started
     networks:
       - wareflow-net
@@ -126,6 +148,7 @@ services:
     ports:
       - "8083:8083"
     environment:
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-}
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wareflow_finance
@@ -135,6 +158,9 @@ services:
       EUREKA_PORT: 8761
       CONFIG_SERVER_HOST: config-server
       CONFIG_SERVER_PORT: 8888
+      CORE_SERVICE_URL: http://core-service:8081
+      JWT_SECRET: ${JWT_SECRET:-Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+      JWT_ISSUER: ${JWT_ISSUER:-wareflow-auth}
     depends_on:
       postgres:
         condition: service_healthy
@@ -160,6 +186,10 @@ services:
       EUREKA_PORT: 8761
       CONFIG_SERVER_HOST: config-server
       CONFIG_SERVER_PORT: 8888
+      CORE_SERVICE_URL: http://core-service:8081
+      INVENTORY_SERVICE_URL: http://inventory-service:8082
+      JWT_SECRET: ${JWT_SECRET:-Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
+      JWT_ISSUER: ${JWT_ISSUER:-wareflow-auth}
     depends_on:
       postgres:
         condition: service_healthy
@@ -174,4 +204,3 @@ networks:
 
 volumes:
   postgres_data:
-

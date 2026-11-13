@@ -4,11 +4,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "test:auth": "node tests/auth.e2e.mjs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:ui": "node tests/api-workflows.e2e.mjs",
+    "test:auth": "node tests/auth.e2e.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",

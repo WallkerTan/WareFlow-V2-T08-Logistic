@@ -6,3 +6,10 @@ plugins {
 group = 'com.example'
 version = '0.0.1-SNAPSHOT'
 description = 'backend'
+
+// IntelliJ may request :classes when building the aggregate backend project.
+tasks.register('classes') {
+    group = 'build'
+    description = 'Compiles classes and processes resources for all backend services.'
+    dependsOn subprojects.collect { "${it.path}:classes" }
+}
