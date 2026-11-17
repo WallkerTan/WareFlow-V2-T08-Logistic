@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
-    List<User> findByCompany_Id(UUID companyId);
 
     Optional<User> findByEmailIgnoreCase(String email);
 

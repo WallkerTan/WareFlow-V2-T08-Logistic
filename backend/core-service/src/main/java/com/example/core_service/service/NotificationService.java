@@ -74,7 +74,7 @@ public class NotificationService {
     @Transactional
     public Notification sendToUser(UUID recipientId, NotificationScope scope, String type,
                                    String title, Map<String, Object> payload) {
-        User recipient = userRepository.findById(recipientId).orElseThrow(() -> com.example.core_service.exception.ApiException.notFound("Không tìm thấy người nhận"));
+        User recipient = userRepository.findById(recipientId).orElse(null);
         Notification notification = Notification.builder()
                 .recipient(recipient)
                 .scope(scope)
@@ -129,7 +129,7 @@ public class NotificationService {
     @Transactional
     public Notification broadcastSystem(String type, String title, Map<String, Object> payload) {
         Notification notification = Notification.builder()
-                .recipient(userRepository.findFirstByRole(UserRole.SYSTEM_ADMIN).orElse(null))
+                .recipient(null)
                 .scope(NotificationScope.SYSTEM)
                 .type(type)
                 .title(title)

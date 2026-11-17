@@ -21,8 +21,7 @@ public record WarehouseResponse(
         String address,
         WarehouseStatus status,
         Map<String, Object> handover,
-        Instant createdAt,
-        Map<String, Object> profile
+        Instant createdAt
 ) {
     public static WarehouseResponse fromEntity(Warehouse w) {
         return new WarehouseResponse(
@@ -37,8 +36,8 @@ public record WarehouseResponse(
                 w.getAddress(),
                 w.getStatus(),
                 w.getHandover(),
-                w.getCreatedAt(),
-                w.getProfile()
+                w.getCreatedAt()
         );
     }
 }
+

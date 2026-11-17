@@ -1,3 +1,0 @@
-﻿[submodule "backend/config-repo"]
-    path = backend/config-repo
-    url = https://github.com/WallkerTan/wareflow-v2-config-repo.git

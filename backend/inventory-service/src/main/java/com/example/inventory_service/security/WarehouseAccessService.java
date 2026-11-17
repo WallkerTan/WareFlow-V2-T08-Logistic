@@ -81,26 +81,23 @@ public class WarehouseAccessService {
         }
 
         if ("SYSTEM_ADMIN".equals(role)) {
-            try { coreClient.get().uri("/auth/me").header(HttpHeaders.AUTHORIZATION,authorization).retrieve().toBodilessEntity(); }
-            catch (RestClientResponseException ex) { throw new ResponseStatusException(ex.getStatusCode().value()==403?HttpStatus.FORBIDDEN:ex.getStatusCode().value()==401?HttpStatus.UNAUTHORIZED:HttpStatus.SERVICE_UNAVAILABLE,"Không xác minh được tài khoản hệ thống"); }
-            catch (org.springframework.web.client.RestClientException ex) {throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Không kết nối được core-service");}
             return new UserIdentity(userId, companyId, role);
         }
 
         try {
             var warehouse = coreClient.get().uri("/warehouses/{id}", warehouseId)
-                    .header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(WarehouseScope.class);
-            if (warehouse == null || !warehouseId.equals(warehouse.id())) {
+                    .header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(com.fasterxml.jackson.databind.JsonNode.class);
+            if (warehouse == null || !warehouse.path("id").asText().equals(warehouseId.toString())) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy kho");
             }
             if ("WAREHOUSE_MANAGER".equals(role)) {
-                UUID manager = warehouse.handover() == null ? null : warehouse.handover().managerId();
-                if (!userId.equals(manager) || companyId == null || !companyId.equals(warehouse.ownerCompanyId())) {
+                String manager = warehouse.path("handover").path("managerId").asText("");
+                if (!userId.toString().equals(manager)) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không được phân công quản lý kho này");
                 }
             } else {
-                UUID ownerCompany = warehouse.ownerCompanyId();
-                if (companyId == null || !companyId.equals(ownerCompany)) {
+                String ownerCompany = warehouse.path("ownerCompanyId").asText("");
+                if (companyId == null || !companyId.toString().equals(ownerCompany)) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kho không thuộc công ty của bạn");
                 }
             }
@@ -119,24 +116,5 @@ public class WarehouseAccessService {
         return new UserIdentity(userId, companyId, role);
     }
 
-    /** A transfer may enter another manager's warehouse, but never another company's. */
-    public UserIdentity authorizeTransfer(String authorization, UUID sourceId, UUID targetId) {
-        var user = authorizeRoles(authorization, sourceId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN", "SYSTEM_ADMIN");
-        if (sourceId.equals(targetId)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Kho nhận phải khác kho xuất");
-        try {
-            var source = coreClient.get().uri("/warehouses/{id}", sourceId).header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(WarehouseScope.class);
-            var target = coreClient.get().uri("/warehouses/{id}", targetId).header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(WarehouseScope.class);
-            if (source == null || target == null || source.ownerCompanyId() == null || !source.ownerCompanyId().equals(target.ownerCompanyId()))
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chỉ điều chuyển giữa các kho cùng công ty");
-        } catch (RestClientResponseException ex) {
-            throw new ResponseStatusException(ex.getStatusCode().is4xxClientError() ? ex.getStatusCode() : HttpStatus.SERVICE_UNAVAILABLE, "Không xác minh được kho nhận");
-        } catch (org.springframework.web.client.RestClientException ex) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Không kết nối được core-service");
-        }
-        return user;
-    }
-
     public record UserIdentity(UUID id, UUID companyId, String role) { }
-    public record WarehouseScope(UUID id, UUID ownerCompanyId, Handover handover) { }
-    public record Handover(UUID managerId) { }
 }

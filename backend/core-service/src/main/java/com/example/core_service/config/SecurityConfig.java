@@ -40,7 +40,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/login",
                                 "/auth/register-company",
-                                "/internal/inventory-alerts",
+                                "/auth/register-warehouse-manager",
                                 "/actuator/**",
                                 "/error"
                         ).permitAll()

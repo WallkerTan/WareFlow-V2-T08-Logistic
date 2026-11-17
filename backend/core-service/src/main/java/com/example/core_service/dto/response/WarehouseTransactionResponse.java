@@ -20,9 +20,7 @@ public record WarehouseTransactionResponse(
         BigDecimal offeredPrice,
         Map<String, Object> negotiation,
         UUID approvedBy,
-        Instant createdAt,
-        BigDecimal platformFee,
-        Instant completedAt
+        Instant createdAt
 ) {
     public static WarehouseTransactionResponse fromEntity(WarehouseTransaction transaction) {
         return new WarehouseTransactionResponse(
@@ -36,9 +34,7 @@ public record WarehouseTransactionResponse(
                 transaction.getOfferedPrice(),
                 transaction.getNegotiation(),
                 transaction.getApprovedBy() != null ? transaction.getApprovedBy().getId() : null,
-                transaction.getCreatedAt(),
-                transaction.getPlatformFee(),
-                transaction.getCompletedAt()
+                transaction.getCreatedAt()
         );
     }
 }

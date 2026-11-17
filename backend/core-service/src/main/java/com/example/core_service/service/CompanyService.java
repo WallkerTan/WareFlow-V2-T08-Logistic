@@ -36,7 +36,6 @@ public class CompanyService {
     private final UserRepository userRepository;
     private final SystemLogService systemLogService;
     private final NotificationRepository notificationRepository;
-    private final NotificationService notifications;
 
     @Transactional(readOnly = true)
     public Page<CompanyResponse> getAllCompanies(String search, CompanyStatus status, CompanyBusinessModel businessModel, Pageable pageable) {
@@ -81,13 +80,11 @@ public class CompanyService {
      */
     @Transactional
     public CompanyResponse updateCompanyStatus(UUID companyId, UpdateCompanyStatusRequest request) {
-        Company company = companyRepository.lockById(companyId)
+        Company company = companyRepository.findById(companyId)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy công ty với ID: " + companyId));
 
         CompanyStatus oldStatus = company.getStatus();
         CompanyStatus newStatus = request.getStatus();
-        if (oldStatus == CompanyStatus.DELETED || newStatus == CompanyStatus.DELETED)
-            throw ApiException.conflict("Dùng API xóa công ty; công ty đã xóa không thể kích hoạt lại");
 
         if (oldStatus == newStatus) {
             return CompanyResponse.fromEntity(company);
@@ -128,9 +125,14 @@ public class CompanyService {
         payload.put("reason", request.getReason());
         payload.put("channels", List.of("app", "email"));
 
-        for (var member : userRepository.findByCompany_Id(companyId)) {
-            notifications.sendToUser(member.getId(), NotificationScope.COMPANY, "COMPANY_STATUS_CHANGED", notifTitle, payload);
-        }
+        notificationRepository.save(Notification.builder()
+                .recipient(null) // Broadcast cho toàn bộ user thuộc phạm vi
+                .scope(NotificationScope.COMPANY)
+                .type("COMPANY_STATUS_CHANGED")
+                .title(notifTitle)
+                .payload(payload)
+                .isRead(false)
+                .build());
 
         log.info("Company {} status updated from {} to {} by actor {}", companyId, oldStatus, newStatus, actorId);
         return CompanyResponse.fromEntity(savedCompany);
@@ -190,3 +192,4 @@ public class CompanyService {
         return CompanyResponse.fromEntity(saved);
     }
 }
+

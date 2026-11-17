@@ -27,7 +27,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CompanyRepository companyRepository;
-    private final com.example.core_service.repository.UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -38,7 +37,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             boolean authenticated = authenticate(header.substring(BEARER_PREFIX.length()), request, response);
-            if (!authenticated && response.getStatus() >= 400) {
+            if (!authenticated && response.isCommitted()) {
                 return;
             }
         }
@@ -51,14 +50,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtTokenProvider.parse(token);
 
             UUID userId = UUID.fromString(claims.getSubject());
-            var account = userRepository.findById(userId).orElse(null);
-            if (account == null || account.getStatus() != com.example.core_service.entity.enums.UserStatus.ACTIVE) {
-                SecurityContextHolder.clearContext();
-                response.setStatus(403);
-                response.setContentType("application/json;charset=UTF-8");
-                response.getWriter().write("{\"status\":403,\"message\":\"Tài khoản không hoạt động\"}");
-                return false;
-            }
             String email = claims.get(JwtTokenProvider.CLAIM_EMAIL, String.class);
             String roleStr = claims.get(JwtTokenProvider.CLAIM_ROLE, String.class);
             String companyIdStr = claims.get(JwtTokenProvider.CLAIM_COMPANY_ID, String.class);
@@ -69,14 +60,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             UserRole role = UserRole.valueOf(roleStr);
             UUID companyId = (companyIdStr != null && !companyIdStr.isBlank()) ? UUID.fromString(companyIdStr) : null;
-            UUID actualCompanyId = account.getCompany() == null ? null : account.getCompany().getId();
-            if (role != account.getRole() || !java.util.Objects.equals(companyId, actualCompanyId)) return false;
 
             // Kiểm tra trạng thái khóa của công ty theo thời gian thực (trừ SYSTEM_ADMIN)
             if (companyId != null && role != UserRole.SYSTEM_ADMIN) {
                 boolean isLocked = companyRepository.findById(companyId)
-                        .map(c -> c.getStatus() != CompanyStatus.ACTIVE)
-                        .orElse(true);
+                        .map(c -> c.getStatus() == CompanyStatus.LOCKED)
+                        .orElse(false);
 
                 if (isLocked) {
                     SecurityContextHolder.clearContext();

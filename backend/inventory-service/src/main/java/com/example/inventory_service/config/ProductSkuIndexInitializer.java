@@ -15,8 +15,6 @@ public class ProductSkuIndexInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        String database = jdbc.execute((org.springframework.jdbc.core.ConnectionCallback<String>) c -> c.getMetaData().getDatabaseProductName());
-        if (!"PostgreSQL".equals(database)) return;
         List<String> legacyConstraints = jdbc.queryForList("""
                 select c.conname
                 from pg_constraint c

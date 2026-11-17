@@ -212,16 +212,109 @@ curl.exe -s http://localhost:8081/auth/me -H "Authorization: Bearer $(($resp | C
 
 ---
 
+## 5A. Test API — Đăng ký Warehouse Manager (hồ sơ công ty / cá nhân)
+
+Các lệnh dưới đây đã được chạy thử và **PASS** (HTTP 201 / 200 / 400 / 409).
+
+### 5A.1. Đăng ký kèm hồ sơ công ty
+
+```powershell
+cd C:\Users\HCLaptop.com\Downloads\WareFlow
+$suffix = Get-Random -Minimum 1000 -Maximum 9999
+$email  = "wm$suffix@wareflow.vn"
+$tax    = "0$suffix" + "1234567"     # 10 chữ số
+
+$body = '{
+  "email": "' + $email + '",
+  "password": "12345678",
+  "fullName": "Trần Quản Lý",
+  "profileType": "COMPANY",
+  "role": "WAREHOUSE_MANAGER",
+  "companyProfile": {
+    "companyName": "CTY WAREHOUSE ' + $suffix + '",
+    "businessModel": "FOOD",
+    "taxCode": "' + $tax + '",
+    "phone": "0900000000",
+    "address": "HCM"
+  }
+}'
+Set-Content "wm-reg-company.json" -Value $body -Encoding UTF8 -NoNewline
+
+curl.exe -s -X POST http://localhost:8081/auth/register-warehouse-manager `
+  -H "Content-Type: application/json" --data-binary "@wm-reg-company.json"
+```
+
+**Response (HTTP 201):**
+
+```json
+{
+  "tokenType": "Bearer",
+  "accessToken": "eyJhbGciOiJIUzM4NCJ9...",
+  "expiresAt": "2026-10-29T23:12:43Z",
+  "userId": "b5e45aa5-2161-46fc-a383-1d8eab291fc4",
+  "email": "wm3123@wareflow.vn",
+  "fullName": "Trần Quản Lý",
+  "role": "WAREHOUSE_MANAGER",
+  "companyId": "01443521-ee4f-46ea-9164-a22ad5f807ad",
+  "companyName": "CTY WAREHOUSE 3123"
+}
+```
+
+### 5A.2. Đăng ký kèm hồ sơ cá nhân
+
+```powershell
+$body = '{
+  "email": "cnn' + $suffix + '@wareflow.vn",
+  "password": "12345678",
+  "fullName": "Nguyễn Cá Nhân",
+  "profileType": "INDIVIDUAL",
+  "individualProfile": {
+    "phone": "0900000001",
+    "address": "Hà Nội",
+    "idNumber": "012345678901",
+    "dateOfBirth": "1990-01-01"
+  }
+}'
+Set-Content "wm-reg-individual.json" -Value $body -Encoding UTF8 -NoNewline
+
+curl.exe -s -X POST http://localhost:8081/auth/register-warehouse-manager `
+  -H "Content-Type: application/json" --data-binary "@wm-reg-individual.json"
+```
+
+**Response (HTTP 201):** giống hệt, nhưng `companyId` và `companyName` là `null`.
+
+### 5A.3. Hướng dẫn kiểm thử bằng Postman
+
+1. Mở Postman → **New** → **HTTP Request**.
+2. **Method**: `POST` · **URL**: `http://localhost:8081/auth/register-warehouse-manager`
+3. **Headers**: `Content-Type: application/json`
+4. **Body** → chọn **raw** → loại **JSON**, dán payload ở mục 5A.1 hoặc 5A.2.
+5. Bấm **Send**. Kết quả mong đợi:
+   - `201 Created` với `role` = `WAREHOUSE_MANAGER`, có `accessToken`.
+   - Nhánh `COMPANY` → có `companyId` + `companyName`; nhánh `INDIVIDUAL` → `companyId` = `null`.
+6. Copy `accessToken` → tab mới, `GET http://localhost:8081/auth/me` với header `Authorization: Bearer <accessToken>` → `200 OK`.
+7. Test lỗi (đều trả JSON thống nhất, không có stack trace):
+   - Gửi lại đúng payload đã đăng ký → `409` `"Email đã được đăng ký"`.
+   - Đổi `role` thành `SYSTEM_ADMIN` → `400` `"Role không hợp lệ, chỉ hỗ trợ tạo tài khoản WAREHOUSE_MANAGER"`.
+   - `profileType: "COMPANY"` nhưng bỏ `companyProfile` → `400` `"Hồ sơ công ty không được để trống khi đăng ký loại công ty"`.
+   - `profileType: "INDIVIDUAL"` nhưng bỏ `individualProfile` → `400` `"Hồ sơ cá nhân không được để trống khi đăng ký loại cá nhân"`.
+   - Gửi cả hai loại hồ sơ → `400` `"Không được gửi cả hồ sơ công ty và hồ sơ cá nhân"`.
+   - `email` sai định dạng / `password` < 8 ký tự → `400` kèm `errors` chi tiết từng field.
+
+
+---
+
 ## 6. Danh sách API hiện có
 
 | Method | Path | Auth | Mô tả |
 |---|---|---|---|
 | `POST` | `/auth/register-company` | Không | Đăng ký công ty + user `COMPANY_ADMIN`, trả luôn JWT |
+| `POST` | `/auth/register-warehouse-manager` | Không | Đăng ký user `WAREHOUSE_MANAGER` kèm hồ sơ công ty hoặc cá nhân, trả luôn JWT |
 | `POST` | `/auth/login` | Không | Đăng nhập bằng email + password, trả JWT |
 | `GET` | `/auth/me` | Bearer | Thông tin user hiện tại |
 | `GET` | `/actuator/health` | Không | Health check |
 
-**Body đăng ký (`RegisterCompanyRequest`):**
+**Body đăng ký công ty (`RegisterCompanyRequest`):**
 
 | Field | Bắt buộc | Ràng buộc |
 |---|---|---|
@@ -232,6 +325,40 @@ curl.exe -s http://localhost:8081/auth/me -H "Authorization: Bearer $(($resp | C
 | `fullName` | Có | tối đa 255 |
 | `phone` | Không | tối đa 50 |
 | `address` | Không | tối đa 500 |
+
+**Body đăng ký Warehouse Manager (`RegisterWarehouseManagerRequest`):**
+
+| Field | Bắt buộc | Ràng buộc |
+|---|---|---|
+| `email` | Có | định dạng email, tối đa 255, **duy nhất** |
+| `password` | Có | **tối thiểu 8** ký tự, tối đa 100 |
+| `fullName` | Có | tối đa 255 |
+| `profileType` | Không | enum `ProfileType` = `COMPANY` \| `INDIVIDUAL` (mặc định `INDIVIDUAL`) |
+| `role` | Không | chỉ chấp nhận `WAREHOUSE_MANAGER` (mặc định `WAREHOUSE_MANAGER`) |
+| `companyProfile` | Khi `COMPANY` | xem bảng dưới |
+| `individualProfile` | Khi `INDIVIDUAL` | xem bảng dưới |
+
+`companyProfile` (`CompanyProfileRequest`): `companyName` (bắt buộc, duy nhất), `businessModel` (bắt buộc, enum `CompanyBusinessModel`), `taxCode` (tuỳ chọn, 10 hoặc 13 chữ số, duy nhất), `phone`, `address`.
+
+`individualProfile` (`IndividualProfileRequest`): `phone` (bắt buộc), `address`, `idNumber`, `dateOfBirth`.
+
+> Không được gửi đồng thời cả hai loại hồ sơ. Hồ sơ công ty được lưu vào bảng `companies`
+> (kèm `taxCode`/`phone`/`address` trong `companies.profile` jsonb) và tài khoản được liên kết
+> vào công ty đó. Hồ sơ cá nhân được lưu trong `users.profile` jsonb và tài khoản **không**
+> thuộc công ty nào (`companyId` = `null`).
+
+**Mã lỗi trả về (thống nhất với `GlobalExceptionHandler`):**
+
+| HTTP | Message |
+|---|---|
+| `400` | `Role không hợp lệ, chỉ hỗ trợ tạo tài khoản WAREHOUSE_MANAGER` |
+| `400` | `Hồ sơ công ty không được để trống khi đăng ký loại công ty` |
+| `400` | `Hồ sơ cá nhân không được để trống khi đăng ký loại cá nhân` |
+| `400` | `Không được gửi cả hồ sơ công ty và hồ sơ cá nhân` |
+| `400` | Lỗi validation field (body có kèm mảng `errors` chi tiết từng field) |
+| `409` | `Email đã được đăng ký` / `Tên công ty đã tồn tại` / `Mã số thuế đã được đăng ký` |
+| `500` | `Đã xảy ra lỗi hệ thống, vui lòng thử lại` (không lộ stack trace) |
+
 
 **Cấu hình JWT** (biến môi trường, override được):
 

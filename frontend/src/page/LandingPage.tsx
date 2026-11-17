@@ -1,5 +1,4 @@
 import "./landingPage.css";
-import warehousePhoto from "../assets/warehouse-photo.jpg";
 import { Link } from "react-router-dom";
 import { ProductShowcase } from "../components/landing/ProductShowcase";
 import { FeaturesSection } from "../components/landing/FeaturesSection";
@@ -30,13 +29,13 @@ const LandingPage = () => {
                 </nav>
                 <div className="header-actions">
                     <a className="login" href="#contact" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <PhoneCall size={16} /> Thông tin tài khoản
+                        <PhoneCall size={16} /> Liên hệ tư vấn
                     </a>
                     <Link className="login" to="/auth/login">
                         Đăng nhập
                     </Link>
                     <Link className="button button-small" to="/auth/register">
-                        Đăng ký công ty <span>→</span>
+                        Dùng thử miễn phí <span>→</span>
                     </Link>
                 </div>
             </header>
@@ -56,14 +55,14 @@ const LandingPage = () => {
                         </p>
                         <div className="actions">
                             <Link className="button" to="/auth/register">
-                                Đăng ký công ty <span>→</span>
+                                Bắt đầu miễn phí <span>→</span>
                             </Link>
                             <a className="button button-outline" href="#contact">
                                 <PhoneCall size={18} /> Liên hệ với chúng tôi
                             </a>
                         </div>
                         <p className="note">
-                            Tài khoản công ty cần được quản trị hệ thống phê duyệt.
+                            ✦ Không cần thẻ tín dụng &nbsp;·&nbsp; Thiết lập trong 5 phút &nbsp;·&nbsp; Hỗ trợ 24/7
                         </p>
                     </div>
                     <div className="hero-visual">
@@ -76,22 +75,22 @@ const LandingPage = () => {
                                 <b>•••</b>
                             </div>
                             <img
-                                src={warehousePhoto}
-                                alt="Ảnh minh họa kho hàng"
+                                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-dC8LQOelSfGRLOP7lyf5BG4dJ2VaHA.png"
+                                alt="Dashboard quản lý kho WareFlow"
                             />
                         </div>
                         <div className="stat-card top-card">
                             <span className="green-dot" />
                             <div>
-                                <b>Theo lô</b>
-                                <small>Quản lý tồn và hạn dùng</small>
+                                <b>99.8%</b>
+                                <small>Độ chính xác tồn kho</small>
                             </div>
                         </div>
                         <div className="stat-card bottom-card">
                             <span className="arrow">↗</span>
                             <div>
-                                <b>Có phê duyệt</b>
-                                <small>Quy trình nhập / xuất</small>
+                                <b>+35.2%</b>
+                                <small>Tốc độ xử lý đơn hàng</small>
                             </div>
                         </div>
                     </div>
@@ -101,20 +100,20 @@ const LandingPage = () => {
                 <RevealOnScroll>
                     <section className="metrics" aria-label="Số liệu nổi bật của WareFlow">
                         <div>
-                            <b>Đa kho</b>
-                            <small>Phân quyền theo kho</small>
+                            <b>500+</b>
+                            <small>Doanh nghiệp tin dùng</small>
                         </div>
                         <div>
-                            <b>Theo lô</b>
-                            <small>Quản lý tồn và hạn dùng</small>
+                            <b>99.8%</b>
+                            <small>Độ chính xác tồn kho</small>
                         </div>
                         <div>
-                            <b>Thu / chi</b>
-                            <small>Ngân sách và chi phí</small>
+                            <b>-40%</b>
+                            <small>Chi phí hao hụt & tồn đọng</small>
                         </div>
                         <div>
-                            <b>Vận đơn</b>
-                            <small>Trạng thái và COD</small>
+                            <b>24/7</b>
+                            <small>Dữ liệu đồng bộ Real-time</small>
                         </div>
                     </section>
                 </RevealOnScroll>
@@ -147,10 +146,10 @@ const LandingPage = () => {
                         </h2>
                         <div style={{ display: "flex", justifyContent: "center", gap: "20px", flexWrap: "wrap", marginTop: "24px" }}>
                             <Link className="button light" to="/auth/register">
-                                Đăng ký công ty <span>→</span>
+                                Đăng ký dùng thử ngay <span>→</span>
                             </Link>
                             <a className="button" href="#contact" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}>
-                                <PhoneCall size={18} /> Tìm hiểu đăng ký
+                                <PhoneCall size={18} /> Nhận tư vấn trực tiếp
                             </a>
                         </div>
                     </RevealOnScroll>

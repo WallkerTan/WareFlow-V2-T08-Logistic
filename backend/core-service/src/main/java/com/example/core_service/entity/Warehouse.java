@@ -57,14 +57,6 @@ public class Warehouse {
     @Column(columnDefinition = "jsonb")
     private Map<String, Object> handover;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    private Map<String, Object> profile;
-
-    @Version
-    @Column(nullable=false,columnDefinition="bigint default 0")
-    private Long version;
-
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;

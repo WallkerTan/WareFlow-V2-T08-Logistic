@@ -1,6 +1,6 @@
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
-import { LogOut, ChevronRight, Menu, X } from "lucide-react";
+import { ArrowUpRight, ChevronRight, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import WareFlowFooter from '../common/WareFlowFooter';
 import "../../layout/main/main.css";
@@ -8,12 +8,6 @@ import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
 import "../../layout/main/roles.css";
 import './workspace-frame.css';
-import '../../components/live/live.css';
-import { useWorkspace } from '../live/workspaceContext';
-import { Loading } from '../live/UI';
-import { clearAuthSession } from '../../services/session';
-import NotificationBell from '../live/NotificationBell';
-import { useNavigate } from 'react-router-dom';
 export type WorkspaceConfig = {
     role: "admin" | "company" | "storehouse";
     title: string;
@@ -34,11 +28,9 @@ export default function WorkspaceShell({ config }: {
     config: WorkspaceConfig;
 }) {
     const [expanded, setExpanded] = useState(false);
-    const { session, user } = useWorkspace();
-    const navigate = useNavigate();
     const { pathname } = useLocation();
     const page = config.links.find((link) => pathname === link.to.split("?")[0])
-        ?.label || "Chi tiết";
+        ?.label || "Xem thử phê duyệt";
     const Icon = config.icon;
     return (<div className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}>
             <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
@@ -61,12 +53,12 @@ export default function WorkspaceShell({ config }: {
                             {link.label}
                         </NavLink>))}
                 </nav>
-                <div className="wf-sidebar-bottom">
+                <div className="workspace-switch"><small>XEM GIAO DIỆN THEO VAI TRÒ</small><Link to="/admin/dashboard">Quản trị hệ thống</Link><Link to="/company/dashboard">Công ty</Link><Link to="/storehouse/inventory">Quản lý kho</Link></div><div className="wf-sidebar-bottom">
                     <span className="wf-mini-mark">
                         <Icon size={16}/>
                     </span>
                     <div>
-                        <strong>{session.companyName || session.fullName}</strong>
+                        <strong>{config.title}</strong>
                         <small>WareFlow · Quản lý kho & logistics</small>
                     </div>
                 </div>
@@ -83,20 +75,19 @@ export default function WorkspaceShell({ config }: {
                         <span>{page}</span>
                     </div>
                     <div className="wf-topbar-actions">
-                        <NotificationBell />
                         <span className="wf-role-badge">
                             {config.topbarLabel}
                         </span>
                         <Link className="wf-account" to={config.profile} aria-label={`Hồ sơ ${config.title}`}>
-                            {user?.avatar ? <img src={String(user.avatar)} alt="Ảnh đại diện" style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover' }} /> : <span>{String(user?.fullName || session.fullName).slice(0, 2).toUpperCase() || config.avatar}</span>}
+                            <span>{config.avatar}</span>
                         </Link>
-                        <button className="wf-signin" aria-label="Đăng xuất" title="Đăng xuất" onClick={() => { clearAuthSession(); navigate('/auth/login', { replace: true }); }}>
-                            <span className="wf-signin-label">Đăng xuất</span><LogOut size={15}/>
-                        </button>
+                        <Link className="wf-signin" to="/auth/login">
+                            Đăng nhập <ArrowUpRight size={15}/>
+                        </Link>
                     </div>
                 </header>
                 <main className="wf-content">
-                    <Suspense fallback={<Loading />}><Outlet /></Suspense>
+                    <Outlet />
                 </main>
             </div>
             <WareFlowFooter />

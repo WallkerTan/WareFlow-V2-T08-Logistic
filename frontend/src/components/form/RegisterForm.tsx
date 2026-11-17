@@ -6,9 +6,7 @@ import AuthField from "./AuthField";
 
 export type RegisterValues = {
     companyName: string;
-    taxCode: string;
-    businessDescription: string;
-    businessModel: "" | "FOOD" | "TECH" | "APPLIANCE" | "FASHION" | "OTHER";
+    businessModel: "FOOD" | "TECH" | "APPLIANCE" | "FASHION" | "OTHER";
     fullName: string;
     phone: string;
     email: string;
@@ -16,7 +14,7 @@ export type RegisterValues = {
     confirmPassword: string;
     accepted: boolean;
 };
-type Props = { onSubmit: (values: RegisterValues) => Promise<unknown> };
+type Props = { onSubmit?: (values: RegisterValues) => Promise<unknown> };
 
 export default function RegisterForm({ onSubmit }: Props) {
     "use no memo";
@@ -28,8 +26,6 @@ export default function RegisterForm({ onSubmit }: Props) {
     } = useForm<RegisterValues>({
         defaultValues: {
             companyName: "",
-            taxCode: "",
-            businessDescription: "",
             businessModel: "OTHER",
             fullName: "",
             phone: "",
@@ -45,9 +41,14 @@ export default function RegisterForm({ onSubmit }: Props) {
         setMessage("");
         setSuccess(false);
         try {
-            await onSubmit(values);
-            setSuccess(true);
-            setMessage("Đăng ký công ty thành công. Vui lòng chờ quản trị hệ thống phê duyệt trước khi đăng nhập.");
+            if (onSubmit) {
+                await onSubmit(values);
+                setSuccess(true);
+                setMessage("Yêu cầu đã được xử lý.");
+            } else
+                setMessage(
+                    "Đây là bản giao diện. Chưa gửi yêu cầu đăng ký công ty đến máy chủ.",
+                );
         } catch (error) {
             setMessage(
                 error instanceof Error
@@ -77,8 +78,6 @@ export default function RegisterForm({ onSubmit }: Props) {
                 })}
                 error={errors.companyName?.message}
             />
-            <AuthField id="taxCode" label="Mã số thuế" placeholder="10 hoặc 13 chữ số" {...register('taxCode', {pattern:{value:/^$|^\d{10}(-?\d{3})?$/,message:'Mã số thuế phải gồm 10 hoặc 13 chữ số.'}})} error={errors.taxCode?.message} />
-            <AuthField id="businessDescription" label="Mô tả ngành kinh doanh (dùng khi chọn tự phân loại)" {...register('businessDescription')} />
             <div className="auth-field">
                 <label htmlFor="businessModel">
                     Lĩnh vực kinh doanh <span className="required"> *</span>
@@ -87,10 +86,9 @@ export default function RegisterForm({ onSubmit }: Props) {
                     <select
                         id="businessModel"
                         {...register("businessModel", {
-
+                            required: "Vui lòng chọn lĩnh vực kinh doanh.",
                         })}
                     >
-                        <option value="">Tự phân loại từ mô tả</option>
                         <option value="FOOD">Thực phẩm</option>
                         <option value="TECH">Công nghệ</option>
                         <option value="APPLIANCE">Điện máy</option>

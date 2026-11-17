@@ -36,5 +36,4 @@ public class Budget {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
-    @Version @Column(nullable=false,columnDefinition="bigint default 0") private Long version;
 }

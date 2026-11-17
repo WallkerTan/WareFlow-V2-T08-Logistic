@@ -24,12 +24,9 @@ public class WarehouseSnapshotController {
 
     private final ProductRepository productRepository;
     private final StockLotRepository stockLotRepository;
-    private final com.example.inventory_service.security.WarehouseAccessService access;
 
     @GetMapping("/snapshot")
-    public Map<String, Object> getWarehouseSnapshot(@PathVariable UUID warehouseId,
-            @RequestHeader(value="Authorization",required=false) String authorization) {
-        access.authorize(authorization,warehouseId,false);
+    public Map<String, Object> getWarehouseSnapshot(@PathVariable UUID warehouseId) {
         List<Product> products = productRepository.findAll((root, query, cb) ->
                 cb.and(cb.equal(root.get("warehouseId"), warehouseId), cb.isNull(root.get("deletedAt"))));
 
@@ -67,3 +64,4 @@ public class WarehouseSnapshotController {
         return snapshot;
     }
 }
+

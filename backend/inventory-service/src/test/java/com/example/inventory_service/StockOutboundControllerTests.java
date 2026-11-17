@@ -57,7 +57,7 @@ class StockOutboundControllerTests {
         verifyNoInteractions(service);
     }
     @Test void transferRequiresDestinationAccess() throws Exception {
-        when(access.authorizeTransfer(token, warehouse, target))
+        when(access.authorizeRoles(token, target, "WAREHOUSE_MANAGER", "COMPANY_ADMIN", "SYSTEM_ADMIN"))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
         mvc.perform(post(path()).header("Authorization", token).contentType("application/json").content("""
                 {"type":"EXPORT_TRANSFER","targetWarehouseId":"%s","lines":[{"lotId":"%s","quantity":1,"targetProductId":"%s"}]}
@@ -67,7 +67,7 @@ class StockOutboundControllerTests {
     @Test void transferCompletionRechecksDestinationAccess() throws Exception {
         when(service.get(warehouse, id)).thenReturn(new StockDocumentResponse(id, warehouse, target,
                 StockDocumentType.EXPORT_TRANSFER, StockDocumentStatus.APPROVED, List.of(), Map.of(), null, null));
-        when(access.authorizeTransfer(token, warehouse, target))
+        when(access.authorizeRoles(token, target, "WAREHOUSE_MANAGER", "COMPANY_ADMIN", "SYSTEM_ADMIN"))
                 .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN));
         mvc.perform(post(path() + "/" + id + "/complete").header("Authorization", token)).andExpect(status().isForbidden());
         verify(service, never()).transition(any(), any(), any(), any(), any());

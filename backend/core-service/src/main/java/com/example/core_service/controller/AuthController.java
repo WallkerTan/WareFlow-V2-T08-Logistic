@@ -27,7 +27,7 @@ public class AuthController {
 
     /**
      * Đăng ký công ty mới kèm tài khoản quản trị (COMPANY_ADMIN).
-     * Công ty chờ duyệt; chưa cấp access token.
+     * Trả về luôn access token để đăng nhập ngay.
      */
     @PostMapping("/register-company")
     @ResponseStatus(HttpStatus.CREATED)

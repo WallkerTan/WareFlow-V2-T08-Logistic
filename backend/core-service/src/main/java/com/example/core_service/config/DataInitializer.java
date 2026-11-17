@@ -18,24 +18,23 @@ public class DataInitializer implements ApplicationRunner {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    @org.springframework.beans.factory.annotation.Value("${ADMIN_EMAIL:admin@wareflow.com}") private String adminEmail;
-    @org.springframework.beans.factory.annotation.Value("${ADMIN_PASSWORD:admin123}") private String adminPassword;
 
     @Override
     public void run(ApplicationArguments args) {
-        if (userRepository.findFirstByRole(UserRole.SYSTEM_ADMIN).isPresent()) return;
+        String adminEmail = "admin@wareflow.com";
         if (!userRepository.existsByEmailIgnoreCase(adminEmail)) {
             User admin = User.builder()
                     .email(adminEmail)
                     .fullName("System Administrator")
-                    .passwordHash(passwordEncoder.encode(adminPassword))
+                    .passwordHash(passwordEncoder.encode("admin123"))
                     .role(UserRole.SYSTEM_ADMIN)
                     .status(UserStatus.ACTIVE)
                     .company(null)
                     .build();
 
             userRepository.save(admin);
-            log.info("Initialized SYSTEM_ADMIN account: {}", adminEmail);
+            log.info("Initialized default SYSTEM_ADMIN account: {} / admin123", adminEmail);
         }
     }
 }
+

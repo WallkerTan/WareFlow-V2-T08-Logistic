@@ -4,14 +4,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import AuthField from "./AuthField";
 import { getAuthSession } from "../../services/authApi";
-import { roleHome } from '../../services/session';
 
 export type LoginValues = {
     email: string;
     password: string;
     remember: boolean;
 };
-type Props = { onSubmit: (values: LoginValues) => Promise<unknown> };
+type Props = { onSubmit?: (values: LoginValues) => Promise<unknown> };
 
 export default function LoginForm({ onSubmit }: Props) {
     "use no memo";
@@ -29,13 +28,16 @@ export default function LoginForm({ onSubmit }: Props) {
         setMessage("");
         setSuccess(false);
         try {
+            if (!onSubmit) return;
             await onSubmit(values);
             setSuccess(true);
             setMessage(
                 "Đăng nhập thành công. Phiên làm việc đã được máy chủ xác nhận.",
             );
             navigate(
-                roleHome(getAuthSession()!.role),
+                getAuthSession()?.role === "SYSTEM_ADMIN"
+                    ? "/admin/dashboard"
+                    : "/dashboard",
                 { replace: true },
             );
         } catch (error) {

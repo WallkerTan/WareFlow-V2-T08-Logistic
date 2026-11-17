@@ -7,7 +7,7 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice
+@RestControllerAdvice(assignableTypes = {StockOutboundController.class, StockInboundController.class, InventoryCatalogController.class})
 public class StockConcurrencyExceptionHandler {
     @ExceptionHandler({OptimisticLockingFailureException.class, PessimisticLockingFailureException.class})
     public ProblemDetail conflict(Exception exception) {

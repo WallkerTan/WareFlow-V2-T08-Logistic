@@ -26,7 +26,7 @@ public class StockOutboundController {
     public StockDocumentResponse create(@RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable UUID warehouseId, @Valid @RequestBody CreateExportRequest request) {
         var user = access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
-        if (request.targetWarehouseId() != null) access.authorizeTransfer(authorization, warehouseId, request.targetWarehouseId());
+        if (request.targetWarehouseId() != null) authorizeTarget(authorization, request.targetWarehouseId());
         return outbound.create(warehouseId, request, user);
     }
 
@@ -46,7 +46,7 @@ public class StockOutboundController {
         return outbound.get(warehouseId, id);
     }
 
-    @PostMapping("/{id}/{action:submit|approve|reject|cancel|complete|pick|pack}")
+    @PostMapping("/{id}/{action:submit|approve|reject|cancel|complete}")
     public StockDocumentResponse transition(@RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable UUID warehouseId, @PathVariable UUID id, @PathVariable String action,
             @RequestBody(required = false) ApprovalDecisionRequest request) {
@@ -56,8 +56,11 @@ public class StockOutboundController {
                 : access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
         var doc = outbound.get(warehouseId, id);
         if (doc.targetWarehouseId() != null && (action.equals("approve") || action.equals("complete")))
-            access.authorizeTransfer(authorization, warehouseId, doc.targetWarehouseId());
+            authorizeTarget(authorization, doc.targetWarehouseId());
         return outbound.transition(warehouseId, id, action, request == null ? null : request.note(), user);
     }
 
+    private void authorizeTarget(String authorization, UUID targetWarehouseId) {
+        access.authorizeRoles(authorization, targetWarehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN", "SYSTEM_ADMIN");
+    }
 }
