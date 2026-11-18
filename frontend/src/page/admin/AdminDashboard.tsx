@@ -1,4 +1,11 @@
-import { useMemo, useState } from 'react';
+import {
+    cashSeries,
+    cashSummary,
+    inPeriod,
+    percentage,
+    percentLabel,
+} from "../../utils/analytics";
+import { useState } from "react";
 import {
     Area,
     AreaChart,
@@ -12,7 +19,7 @@ import {
     Tooltip,
     XAxis,
     YAxis,
-} from 'recharts';
+} from "recharts";
 import {
     ArrowRight,
     Building2,
@@ -25,11 +32,18 @@ import {
     Users,
     Warehouse,
     Info,
-} from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { Badge, Card, Modal, Progress, StatCard } from '../../components/admin/AdminUI';
-import { companies, notifications, products, shipments, systemLogs, transactions, users, warehouses } from '../../data/adminData';
-import type { Company, Shipment } from '../../types/admin';
+} from "lucide-react";
+import { Link } from "react-router-dom";
+import {
+    Badge,
+    Card,
+    Modal,
+    Progress,
+    StatCard,
+} from "../../components/admin/AdminUI";
+import { useAdminData } from "../../services/data";
+import { invalidateData } from "../../services/query";
+import type { Company, Shipment } from "../../types/admin";
 import {
     companyStatusMeta,
     formatCompactCurrency,
@@ -38,65 +52,80 @@ import {
     formatNumber,
     formatRelativeTime,
     shipmentStatusMeta,
-} from '../../utils/format';
-
-const revenueTrend = [
-    { month: 'T5', revenue: 312, expense: 186 },
-    { month: 'T6', revenue: 358, expense: 204 },
-    { month: 'T7', revenue: 331, expense: 192 },
-    { month: 'T8', revenue: 402, expense: 228 },
-    { month: 'T9', revenue: 447, expense: 241 },
-    { month: 'T10', revenue: 512, expense: 268 },
-];
-
-const warehouseLoad = [
-    { name: 'Bình Dương', value: 91, label: 'Kho Đông Á' },
-    { name: 'Quận 7', value: 82, label: 'Kho trung chuyển' },
-    { name: 'Thủ Đức', value: 64, label: 'Kho lạnh' },
-    { name: 'Long An', value: 58, label: 'Kho nông sản' },
-    { name: 'Quận 10', value: 47, label: 'Kho công nghệ' },
-];
-
-const companyDistribution = [
-    { name: 'Hoạt động', value: 4, color: '#4567ed' },
-    { name: 'Chờ duyệt', value: 2, color: '#d99220' },
-    { name: 'Đã khoá', value: 2, color: '#d34b58' },
-];
-
-const donutColors = companyDistribution.map((entry) => entry.color);
+} from "../../utils/format";
 
 export default function AdminDashboard() {
-    const [range, setRange] = useState<'30' | '90' | '365'>('90');
-    const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
-    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
+    const {
+        companies,
+        notifications,
+        products,
+        shipments,
+        systemLogs,
+        transactions,
+        users,
+        warehouses,
+        budgets,
+        raw,
+    } = useAdminData(
+        "notifications",
+        "products",
+        "shipments",
+        "systemLogs",
+        "transactions",
+        "users",
+        "budgets",
+    );
+    const [range, setRange] = useState<"30" | "90" | "365">("90");
+    const [selectedCompany, setSelectedCompany] = useState<Company | null>(
+        null,
+    );
+    const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(
+        null,
+    );
 
-    const metrics = useMemo(() => {
-        const activeCompanies = companies.filter((company) => company.status === 'ACTIVE').length;
-        const pendingCompanies = companies.filter((company) => company.status === 'PENDING').length;
-        const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'ACTIVE').length;
-        const lowStock = products.filter((product) => product.stock < product.minStock).length;
-        const inTransit = shipments.filter((shipment) => shipment.status === 'IN_TRANSIT').length;
-        const totalRevenue = transactions
-            .filter((transaction) => transaction.type === 'INCOME')
-            .reduce((sum, transaction) => sum + transaction.amount, 0);
-        const totalExpense = transactions
-            .filter((transaction) => transaction.type !== 'INCOME')
-            .reduce((sum, transaction) => sum + transaction.amount, 0);
-        return {
-            activeCompanies,
-            pendingCompanies,
-            activeWarehouses,
-            lowStock,
-            inTransit,
-            totalRevenue,
-            totalExpense,
-            margin: Math.round(((totalRevenue - totalExpense) / totalRevenue) * 100),
-        };
-    }, []);
+    const current = inPeriod(transactions, Number(range));
+    const sums = cashSummary(current);
+    const revenueTrend = cashSeries(transactions, Number(range));
+    const companyDistribution = [
+        { name: "Hoạt động", status: "ACTIVE", color: "#4567ed" },
+        { name: "Chờ duyệt", status: "PENDING", color: "#d99220" },
+        { name: "Đã khoá", status: "LOCKED", color: "#d34b58" },
+    ].map((item) => ({
+        ...item,
+        value: companies.filter((c) => c.status === item.status).length,
+    }));
+    const donutColors = companyDistribution.map((d) => d.color);
+    const warehouseLoad = warehouses
+        .map((w) => ({
+            name: w.id,
+            label: w.name,
+            value: raw.products
+                .filter((p) => p.warehouseId === w.id)
+                .reduce((sum, p) => sum + Number(p.quantity || 0), 0),
+        }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 5);
+    const metrics = {
+        activeCompanies: companies.filter((c) => c.status === "ACTIVE").length,
+        pendingCompanies: companies.filter((c) => c.status === "PENDING")
+            .length,
+        activeWarehouses: warehouses.filter((w) => w.status === "ACTIVE")
+            .length,
+        lowStock: products.filter((p) => p.stock < p.minStock).length,
+        inTransit: shipments.filter((s) => s.status === "IN_TRANSIT").length,
+        totalRevenue: sums.income,
+        totalExpense: sums.expense,
+        margin: percentLabel(sums.margin),
+    };
 
-    const recentCompanies = companies.slice(0, 5);
+    const recentCompanies = [...companies]
+        .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+        .slice(0, 5);
     const recentLogs = systemLogs.slice(0, 5);
-    const pendingShipments = shipments.filter((shipment) => shipment.status === 'CREATED' || shipment.status === 'IN_TRANSIT');
+    const pendingShipments = shipments.filter(
+        (shipment) =>
+            shipment.status === "CREATED" || shipment.status === "IN_TRANSIT",
+    );
     const unreadNotifications = notifications.filter((item) => !item.isRead);
 
     return (
@@ -104,18 +133,31 @@ export default function AdminDashboard() {
             <div className="admin-page-head">
                 <div>
                     <h2>Tổng quan hoạt động</h2>
-                    <p>Theo dõi sức khoẻ toàn bộ hệ sinh thái WareFlow trong thời gian thực.</p>
+                    <p>
+                        Theo dõi sức khoẻ toàn bộ hệ sinh thái WareFlow trong
+                        thời gian thực.
+                    </p>
                 </div>
                 <div className="admin-page-actions">
-                    <select className="adm-select" value={range} onChange={(event) => setRange(event.target.value as typeof range)} aria-label="Khoảng thời gian">
+                    <select
+                        className="adm-select"
+                        value={range}
+                        onChange={(event) =>
+                            setRange(event.target.value as typeof range)
+                        }
+                        aria-label="Khoảng thời gian"
+                    >
                         <option value="30">30 ngày gần nhất</option>
                         <option value="90">90 ngày gần nhất</option>
                         <option value="365">12 tháng gần nhất</option>
                     </select>
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={invalidateData}>
                         <RefreshCw size={15} /> Làm mới
                     </button>
-                    <Link to="/admin/companies" className="adm-btn adm-btn-primary">
+                    <Link
+                        to="/admin/companies"
+                        className="adm-btn adm-btn-primary"
+                    >
                         <Building2 size={15} /> Quản lý công ty
                     </Link>
                 </div>
@@ -131,12 +173,14 @@ export default function AdminDashboard() {
                     footnote="cần phê duyệt"
                 />
                 <StatCard
-                    label="Người dùng hoạt động"
-                    value={formatNumber(users.length * 16)}
+                    label="Tài khoản đang đăng nhập"
+                    value={formatNumber(
+                        users.filter((u) => u.status === "ACTIVE").length,
+                    )}
                     icon={<Users size={17} />}
                     tone="success"
-                    trend="8.4%"
-                    footnote="so với tháng trước"
+                    trend=""
+                    footnote="Tài khoản được phép xem"
                 />
                 <StatCard
                     label="Kho đang vận hành"
@@ -151,7 +195,7 @@ export default function AdminDashboard() {
                     value={formatNumber(metrics.lowStock)}
                     icon={<Package size={17} />}
                     tone="warning"
-                    trend="3 mã"
+                    trend={`${metrics.lowStock} mã`}
                     trendDirection="down"
                     footnote="dưới mức tối thiểu"
                 />
@@ -160,51 +204,125 @@ export default function AdminDashboard() {
             <div className="adm-grid-2">
                 <Card
                     title="Biểu đồ doanh thu và chi phí"
-                    subtitle={`Đơn vị: triệu đồng · ${range === '30' ? '30' : range === '90' ? '90' : '365'} ngày gần nhất`}
+                    subtitle={`Đơn vị: triệu đồng · ${range === "30" ? "30" : range === "90" ? "90" : "365"} ngày gần nhất`}
                     action={
                         <div className="adm-chart-legend">
                             <span>
-                                <i style={{ background: '#4567ed' }} /> Doanh thu
+                                <i style={{ background: "#4567ed" }} /> Doanh
+                                thu
                             </span>
                             <span>
-                                <i style={{ background: '#f0a5ae' }} /> Chi phí
+                                <i style={{ background: "#f0a5ae" }} /> Chi phí
                             </span>
                         </div>
                     }
                 >
                     <div className="adm-chart-box">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={revenueTrend} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
+                            <AreaChart
+                                data={revenueTrend}
+                                margin={{
+                                    top: 6,
+                                    right: 6,
+                                    left: -18,
+                                    bottom: 0,
+                                }}
+                            >
                                 <defs>
-                                    <linearGradient id="admRevenue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#4567ed" stopOpacity={0.26} />
-                                        <stop offset="100%" stopColor="#4567ed" stopOpacity={0.02} />
+                                    <linearGradient
+                                        id="admRevenue"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                    >
+                                        <stop
+                                            offset="0%"
+                                            stopColor="#4567ed"
+                                            stopOpacity={0.26}
+                                        />
+                                        <stop
+                                            offset="100%"
+                                            stopColor="#4567ed"
+                                            stopOpacity={0.02}
+                                        />
                                     </linearGradient>
-                                    <linearGradient id="admExpense" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stopColor="#f0a5ae" stopOpacity={0.24} />
-                                        <stop offset="100%" stopColor="#f0a5ae" stopOpacity={0.02} />
+                                    <linearGradient
+                                        id="admExpense"
+                                        x1="0"
+                                        y1="0"
+                                        x2="0"
+                                        y2="1"
+                                    >
+                                        <stop
+                                            offset="0%"
+                                            stopColor="#f0a5ae"
+                                            stopOpacity={0.24}
+                                        />
+                                        <stop
+                                            offset="100%"
+                                            stopColor="#f0a5ae"
+                                            stopOpacity={0.02}
+                                        />
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#eef1f7" vertical={false} />
-                                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9aa4b6' }} axisLine={false} tickLine={false} />
-                                <YAxis tick={{ fontSize: 11, fill: '#9aa4b6' }} axisLine={false} tickLine={false} />
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="#eef1f7"
+                                    vertical={false}
+                                />
+                                <XAxis
+                                    dataKey="month"
+                                    tick={{ fontSize: 11, fill: "#9aa4b6" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <YAxis
+                                    tick={{ fontSize: 11, fill: "#9aa4b6" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
                                 <Tooltip
                                     contentStyle={{
                                         borderRadius: 10,
-                                        border: '1px solid #e6eaf2',
+                                        border: "1px solid #e6eaf2",
                                         fontSize: 12,
-                                        boxShadow: '0 12px 28px -14px rgba(23,33,57,.35)',
+                                        boxShadow:
+                                            "0 12px 28px -14px rgba(23,33,57,.35)",
                                     }}
-                                    formatter={(value: number | string, name: string) => [`${formatNumber(Number(value))} tr`, name === 'revenue' ? 'Doanh thu' : 'Chi phí']}
+                                    formatter={(
+                                        value: number | string,
+                                        name: string,
+                                    ) => [
+                                        `${formatNumber(Number(value))} tr`,
+                                        name === "revenue"
+                                            ? "Doanh thu"
+                                            : "Chi phí",
+                                    ]}
                                 />
-                                <Area type="monotone" dataKey="revenue" stroke="#4567ed" strokeWidth={2.2} fill="url(#admRevenue)" />
-                                <Area type="monotone" dataKey="expense" stroke="#f0a5ae" strokeWidth={2} fill="url(#admExpense)" />
+                                <Area
+                                    type="monotone"
+                                    dataKey="revenue"
+                                    stroke="#4567ed"
+                                    strokeWidth={2.2}
+                                    fill="url(#admRevenue)"
+                                />
+                                <Area
+                                    type="monotone"
+                                    dataKey="expense"
+                                    stroke="#f0a5ae"
+                                    strokeWidth={2}
+                                    fill="url(#admExpense)"
+                                />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </Card>
 
-                <Card title="Phân bố doanh nghiệp" subtitle="Theo trạng thái phê duyệt">
+                <Card
+                    title="Phân bố doanh nghiệp"
+                    subtitle="Theo trạng thái phê duyệt"
+                >
                     <div className="adm-donut-wrap">
                         <div className="adm-donut">
                             <ResponsiveContainer width="100%" height="100%">
@@ -218,13 +336,24 @@ export default function AdminDashboard() {
                                         paddingAngle={3}
                                         stroke="none"
                                     >
-                                        {companyDistribution.map((entry, index) => (
-                                            <Cell key={entry.name} fill={donutColors[index]} />
-                                        ))}
+                                        {companyDistribution.map(
+                                            (entry, index) => (
+                                                <Cell
+                                                    key={entry.name}
+                                                    fill={donutColors[index]}
+                                                />
+                                            ),
+                                        )}
                                     </Pie>
                                     <Tooltip
-                                        contentStyle={{ borderRadius: 10, border: '1px solid #e6eaf2', fontSize: 12 }}
-                                        formatter={(value: number | string) => [`${value} công ty`]}
+                                        contentStyle={{
+                                            borderRadius: 10,
+                                            border: "1px solid #e6eaf2",
+                                            fontSize: 12,
+                                        }}
+                                        formatter={(value: number | string) => [
+                                            `${value} công ty`,
+                                        ]}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -235,7 +364,10 @@ export default function AdminDashboard() {
                         </div>
                         <div className="adm-donut-legend">
                             {companyDistribution.map((entry) => (
-                                <div className="adm-donut-legend-row" key={entry.name}>
+                                <div
+                                    className="adm-donut-legend-row"
+                                    key={entry.name}
+                                >
                                     <i style={{ background: entry.color }} />
                                     <span>{entry.name}</span>
                                     <strong>{entry.value}</strong>
@@ -244,12 +376,22 @@ export default function AdminDashboard() {
                         </div>
                     </div>
 
-                    <div className="adm-section-gap" style={{ marginTop: 20, marginBottom: 0 }}>
+                    <div
+                        className="adm-section-gap"
+                        style={{ marginTop: 20, marginBottom: 0 }}
+                    >
                         <div className="adm-inline-note is-warning">
                             <Clock size={15} />
                             <span>
-                                Có <strong>{metrics.pendingCompanies} doanh nghiệp</strong> đang chờ phê duyệt và{' '}
-                                <strong>{unreadNotifications.length} thông báo</strong> chưa được xử lý.
+                                Có{" "}
+                                <strong>
+                                    {metrics.pendingCompanies} doanh nghiệp
+                                </strong>{" "}
+                                đang chờ phê duyệt và{" "}
+                                <strong>
+                                    {unreadNotifications.length} thông báo
+                                </strong>{" "}
+                                chưa được xử lý.
                             </span>
                         </div>
                     </div>
@@ -258,28 +400,72 @@ export default function AdminDashboard() {
 
             <div className="adm-grid-equal">
                 <Card
-                    title="Tải trọng kho hàng"
-                    subtitle="Tỷ lệ sử dụng sức chứa hiện tại"
+                    title="Số lượng hàng theo kho"
+                    subtitle="Tổng tồn thực tế theo dữ liệu hàng hóa"
                     action={
-                        <Link to="/admin/warehouses" className="adm-link" style={{ fontSize: 12 }}>
+                        <Link
+                            to="/admin/warehouses"
+                            className="adm-link"
+                            style={{ fontSize: 12 }}
+                        >
                             Xem tất cả
                         </Link>
                     }
                 >
                     <div className="adm-chart-box" style={{ height: 232 }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={warehouseLoad} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#eef1f7" horizontal={false} />
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10.5, fill: '#9aa4b6' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => `${value}%`} />
-                                <YAxis type="category" dataKey="label" width={104} tick={{ fontSize: 11, fill: '#738096' }} axisLine={false} tickLine={false} />
-                                <Tooltip
-                                    cursor={{ fill: '#f6f8fc' }}
-                                    contentStyle={{ borderRadius: 10, border: '1px solid #e6eaf2', fontSize: 12 }}
-                                    formatter={(value: number | string) => [`${value}%`, 'Tải trọng']}
+                            <BarChart
+                                data={warehouseLoad}
+                                layout="vertical"
+                                margin={{
+                                    top: 4,
+                                    right: 24,
+                                    left: 4,
+                                    bottom: 0,
+                                }}
+                            >
+                                <CartesianGrid
+                                    strokeDasharray="3 3"
+                                    stroke="#eef1f7"
+                                    horizontal={false}
                                 />
-                                <Bar dataKey="value" radius={[0, 5, 5, 0]} barSize={16}>
+                                <XAxis
+                                    type="number"
+                                    domain={[0, "auto"]}
+                                    tick={{ fontSize: 10.5, fill: "#9aa4b6" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tickFormatter={(value: number) =>
+                                        formatNumber(Number(value))
+                                    }
+                                />
+                                <YAxis
+                                    type="category"
+                                    dataKey="label"
+                                    width={104}
+                                    tick={{ fontSize: 11, fill: "#738096" }}
+                                    axisLine={false}
+                                    tickLine={false}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: "#f6f8fc" }}
+                                    contentStyle={{
+                                        borderRadius: 10,
+                                        border: "1px solid #e6eaf2",
+                                        fontSize: 12,
+                                    }}
+                                    formatter={(value: number | string) => [
+                                        formatNumber(Number(value)),
+                                        "Số lượng tồn",
+                                    ]}
+                                />
+                                <Bar
+                                    dataKey="value"
+                                    radius={[0, 5, 5, 0]}
+                                    barSize={16}
+                                >
                                     {warehouseLoad.map((entry) => (
-                                        <Cell key={entry.name} fill={entry.value >= 85 ? '#d34b58' : entry.value >= 60 ? '#d99220' : '#4567ed'} />
+                                        <Cell key={entry.name} fill="#4567ed" />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -291,7 +477,11 @@ export default function AdminDashboard() {
                     title="Hoạt động gần đây"
                     subtitle="Nhật ký thao tác trên hệ thống"
                     action={
-                        <Link to="/admin/logs" className="adm-link" style={{ fontSize: 12 }}>
+                        <Link
+                            to="/admin/logs"
+                            className="adm-link"
+                            style={{ fontSize: 12 }}
+                        >
                             Xem nhật ký
                         </Link>
                     }
@@ -307,7 +497,9 @@ export default function AdminDashboard() {
                                     <p>
                                         {entry.actorName} · {entry.target}
                                     </p>
-                                    <small>{formatRelativeTime(entry.createdAt)}</small>
+                                    <small>
+                                        {formatRelativeTime(entry.createdAt)}
+                                    </small>
                                 </div>
                             </li>
                         ))}
@@ -320,7 +512,16 @@ export default function AdminDashboard() {
                     title="Doanh nghiệp mới đăng ký"
                     subtitle="Cập nhật gần nhất từ hệ thống"
                     action={
-                        <Link to="/admin/companies" className="adm-link" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Link
+                            to="/admin/companies"
+                            className="adm-link"
+                            style={{
+                                fontSize: 12,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                            }}
+                        >
                             Xem tất cả <ArrowRight size={13} />
                         </Link>
                     }
@@ -338,22 +539,36 @@ export default function AdminDashboard() {
                             </thead>
                             <tbody>
                                 {recentCompanies.map((company) => {
-                                    const status = companyStatusMeta[company.status];
+                                    const status =
+                                        companyStatusMeta[company.status];
                                     return (
                                         <tr
                                             key={company.id}
-                                            onClick={() => setSelectedCompany(company)}
+                                            onClick={() =>
+                                                setSelectedCompany(company)
+                                            }
                                             title="Nhấp để xem chi tiết doanh nghiệp"
                                         >
                                             <td>
-                                                <span className="adm-cell-main">{company.name}</span>
-                                                <span className="adm-cell-sub">{company.taxCode}</span>
+                                                <span className="adm-cell-main">
+                                                    {company.name}
+                                                </span>
+                                                <span className="adm-cell-sub">
+                                                    {company.taxCode}
+                                                </span>
                                             </td>
                                             <td>{company.businessModel}</td>
                                             <td>
-                                                <Badge label={status.label} tone={status.tone} />
+                                                <Badge
+                                                    label={status.label}
+                                                    tone={status.tone}
+                                                />
                                             </td>
-                                            <td className="adm-muted">{formatDateTime(company.createdAt)}</td>
+                                            <td className="adm-muted">
+                                                {formatDateTime(
+                                                    company.createdAt,
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -366,7 +581,16 @@ export default function AdminDashboard() {
                     title="Đơn vận chuyển đang xử lý"
                     subtitle={`${pendingShipments.length} đơn đang chờ hoàn tất`}
                     action={
-                        <Link to="/admin/shipments" className="adm-link" style={{ fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <Link
+                            to="/admin/shipments"
+                            className="adm-link"
+                            style={{
+                                fontSize: 12,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                            }}
+                        >
                             Xem tất cả <ArrowRight size={13} />
                         </Link>
                     }
@@ -384,27 +608,50 @@ export default function AdminDashboard() {
                             </thead>
                             <tbody>
                                 {pendingShipments.map((shipment) => {
-                                    const status = shipmentStatusMeta[shipment.status];
+                                    const status =
+                                        shipmentStatusMeta[shipment.status];
                                     return (
                                         <tr
                                             key={shipment.id}
-                                            onClick={() => setSelectedShipment(shipment)}
+                                            onClick={() =>
+                                                setSelectedShipment(shipment)
+                                            }
                                             title="Nhấp để xem chi tiết vận đơn"
                                         >
                                             <td>
-                                                <span className="adm-cell-main adm-mono">{shipment.trackingCode}</span>
-                                                <span className="adm-cell-sub">{shipment.destination}</span>
+                                                <span className="adm-cell-main adm-mono">
+                                                    {shipment.trackingCode}
+                                                </span>
+                                                <span className="adm-cell-sub">
+                                                    {shipment.destination}
+                                                </span>
                                             </td>
                                             <td>
-                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                                                    <Truck size={14} className="adm-muted" />
+                                                <span
+                                                    style={{
+                                                        display: "inline-flex",
+                                                        alignItems: "center",
+                                                        gap: 6,
+                                                    }}
+                                                >
+                                                    <Truck
+                                                        size={14}
+                                                        className="adm-muted"
+                                                    />
                                                     {shipment.carrier}
                                                 </span>
                                             </td>
                                             <td>
-                                                <Badge label={status.label} tone={status.tone} />
+                                                <Badge
+                                                    label={status.label}
+                                                    tone={status.tone}
+                                                />
                                             </td>
-                                            <td className="adm-text-right adm-cell-main">{formatCompactCurrency(shipment.codAmount)}</td>
+                                            <td className="adm-text-right adm-cell-main">
+                                                {formatCompactCurrency(
+                                                    shipment.codAmount,
+                                                )}
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -415,36 +662,73 @@ export default function AdminDashboard() {
             </div>
 
             <div className="adm-grid-equal">
-                <Card title="Ngân sách tháng 10/2026" subtitle="So sánh hạn mức và chi phí thực tế">
-                    <ul className="adm-list" style={{ margin: -18, marginTop: -18 }}>
-                        {[
-                            { label: 'Tổng công ty', budget: 900_000_000, spent: 512_300_000 },
-                            { label: 'Kho trung chuyển quận 7', budget: 240_000_000, spent: 168_400_000 },
-                            { label: 'Kho lạnh Thủ Đức', budget: 120_000_000, spent: 86_900_000 },
-                            { label: 'Kho tổng Đông Á Bình Dương', budget: 380_000_000, spent: 341_600_000 },
-                        ].map((row) => {
-                            const percent = Math.round((row.spent / row.budget) * 100);
-                            return (
-                                <li className="adm-list-item" key={row.label}>
-                                    <div className="adm-list-text">
-                                        <strong>{row.label}</strong>
-                                        <div className="adm-progress-row" style={{ marginTop: 8 }}>
-                                            <Progress value={percent} tone={percent >= 90 ? 'danger' : percent >= 70 ? 'warning' : 'success'} />
-                                            <span>{percent}%</span>
+                <Card
+                    title="Ngân sách tháng hiện tại"
+                    subtitle="So sánh hạn mức và chi phí thực tế"
+                >
+                    <ul
+                        className="adm-list"
+                        style={{ margin: -18, marginTop: -18 }}
+                    >
+                        {budgets
+                            .map((b) => ({
+                                label: b.warehouseName || "Toàn công ty",
+                                budget: b.allocated,
+                                spent: b.spent,
+                                id: b.id,
+                            }))
+                            .map((row) => {
+                                const percent = Math.round(
+                                    percentage(row.spent, row.budget) || 0,
+                                );
+                                return (
+                                    <li className="adm-list-item" key={row.id}>
+                                        <div className="adm-list-text">
+                                            <strong>{row.label}</strong>
+                                            <div
+                                                className="adm-progress-row"
+                                                style={{ marginTop: 8 }}
+                                            >
+                                                <Progress
+                                                    value={percent}
+                                                    tone={
+                                                        percent >= 90
+                                                            ? "danger"
+                                                            : percent >= 70
+                                                              ? "warning"
+                                                              : "success"
+                                                    }
+                                                />
+                                                <span>{percent}%</span>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="adm-list-meta">
-                                        <strong>{formatCompactCurrency(row.spent)}</strong>
-                                        <small>trên {formatCompactCurrency(row.budget)}</small>
-                                    </div>
-                                </li>
-                            );
-                        })}
+                                        <div className="adm-list-meta">
+                                            <strong>
+                                                {formatCompactCurrency(
+                                                    row.spent,
+                                                )}
+                                            </strong>
+                                            <small>
+                                                trên{" "}
+                                                {formatCompactCurrency(
+                                                    row.budget,
+                                                )}
+                                            </small>
+                                        </div>
+                                    </li>
+                                );
+                            })}
                     </ul>
                 </Card>
 
-                <Card title="Tổng quan tài chính" subtitle="Tích lũy trong kỳ báo cáo">
-                    <ul className="adm-list" style={{ margin: -18, marginTop: -18 }}>
+                <Card
+                    title="Tổng quan tài chính"
+                    subtitle="Tích lũy trong kỳ báo cáo"
+                >
+                    <ul
+                        className="adm-list"
+                        style={{ margin: -18, marginTop: -18 }}
+                    >
                         <li className="adm-list-item">
                             <span className="adm-list-icon is-success">
                                 <TrendingUp size={16} />
@@ -454,7 +738,9 @@ export default function AdminDashboard() {
                                 <small>Từ bán hàng và dịch vụ</small>
                             </div>
                             <div className="adm-list-meta">
-                                <strong className="adm-text-success">{formatCurrency(metrics.totalRevenue)}</strong>
+                                <strong className="adm-text-success">
+                                    {formatCurrency(metrics.totalRevenue)}
+                                </strong>
                             </div>
                         </li>
                         <li className="adm-list-item">
@@ -463,10 +749,14 @@ export default function AdminDashboard() {
                             </span>
                             <div className="adm-list-text">
                                 <strong>Tổng chi phí</strong>
-                                <small>Nhập hàng, chuyển kho và phí hệ thống</small>
+                                <small>
+                                    Nhập hàng, chuyển kho và phí hệ thống
+                                </small>
                             </div>
                             <div className="adm-list-meta">
-                                <strong className="adm-text-danger">{formatCurrency(metrics.totalExpense)}</strong>
+                                <strong className="adm-text-danger">
+                                    {formatCurrency(metrics.totalExpense)}
+                                </strong>
                             </div>
                         </li>
                         <li className="adm-list-item">
@@ -475,10 +765,12 @@ export default function AdminDashboard() {
                             </span>
                             <div className="adm-list-text">
                                 <strong>Biên lợi nhuận gộp</strong>
-                                <small>Sau khi trừ toàn bộ chi phí vận hành</small>
+                                <small>
+                                    Sau khi trừ toàn bộ chi phí vận hành
+                                </small>
                             </div>
                             <div className="adm-list-meta">
-                                <strong>{metrics.margin}%</strong>
+                                <strong>{metrics.margin}</strong>
                             </div>
                         </li>
                         <li className="adm-list-item">
@@ -487,7 +779,9 @@ export default function AdminDashboard() {
                             </span>
                             <div className="adm-list-text">
                                 <strong>Đơn đang vận chuyển</strong>
-                                <small>Cần theo dõi để đảm bảo giao đúng hạn</small>
+                                <small>
+                                    Cần theo dõi để đảm bảo giao đúng hạn
+                                </small>
                             </div>
                             <div className="adm-list-meta">
                                 <strong>{metrics.inTransit}</strong>
@@ -503,11 +797,25 @@ export default function AdminDashboard() {
                     description={`MST: ${selectedCompany.taxCode} · core-service: companies`}
                     onClose={() => setSelectedCompany(null)}
                     footer={
-                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Link className="adm-btn adm-btn-primary" to={`/admin/companies/${selectedCompany.id}`}>
-                                Đi tới trang quản lý công ty <ArrowRight size={14} />
+                        <div
+                            style={{
+                                display: "flex",
+                                width: "100%",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                            }}
+                        >
+                            <Link
+                                className="adm-btn adm-btn-primary"
+                                to={`/admin/companies/${selectedCompany.id}`}
+                            >
+                                Đi tới trang quản lý công ty{" "}
+                                <ArrowRight size={14} />
                             </Link>
-                            <button className="adm-btn" onClick={() => setSelectedCompany(null)}>
+                            <button
+                                className="adm-btn"
+                                onClick={() => setSelectedCompany(null)}
+                            >
                                 Đóng
                             </button>
                         </div>
@@ -515,22 +823,38 @@ export default function AdminDashboard() {
                 >
                     <div
                         style={{
-                            padding: '12px 14px',
+                            padding: "12px 14px",
                             borderRadius: 8,
                             marginBottom: 16,
                             fontSize: 12.5,
                             lineHeight: 1.5,
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            color: '#334155',
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            color: "#334155",
                         }}
                     >
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "flex-start",
+                            }}
+                        >
+                            <Info
+                                size={16}
+                                color="#3b82f6"
+                                style={{ flexShrink: 0, marginTop: 2 }}
+                            />
                             <div>
-                                <strong>Ràng buộc quan hệ CSDL (core-service: companies):</strong>
-                                <p style={{ margin: '4px 0 0' }}>
-                                    Công ty hiện đang có {selectedCompany.warehouseCount} kho hàng và {selectedCompany.memberCount} thành viên liên kết.
+                                <strong>
+                                    Ràng buộc quan hệ CSDL (core-service:
+                                    companies):
+                                </strong>
+                                <p style={{ margin: "4px 0 0" }}>
+                                    Công ty hiện đang có{" "}
+                                    {selectedCompany.warehouseCount} kho hàng.
+                                    Nhân viên được quản lý trong không gian công
+                                    ty.
                                 </p>
                             </div>
                         </div>
@@ -538,26 +862,57 @@ export default function AdminDashboard() {
                     <div className="adm-form">
                         <div className="adm-field">
                             <label>Tên công ty</label>
-                            <input className="adm-input" value={selectedCompany.name} disabled style={{ background: '#f8fafc' }} />
+                            <input
+                                className="adm-input"
+                                value={selectedCompany.name}
+                                disabled
+                                style={{ background: "#f8fafc" }}
+                            />
                         </div>
                         <div className="adm-field-grid">
                             <div className="adm-field">
                                 <label>Mô hình kinh doanh</label>
-                                <input className="adm-input" value={selectedCompany.businessModel} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={selectedCompany.businessModel}
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                             <div className="adm-field">
                                 <label>Trạng thái</label>
-                                <input className="adm-input" value={companyStatusMeta[selectedCompany.status].label} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={
+                                        companyStatusMeta[
+                                            selectedCompany.status
+                                        ].label
+                                    }
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                         </div>
                         <div className="adm-field-grid">
                             <div className="adm-field">
                                 <label>Email quản trị</label>
-                                <input className="adm-input" value={selectedCompany.email} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={selectedCompany.email}
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                             <div className="adm-field">
                                 <label>Ngày đăng ký</label>
-                                <input className="adm-input" value={formatDateTime(selectedCompany.createdAt)} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={formatDateTime(
+                                        selectedCompany.createdAt,
+                                    )}
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -570,11 +925,24 @@ export default function AdminDashboard() {
                     description={`delivery-service: shipments`}
                     onClose={() => setSelectedShipment(null)}
                     footer={
-                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Link className="adm-btn adm-btn-primary" to="/admin/shipments">
+                        <div
+                            style={{
+                                display: "flex",
+                                width: "100%",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                            }}
+                        >
+                            <Link
+                                className="adm-btn adm-btn-primary"
+                                to="/admin/shipments"
+                            >
                                 Xem tất cả vận đơn <ArrowRight size={14} />
                             </Link>
-                            <button className="adm-btn" onClick={() => setSelectedShipment(null)}>
+                            <button
+                                className="adm-btn"
+                                onClick={() => setSelectedShipment(null)}
+                            >
                                 Đóng
                             </button>
                         </div>
@@ -584,26 +952,59 @@ export default function AdminDashboard() {
                         <div className="adm-field-grid">
                             <div className="adm-field">
                                 <label>Mã vận đơn</label>
-                                <input className="adm-input" value={selectedShipment.trackingCode} disabled style={{ background: '#f8fafc', fontFamily: 'monospace' }} />
+                                <input
+                                    className="adm-input"
+                                    value={selectedShipment.trackingCode}
+                                    disabled
+                                    style={{
+                                        background: "#f8fafc",
+                                        fontFamily: "monospace",
+                                    }}
+                                />
                             </div>
                             <div className="adm-field">
                                 <label>Đơn vị vận chuyển</label>
-                                <input className="adm-input" value={selectedShipment.carrier} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={selectedShipment.carrier}
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                         </div>
                         <div className="adm-field-grid">
                             <div className="adm-field">
                                 <label>Điểm đến</label>
-                                <input className="adm-input" value={selectedShipment.destination} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={selectedShipment.destination}
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                             <div className="adm-field">
                                 <label>Tiền thu hộ COD</label>
-                                <input className="adm-input" value={formatCompactCurrency(selectedShipment.codAmount)} disabled style={{ background: '#f8fafc' }} />
+                                <input
+                                    className="adm-input"
+                                    value={formatCompactCurrency(
+                                        selectedShipment.codAmount,
+                                    )}
+                                    disabled
+                                    style={{ background: "#f8fafc" }}
+                                />
                             </div>
                         </div>
                         <div className="adm-field">
                             <label>Trạng thái</label>
-                            <input className="adm-input" value={shipmentStatusMeta[selectedShipment.status].label} disabled style={{ background: '#f8fafc' }} />
+                            <input
+                                className="adm-input"
+                                value={
+                                    shipmentStatusMeta[selectedShipment.status]
+                                        .label
+                                }
+                                disabled
+                                style={{ background: "#f8fafc" }}
+                            />
                         </div>
                     </div>
                 </Modal>

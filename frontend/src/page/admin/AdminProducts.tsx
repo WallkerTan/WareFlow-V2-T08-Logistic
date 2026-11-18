@@ -1,16 +1,19 @@
+import { Link } from 'react-router-dom';
+import { downloadCsv } from '../../utils/export';
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Boxes, Check, Download, Info, Package, Plus, Search, ShieldAlert, Trash2 } from 'lucide-react';
 import { Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
-import { products as seedProducts } from '../../data/adminData';
+import { useAdminData, saveResource, attempt } from '../../services/data';
 import type { Product } from '../../types/admin';
 import { formatCurrency, formatNumber, formatRelativeTime } from '../../utils/format';
 
 const PAGE_SIZE = 6;
 
 export default function AdminProducts() {
-    const [rows, setRows] = useState<Product[]>(seedProducts);
+    const { supplierProducts: seedProducts, raw } = useAdminData('supplierProducts');
+    const rows = seedProducts;
     const [query, setQuery] = useState('');
-    const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW' | 'OK'>('ALL');
+    const [stockFilter, setStockFilter] = useState('ALL');
     const [page, setPage] = useState(1);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     const [editForm, setEditForm] = useState<{
@@ -44,35 +47,18 @@ export default function AdminProducts() {
         setConfirmDelete(false);
     };
 
-    const handleSaveProduct = () => {
+    const handleSaveProduct = async () => {
         if (!selectedProduct) return;
-        setRows((prev) =>
-            prev.map((p) =>
-                p.id === selectedProduct.id
-                    ? {
-                          ...p,
-                          ...editForm,
-                          updatedAt: new Date().toISOString(),
-                      }
-                    : p
-            )
-        );
-        setSelectedProduct(null);
-        showToast(`Đã lưu thay đổi cho sản phẩm "${editForm.name}".`);
+        const original=raw.supplierProducts.find(r=>r.id===selectedProduct.id)!;
+        if (!await attempt(() => saveResource('core', '/suppliers/'+original.supplierId+'/products/'+original.id, 'PUT', {...original,name:editForm.name,unit:editForm.unit,price:editForm.price}))) return;
+        setSelectedProduct(null); showToast('Đã lưu sản phẩm.');
     };
-
-    const handleDeleteProduct = () => {
+    const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
-        if (selectedProduct.stock > 0) {
-            alert('Ràng buộc CSDL: Sản phẩm còn tồn kho thực tế, không thể xóa trực tiếp!');
-            return;
-        }
-        setRows((prev) => prev.filter((p) => p.id !== selectedProduct.id));
-        const name = selectedProduct.name;
-        setSelectedProduct(null);
-        showToast(`Đã xóa sản phẩm "${name}" khỏi hệ thống.`);
+        const original=raw.supplierProducts.find(r=>r.id===selectedProduct.id)!;
+        if (!await attempt(() => saveResource('core', '/suppliers/'+original.supplierId+'/products/'+original.id,'DELETE'))) return;
+        setSelectedProduct(null); showToast('Đã xóa sản phẩm.');
     };
-
     const showToast = (msg: string) => {
         setToast(msg);
         setTimeout(() => setToast(null), 3500);
@@ -86,8 +72,7 @@ export default function AdminProducts() {
                 product.name.toLowerCase().includes(keyword) ||
                 product.sku.toLowerCase().includes(keyword) ||
                 product.barcode.includes(keyword);
-            const isLow = product.stock < product.minStock;
-            const matchesStock = stockFilter === 'ALL' || (stockFilter === 'LOW' ? isLow : !isLow);
+            const matchesStock = stockFilter === 'ALL' || product.warehouseName === stockFilter;
             return matchesQuery && matchesStock;
         });
     }, [rows, query, stockFilter]);
@@ -103,23 +88,21 @@ export default function AdminProducts() {
         };
     }
 
-    const lowStockCount = rows.filter((product) => product.stock < product.minStock).length;
-    const totalValue = rows.reduce((sum, product) => sum + product.stock * product.price, 0);
+    const lowStockCount = new Set(raw.supplierProducts.map(p=>p.supplierId)).size;
+    const totalValue = rows.length ? rows.reduce((sum,p)=>sum+p.price,0)/rows.length : 0;
 
     return (
         <>
             <div className="admin-page-head">
                 <div>
                     <h2>Danh mục sản phẩm</h2>
-                    <p>Quản lý SKU, mức tồn kho tối thiểu và giá trị hàng tồn trên toàn hệ thống.</p>
+                    <p>Danh mục và đơn giá do các nhà cung cấp công bố.</p>
                 </div>
                 <div className="admin-page-actions">
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={()=>downloadCsv("san-pham.csv",["SKU","Tên","Nhà cung cấp","Đơn vị","Đơn giá"],filtered.map(p=>[p.sku,p.name,p.warehouseName,p.unit,p.price]))}>
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <button className="adm-btn adm-btn-primary">
-                        <Plus size={16} /> Thêm sản phẩm
-                    </button>
+                    <Link className="adm-btn adm-btn-primary" to="/admin/products/new"><Plus size={16} /> Thêm sản phẩm</Link>
                 </div>
             </div>
 
@@ -138,26 +121,26 @@ export default function AdminProducts() {
                 </article>
                 <article className="adm-stat">
                     <div className="adm-stat-top">
-                        <span className="adm-stat-label">Cảnh báo tồn kho</span>
+                        <span className="adm-stat-label">Nhà cung cấp</span>
                         <span className="adm-stat-icon is-warning">
                             <AlertTriangle size={17} />
                         </span>
                     </div>
                     <div className="adm-stat-value">{lowStockCount}</div>
                     <div className="adm-stat-foot">
-                        <span>Dưới mức tối thiểu</span>
+                        <span>Có sản phẩm trong danh mục</span>
                     </div>
                 </article>
                 <article className="adm-stat">
                     <div className="adm-stat-top">
-                        <span className="adm-stat-label">Giá trị tồn kho</span>
+                        <span className="adm-stat-label">Đơn giá trung bình</span>
                         <span className="adm-stat-icon is-success">
                             <Package size={17} />
                         </span>
                     </div>
                     <div className="adm-stat-value">{formatCurrency(totalValue).replace('₫', '').trim()}</div>
                     <div className="adm-stat-foot">
-                        <span>Tính theo giá bán hiện tại</span>
+                        <span>Trung bình cộng đơn giá danh mục</span>
                     </div>
                 </article>
             </div>
@@ -178,12 +161,11 @@ export default function AdminProducts() {
                     <select
                         className="adm-select"
                         value={stockFilter}
-                        onChange={(event) => updateFilter(setStockFilter)(event.target.value as 'ALL' | 'LOW' | 'OK')}
-                        aria-label="Lọc theo tình trạng tồn kho"
+                        onChange={(event) => updateFilter(setStockFilter)(event.target.value)}
+                        aria-label="Lọc theo nhà cung cấp"
                     >
-                        <option value="ALL">Tất cả tình trạng</option>
-                        <option value="LOW">Tồn kho thấp</option>
-                        <option value="OK">Tồn kho bình thường</option>
+                        <option value="ALL">Danh mục nhà cung cấp</option>
+                        {[...new Set(rows.map(p=>p.warehouseName))].map(name=><option key={name} value={name}>{name}</option>)}
                     </select>
                     <div className="adm-toolbar-right">
                         <span className="adm-count">{filtered.length} sản phẩm</span>
@@ -203,8 +185,8 @@ export default function AdminProducts() {
                                 <tr>
                                     <th>Sản phẩm</th>
                                     <th>SKU / Mã vạch</th>
-                                    <th>Kho</th>
-                                    <th>Tồn kho</th>
+                                    <th>Nhà cung cấp</th>
+                                    <th>Đơn vị tính</th>
                                     <th className="adm-text-right">Đơn giá</th>
                                     <th>Cập nhật</th>
                                 </tr>
@@ -229,10 +211,10 @@ export default function AdminProducts() {
                                             <td>{product.warehouseName}</td>
                                             <td>
                                                 <span className={isLow ? 'adm-text-danger adm-cell-main' : 'adm-cell-main'}>
-                                                    {formatNumber(product.stock)} {product.unit}
+                                                    {product.unit}
                                                 </span>
                                                 <span className="adm-cell-sub">
-                                                    Tối thiểu {formatNumber(product.minStock)} {product.unit}
+                                                    Danh mục cung ứng
                                                 </span>
                                             </td>
                                             <td className="adm-text-right adm-cell-main">{formatCurrency(product.price)}</td>
@@ -358,7 +340,7 @@ export default function AdminProducts() {
                                 <label>Mã vạch (Barcode)</label>
                                 <input
                                     className="adm-input"
-                                    value={editForm.barcode}
+                                    readOnly value={editForm.barcode}
                                     onChange={(e) => setEditForm({ ...editForm, barcode: e.target.value })}
                                 />
                             </div>
@@ -373,10 +355,10 @@ export default function AdminProducts() {
                                 />
                             </div>
                             <div className="adm-field">
-                                <label>Kho lưu trữ</label>
+                                <label>Nhà cung cấp</label>
                                 <input
                                     className="adm-input"
-                                    value={editForm.warehouseName}
+                                    readOnly value={editForm.warehouseName}
                                     onChange={(e) => setEditForm({ ...editForm, warehouseName: e.target.value })}
                                 />
                             </div>
@@ -392,11 +374,11 @@ export default function AdminProducts() {
                                 />
                             </div>
                             <div className="adm-field">
-                                <label>Tồn kho tối thiểu (Cảnh báo)</label>
+                                <label>Thông tin tồn kho</label>
                                 <input
                                     className="adm-input"
-                                    type="number"
-                                    value={editForm.minStock}
+                                    type="text"
+                                    readOnly value="Quản lý tại kho công ty"
                                     onChange={(e) => setEditForm({ ...editForm, minStock: Number(e.target.value) })}
                                 />
                             </div>

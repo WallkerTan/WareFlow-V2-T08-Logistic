@@ -1,3 +1,9 @@
+import { request, object } from '../../services/api';
+import type { Row } from '../../services/api';
+import { useQuery } from '../../services/query';
+import { useWorkspace } from '../../services/workspace';
+import { saveResource } from '../../services/data';
+import { uploadImage } from '../../data/warehouses';
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -48,16 +54,23 @@ export default function ProfileEditor({
             : kind === "storehouse"
               ? Warehouse
               : ShieldCheck;
-    function submit(event: FormEvent<HTMLFormElement>) {
-        event.preventDefault();
-        setNotice(
-            "Chưa kết nối dữ liệu. Thông tin chưa được gửi hoặc lưu vào hệ thống.",
-        );
+    const scope=useWorkspace();
+    const resource=useQuery<Row>(kind==='storehouse'?null:'profile:'+kind,()=>request('core',kind==='company'?'/companies/my-company':'/users/me'));
+    const source=kind==='storehouse'?scope.warehouse:resource.data;
+    const [draft,setDraft]=useState<{id:unknown;values:Record<string,string>}|null>(null);
+    const [busy,setBusy]=useState(false);
+    function initialValues(row:Row|undefined) {const data=row||{};const aliases:Record<string,string>={'full_name':'fullName','business_model':'businessModel','warehouse_type':'warehouseType','owner_company_id':'ownerCompanyId','created_at':'createdAt','profile.tax_code':'profile.taxCode','handover.employee':'handover.managerName','handover.time':'handover.handedOverAt'};return Object.fromEntries(sections.flatMap(s=>s.fields).map(field=>{const path=(aliases[field.name]||field.name).split('.');const value=path.reduce<unknown>((v,k)=>object(v)[k],data);return [field.name,field.name==='business_model'?String(value||'').toLowerCase():String(value||'')];}));}
+    const values = {...initialValues(source), ...(draft?.id===source?.id?draft?.values:{})};
+    function update(name:string,value:string){setDraft(previous=>({id:source?.id,values:{...(previous?.id===source?.id?previous?.values:{}),[name]:value}}));}
+    async function submit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();if(!source||busy)return;setBusy(true);setNotice('');
+        try {
+            const body=kind==='company'?{name:values.name,businessModel:values.business_model.toUpperCase(),taxCode:values['profile.tax_code'],logo:values['profile.logo'],address:values['profile.address'],description:values['profile.description'],phone:object(source.profile).phone}:kind==='storehouse'?{...object(source.profile),name:values.name,address:values.address}:{fullName:values.full_name,avatar:values.avatar||null,profile:{...object(source.profile),phone:values['profile.phone'],address:values['profile.address']}};
+            await saveResource('core',kind==='company'?'/companies/'+source.id:kind==='storehouse'?'/warehouses/'+source.id+'/profile':'/users/me','PUT',body);
+            setNotice('Đã lưu hồ sơ thành công.');
+        }catch(e){setNotice(e instanceof Error?e.message:'Không lưu được hồ sơ.');}finally{setBusy(false);}
     }
-    function reset() {
-        form.current?.reset();
-        setNotice("");
-    }
+    function reset(){setDraft(null);setNotice('');}
     return (
         <>
             <div className="wf-page-heading">
@@ -84,7 +97,7 @@ export default function ProfileEditor({
                         Hoàn thiện hồ sơ để thông tin luôn rõ ràng, nhất quán.
                     </p>
                 </div>
-                <span className="wf-status">Chưa có dữ liệu</span>
+                <span className="wf-status">{source ? String(source.status || "Đã kết nối") : "Đang tải…"}</span>
             </div>
             <div className="wf-profile-grid">
                 <form ref={form} onSubmit={submit} className="wf-profile-form">
@@ -101,16 +114,15 @@ export default function ProfileEditor({
                                 .
                             </p>
                         </div>
-                        <div className="wf-image-placeholder">
+                        <div className="wf-image-placeholder">{(values.avatar||values['profile.logo'])&&<img src={values.avatar||values['profile.logo']} alt="Ảnh đại diện" width={64} height={64}/>}
                             <ImagePlus size={25} />
                             <div>
-                                <strong>Chưa có hình ảnh</strong>
+                                <strong>{values.avatar||values['profile.logo']?'Ảnh đại diện':'Chưa có hình ảnh'}</strong>
                                 <p>
-                                    Nhập đường dẫn hình ảnh trong phần thông tin
-                                    bên dưới.
+                                    Nhập đường dẫn hoặc tải ảnh lên.
                                 </p>
                             </div>
-                        </div>
+                        </div>{kind!=='storehouse'&&<label className="wf-field"><span>Tải ảnh lên Cloudinary</span><input type="file" accept="image/*" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setBusy(true);try{const image=await uploadImage(file,kind==='company'?'companies':'avatars');update(kind==='company'?'profile.logo':'avatar',image.secureUrl);setNotice('Ảnh đã tải lên. Bấm Lưu thay đổi để cập nhật hồ sơ.');}catch(error){setNotice(error instanceof Error?error.message:'Không tải được ảnh.');}finally{setBusy(false);}}}/></label>}
                     </section>
                     {sections.map((section, index) => (
                         <section className="wf-card" key={section.title}>
@@ -138,15 +150,14 @@ export default function ProfileEditor({
                                         </span>
                                         {field.type === "textarea" ? (
                                             <textarea
-                                                name={field.name}
+                                                name={field.name} value={values[field.name]||''} onChange={e=>update(field.name,e.target.value)}
                                                 rows={4}
                                                 placeholder={field.placeholder}
                                                 maxLength={2000}
                                             />
                                         ) : field.type === "select" ? (
                                             <select
-                                                name={field.name}
-                                                defaultValue=""
+                                                name={field.name} value={values[field.name]||''} onChange={e=>update(field.name,e.target.value)}
                                                 required={field.required}
                                             >
                                                 <option value="" disabled>
@@ -166,7 +177,7 @@ export default function ProfileEditor({
                                             </select>
                                         ) : (
                                             <input
-                                                name={field.name}
+                                                name={field.name} value={values[field.name]||''} onChange={e=>update(field.name,e.target.value)}
                                                 type={field.type || "text"}
                                                 placeholder={
                                                     field.placeholder ||
@@ -175,7 +186,7 @@ export default function ProfileEditor({
                                                         : `Nhập ${field.label.toLowerCase()}`)
                                                 }
                                                 required={field.required}
-                                                readOnly={field.readOnly}
+                                                readOnly={field.readOnly||field.name==='email'||(kind==='storehouse'&&['area','region'].includes(field.name))}
                                                 min={
                                                     field.type === "number"
                                                         ? 0
@@ -217,7 +228,7 @@ export default function ProfileEditor({
                                 <RotateCcw size={16} />
                                 Đặt lại
                             </Button>
-                            <Button type="submit">
+                            <Button type="submit" disabled={busy||!source}>
                                 <Save size={16} />
                                 Lưu thay đổi
                             </Button>
@@ -254,11 +265,6 @@ export default function ProfileEditor({
                             </span>
                         </div>
                     </section>
-                    <div className="wf-preview-note">
-                        Bản giao diện • Chưa kết nối dữ liệu
-                        <br />
-                        Nội dung nhập chỉ tồn tại trên trang hiện tại.
-                    </div>
                 </aside>
             </div>
         </>

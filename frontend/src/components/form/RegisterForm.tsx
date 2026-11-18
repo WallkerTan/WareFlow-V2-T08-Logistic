@@ -44,7 +44,7 @@ export default function RegisterForm({ onSubmit }: Props) {
             if (onSubmit) {
                 await onSubmit(values);
                 setSuccess(true);
-                setMessage("Yêu cầu đã được xử lý.");
+                setMessage("Đăng ký tài khoản công ty thành công! Vui lòng chuyển sang trang Đăng nhập.");
             } else
                 setMessage(
                     "Đây là bản giao diện. Chưa gửi yêu cầu đăng ký công ty đến máy chủ.",

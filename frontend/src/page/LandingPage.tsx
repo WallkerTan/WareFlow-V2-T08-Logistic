@@ -8,7 +8,7 @@ import { ContactSection } from "../components/landing/ContactSection";
 import { FloatingContactButton } from "../components/landing/FloatingContactButton";
 import { RevealOnScroll } from "../components/landing/RevealOnScroll";
 import { PhoneCall } from "lucide-react";
-import WareFlowFooter from '../components/common/WareFlowFooter';
+import WareFlowFooter from "../components/common/WareFlowFooter";
 
 const LandingPage = () => {
     return (
@@ -16,7 +16,11 @@ const LandingPage = () => {
             {/* Header */}
             <header className="header">
                 <a className="brand" href="#top">
-                    <img src="/logo.png" alt="WareFlow" className="brand-logo-img" />
+                    <img
+                        src="/logo.png"
+                        alt="WareFlow"
+                        className="brand-logo-img"
+                    />
                     <span>
                         ware <b>flow</b>
                     </span>
@@ -28,10 +32,22 @@ const LandingPage = () => {
                     <a href="#contact">Liên hệ</a>
                 </nav>
                 <div className="header-actions">
-                    <a className="login" href="#contact" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <a
+                        className="login"
+                        href="#contact"
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                        }}
+                    >
                         <PhoneCall size={16} /> Liên hệ tư vấn
                     </a>
-                    <Link className="login" to="/auth/login">
+                    <Link
+                        className="login-btn-header"
+                        to="/auth/login"
+                        style={{ color: "#ffffff" }}
+                    >
                         Đăng nhập
                     </Link>
                     <Link className="button button-small" to="/auth/register">
@@ -51,18 +67,24 @@ const LandingPage = () => {
                             Vận hành kho <em>thông minh</em> hơn.
                         </h1>
                         <p className="intro">
-                            WareFlow giúp bạn kiểm soát hàng tồn, đơn hàng và logistics trong một nền tảng đơn giản, trực quan và đạt hiệu suất tối đa.
+                            WareFlow giúp bạn kiểm soát hàng tồn, đơn hàng và
+                            logistics trong một nền tảng đơn giản, trực quan và
+                            đạt hiệu suất tối đa.
                         </p>
                         <div className="actions">
                             <Link className="button" to="/auth/register">
                                 Bắt đầu miễn phí <span>→</span>
                             </Link>
-                            <a className="button button-outline" href="#contact">
+                            <a
+                                className="button button-outline"
+                                href="#contact"
+                            >
                                 <PhoneCall size={18} /> Liên hệ với chúng tôi
                             </a>
                         </div>
                         <p className="note">
-                            ✦ Không cần thẻ tín dụng &nbsp;·&nbsp; Thiết lập trong 5 phút &nbsp;·&nbsp; Hỗ trợ 24/7
+                            ✦ Không cần thẻ tín dụng &nbsp;·&nbsp; Thiết lập
+                            trong 5 phút &nbsp;·&nbsp; Hỗ trợ 24/7
                         </p>
                     </div>
                     <div className="hero-visual">
@@ -98,7 +120,10 @@ const LandingPage = () => {
 
                 {/* Metrics Banner */}
                 <RevealOnScroll>
-                    <section className="metrics" aria-label="Số liệu nổi bật của WareFlow">
+                    <section
+                        className="metrics"
+                        aria-label="Số liệu nổi bật của WareFlow"
+                    >
                         <div>
                             <b>500+</b>
                             <small>Doanh nghiệp tin dùng</small>
@@ -144,11 +169,26 @@ const LandingPage = () => {
                             <br />
                             <em>lợi thế cạnh tranh vượt trội.</em>
                         </h2>
-                        <div style={{ display: "flex", justifyContent: "center", gap: "20px", flexWrap: "wrap", marginTop: "24px" }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                justifyContent: "center",
+                                gap: "20px",
+                                flexWrap: "wrap",
+                                marginTop: "24px",
+                            }}
+                        >
                             <Link className="button light" to="/auth/register">
                                 Đăng ký dùng thử ngay <span>→</span>
                             </Link>
-                            <a className="button" href="#contact" style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}>
+                            <a
+                                className="button"
+                                href="#contact"
+                                style={{
+                                    background: "rgba(255,255,255,0.15)",
+                                    border: "1px solid rgba(255,255,255,0.3)",
+                                }}
+                            >
                                 <PhoneCall size={18} /> Nhận tư vấn trực tiếp
                             </a>
                         </div>

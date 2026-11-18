@@ -1,16 +1,13 @@
+import { cashSummary, inPeriod } from '../../utils/analytics';
 import { Link, useParams } from "react-router-dom";
 import { Building2, Users, Wallet, Warehouse } from "lucide-react";
 import { StatCard } from "../../components/admin/AdminUI";
 import { DataPage, Heading } from "../../components/workspace/WorkspacePages";
-import {
-    companies,
-    warehouses,
-    transactions,
-    users,
-} from "../../data/adminData";
+import { useAdminData } from '../../services/data';
 import { formatCurrency, formatDate } from "../../utils/format";
 
 export default function AdminCompanyDetailPage() {
+    const { companies, warehouses, transactions, raw } = useAdminData('transactions', 'products');
     const { companyId } = useParams();
     const company = companies.find((item) => item.id === companyId);
     if (!company)
@@ -23,13 +20,9 @@ export default function AdminCompanyDetailPage() {
     const depots = warehouses.filter(
         (item) => item.ownerCompanyId === company.id,
     );
-    const members = users.filter((item) => item.companyId === company.id);
-    const payments = transactions.filter((item) =>
-        depots.some((depot) => depot.name === item.warehouseName),
-    );
-    const revenue = payments
-        .filter((item) => item.type === "INCOME")
-        .reduce((sum, item) => sum + item.amount, 0);
+    const ids = new Set(raw.transactions.filter(t=>t.companyId===company.id).map(t=>t.id));
+    const payments = inPeriod(transactions.filter(t=>ids.has(t.id)),365);
+    const revenue = cashSummary(payments).income;
     return (
         <>
             <Heading title={company.name} />
@@ -40,12 +33,12 @@ export default function AdminCompanyDetailPage() {
                     icon={<Warehouse size={20} />}
                 />
                 <StatCard
-                    label="Nhân viên trong danh sách"
-                    value={String(members.length)}
+                    label="Nhân viên công ty"
+                    value="—" footnote="Quản lý tại không gian công ty"
                     icon={<Users size={20} />}
                 />
                 <StatCard
-                    label="Doanh thu ghi nhận"
+                    label="Thu trong 365 ngày"
                     value={formatCurrency(revenue)}
                     icon={<Wallet size={20} />}
                     tone="success"
@@ -95,24 +88,7 @@ export default function AdminCompanyDetailPage() {
                         "Hoàn tất",
                     ])}
                 />
-                <DataPage
-                    embedded
-                    title="Nhân viên công ty"
-                    columns={[
-                        "Mã nhân viên",
-                        "Họ tên",
-                        "Email",
-                        "Vai trò",
-                        "Trạng thái",
-                    ]}
-                    rows={members.map((item) => [
-                        item.id,
-                        item.fullName,
-                        item.email,
-                        item.role,
-                        item.status === "ACTIVE" ? "Hoạt động" : "Chờ xử lý",
-                    ])}
-                />
+                <section className="wf-card"><h3>Nhân viên công ty</h3><p>Danh sách và quyền nhân viên được quản lý trong tài khoản quản trị của công ty.</p></section>
             </div>
         </>
     );

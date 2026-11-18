@@ -1,17 +1,41 @@
-import { useMemo, useState } from 'react';
-import { Check, Download, Info, Mail, Phone, Plus, Search, ShieldAlert, Trash2, Truck } from 'lucide-react';
-import { Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
-import { suppliers as seedSuppliers } from '../../data/adminData';
-import type { Supplier } from '../../types/admin';
-import { formatDate, formatNumber } from '../../utils/format';
+import { Link } from "react-router-dom";
+import { downloadCsv } from "../../utils/export";
+import { useMemo, useState } from "react";
+import {
+    Check,
+    Download,
+    Info,
+    Mail,
+    Phone,
+    Plus,
+    Search,
+    ShieldAlert,
+    Trash2,
+    Truck,
+} from "lucide-react";
+import {
+    Card,
+    EmptyState,
+    Modal,
+    Pagination,
+} from "../../components/admin/AdminUI";
+import { useAdminData, saveResource, attempt } from "../../services/data";
+import type { Supplier } from "../../types/admin";
+import { formatDate, formatNumber } from "../../utils/format";
 
 const PAGE_SIZE = 6;
 
 export default function AdminSuppliers() {
-    const [rows, setRows] = useState<Supplier[]>(seedSuppliers);
-    const [query, setQuery] = useState('');
+    const { suppliers: seedSuppliers, raw } = useAdminData(
+        "suppliers",
+        "supplierProducts",
+    );
+    const rows = seedSuppliers;
+    const [query, setQuery] = useState("");
     const [page, setPage] = useState(1);
-    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+    const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
+        null,
+    );
     const [editForm, setEditForm] = useState<{
         name: string;
         category: string;
@@ -20,12 +44,12 @@ export default function AdminSuppliers() {
         phone: string;
         email: string;
     }>({
-        name: '',
-        category: '',
-        companyName: '',
-        contactPerson: '',
-        phone: '',
-        email: '',
+        name: "",
+        category: "",
+        companyName: "",
+        contactPerson: "",
+        phone: "",
+        email: "",
     });
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
@@ -43,34 +67,46 @@ export default function AdminSuppliers() {
         setConfirmDelete(false);
     };
 
-    const handleSaveSupplier = () => {
+    const handleSaveSupplier = async () => {
         if (!selectedSupplier) return;
-        setRows((prev) =>
-            prev.map((s) =>
-                s.id === selectedSupplier.id
-                    ? {
-                          ...s,
-                          ...editForm,
-                      }
-                    : s
-            )
+        const original = raw.suppliers.find(
+            (r) => r.id === selectedSupplier.id,
         );
-        setSelectedSupplier(null);
-        showToast(`Đã lưu thay đổi cho nhà cung cấp "${editForm.name}".`);
-    };
-
-    const handleDeleteSupplier = () => {
-        if (!selectedSupplier) return;
-        if (selectedSupplier.productCount > 0) {
-            alert('Ràng buộc CSDL: Nhà cung cấp đang liên kết sản phẩm, không thể xóa trực tiếp!');
+        if (
+            !(await attempt(() =>
+                saveResource(
+                    "core",
+                    "/suppliers/" + selectedSupplier.id,
+                    "PUT",
+                    {
+                        ...original,
+                        name: editForm.name,
+                        phone: editForm.phone,
+                        email: editForm.email || null,
+                        businessModel: editForm.category,
+                    },
+                ),
+            ))
+        )
             return;
-        }
-        setRows((prev) => prev.filter((s) => s.id !== selectedSupplier.id));
-        const name = selectedSupplier.name;
         setSelectedSupplier(null);
-        showToast(`Đã xóa nhà cung cấp "${name}" khỏi hệ thống.`);
+        showToast("Đã lưu nhà cung cấp.");
     };
-
+    const handleDeleteSupplier = async () => {
+        if (!selectedSupplier) return;
+        if (
+            !(await attempt(() =>
+                saveResource(
+                    "core",
+                    "/suppliers/" + selectedSupplier.id,
+                    "DELETE",
+                ),
+            ))
+        )
+            return;
+        setSelectedSupplier(null);
+        showToast("Đã xóa nhà cung cấp.");
+    };
     const showToast = (msg: string) => {
         setToast(msg);
         setTimeout(() => setToast(null), 3500);
@@ -89,7 +125,10 @@ export default function AdminSuppliers() {
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
-    const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const visible = filtered.slice(
+        (safePage - 1) * PAGE_SIZE,
+        safePage * PAGE_SIZE,
+    );
 
     function updateFilter<T>(setter: (value: T) => void) {
         return (value: T) => {
@@ -105,22 +144,44 @@ export default function AdminSuppliers() {
             <div className="admin-page-head">
                 <div>
                     <h2>Nhà cung cấp</h2>
-                    <p>Quản lý đối tác cung ứng, danh mục sản phẩm và thông tin liên hệ trên toàn hệ thống.</p>
+                    <p>
+                        Quản lý đối tác cung ứng, danh mục sản phẩm và thông tin
+                        liên hệ trên toàn hệ thống.
+                    </p>
                 </div>
                 <div className="admin-page-actions">
-                    <button className="adm-btn">
+                    <button
+                        className="adm-btn"
+                        onClick={() =>
+                            downloadCsv(
+                                "nha-cung-cap.csv",
+                                ["Tên", "Lĩnh vực", "Email", "Điện thoại"],
+                                filtered.map((r) => [
+                                    r.name,
+                                    r.category,
+                                    r.email,
+                                    r.phone,
+                                ]),
+                            )
+                        }
+                    >
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <button className="adm-btn adm-btn-primary">
+                    <Link
+                        className="adm-btn adm-btn-primary"
+                        to="/admin/suppliers/new"
+                    >
                         <Plus size={16} /> Thêm nhà cung cấp
-                    </button>
+                    </Link>
                 </div>
             </div>
 
             <div className="adm-stats">
                 <article className="adm-stat">
                     <div className="adm-stat-top">
-                        <span className="adm-stat-label">Tổng nhà cung cấp</span>
+                        <span className="adm-stat-label">
+                            Tổng nhà cung cấp
+                        </span>
                         <span className="adm-stat-icon">
                             <Truck size={17} />
                         </span>
@@ -149,7 +210,14 @@ export default function AdminSuppliers() {
                             <Truck size={17} />
                         </span>
                     </div>
-                    <div className="adm-stat-value">{formatNumber(rows.reduce((sum, supplier) => sum + supplier.productCount, 0))}</div>
+                    <div className="adm-stat-value">
+                        {formatNumber(
+                            rows.reduce(
+                                (sum, supplier) => sum + supplier.productCount,
+                                0,
+                            ),
+                        )}
+                    </div>
                     <div className="adm-stat-foot">
                         <span>Đang được cung ứng</span>
                     </div>
@@ -165,12 +233,16 @@ export default function AdminSuppliers() {
                             type="search"
                             placeholder="Tìm theo tên, ngành hàng, công ty…"
                             value={query}
-                            onChange={(event) => updateFilter(setQuery)(event.target.value)}
+                            onChange={(event) =>
+                                updateFilter(setQuery)(event.target.value)
+                            }
                             aria-label="Tìm kiếm nhà cung cấp"
                         />
                     </label>
                     <div className="adm-toolbar-right">
-                        <span className="adm-count">{filtered.length} đối tác</span>
+                        <span className="adm-count">
+                            {filtered.length} đối tác
+                        </span>
                     </div>
                 </div>
 
@@ -198,23 +270,48 @@ export default function AdminSuppliers() {
                                 {visible.map((supplier) => (
                                     <tr
                                         key={supplier.id}
-                                        onClick={() => openSupplierDetail(supplier)}
+                                        onClick={() =>
+                                            openSupplierDetail(supplier)
+                                        }
                                         title="Nhấp để xem chi tiết & chỉnh sửa"
                                     >
-                                        <td className="adm-cell-main">{supplier.name}</td>
+                                        <td className="adm-cell-main">
+                                            {supplier.name}
+                                        </td>
                                         <td>{supplier.category}</td>
                                         <td>{supplier.companyName}</td>
                                         <td>{supplier.contactPerson}</td>
                                         <td>
-                                            <span className="adm-cell-sub" style={{ marginTop: 0 }}>
-                                                <Phone size={11} style={{ verticalAlign: -1 }} /> {supplier.phone}
+                                            <span
+                                                className="adm-cell-sub"
+                                                style={{ marginTop: 0 }}
+                                            >
+                                                <Phone
+                                                    size={11}
+                                                    style={{
+                                                        verticalAlign: -1,
+                                                    }}
+                                                />{" "}
+                                                {supplier.phone}
                                             </span>
                                             <span className="adm-cell-sub">
-                                                <Mail size={11} style={{ verticalAlign: -1 }} /> {supplier.email}
+                                                <Mail
+                                                    size={11}
+                                                    style={{
+                                                        verticalAlign: -1,
+                                                    }}
+                                                />{" "}
+                                                {supplier.email}
                                             </span>
                                         </td>
-                                        <td className="adm-text-right adm-cell-main">{formatNumber(supplier.productCount)}</td>
-                                        <td className="adm-muted">{formatDate(supplier.createdAt)}</td>
+                                        <td className="adm-text-right adm-cell-main">
+                                            {formatNumber(
+                                                supplier.productCount,
+                                            )}
+                                        </td>
+                                        <td className="adm-muted">
+                                            {formatDate(supplier.createdAt)}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -223,25 +320,30 @@ export default function AdminSuppliers() {
                 )}
 
                 {filtered.length > 0 && (
-                    <Pagination page={safePage} pageCount={pageCount} total={filtered.length} onChange={setPage} />
+                    <Pagination
+                        page={safePage}
+                        pageCount={pageCount}
+                        total={filtered.length}
+                        onChange={setPage}
+                    />
                 )}
             </Card>
 
             {toast && (
                 <div
                     style={{
-                        position: 'fixed',
+                        position: "fixed",
                         bottom: 24,
                         right: 24,
                         zIndex: 99,
-                        background: '#1f2937',
-                        color: '#fff',
-                        padding: '12px 20px',
+                        background: "#1f2937",
+                        color: "#fff",
+                        padding: "12px 20px",
                         borderRadius: 10,
                         fontSize: 13,
-                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.3)',
-                        display: 'flex',
-                        alignItems: 'center',
+                        boxShadow: "0 10px 25px -5px rgba(0,0,0,0.3)",
+                        display: "flex",
+                        alignItems: "center",
                         gap: 10,
                     }}
                 >
@@ -256,33 +358,84 @@ export default function AdminSuppliers() {
                     description={`ID: ${selectedSupplier.id} · core-service: suppliers`}
                     onClose={() => setSelectedSupplier(null)}
                     footer={
-                        <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div
+                            style={{
+                                display: "flex",
+                                width: "100%",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                            }}
+                        >
                             <div>
                                 {selectedSupplier.productCount > 0 ? (
-                                    <span style={{ fontSize: 11, color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                                        <ShieldAlert size={14} color="#f59e0b" /> Không thể xóa (Đang liên kết {selectedSupplier.productCount} sản phẩm)
+                                    <span
+                                        style={{
+                                            fontSize: 11,
+                                            color: "#6b7280",
+                                            display: "inline-flex",
+                                            alignItems: "center",
+                                            gap: 4,
+                                        }}
+                                    >
+                                        <ShieldAlert
+                                            size={14}
+                                            color="#f59e0b"
+                                        />{" "}
+                                        Không thể xóa (Đang liên kết{" "}
+                                        {selectedSupplier.productCount} sản
+                                        phẩm)
                                     </span>
                                 ) : confirmDelete ? (
-                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                        <span style={{ fontSize: 12, color: '#ef4444' }}>Xác nhận xóa đối tác?</span>
-                                        <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={handleDeleteSupplier}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            gap: 6,
+                                            alignItems: "center",
+                                        }}
+                                    >
+                                        <span
+                                            style={{
+                                                fontSize: 12,
+                                                color: "#ef4444",
+                                            }}
+                                        >
+                                            Xác nhận xóa đối tác?
+                                        </span>
+                                        <button
+                                            className="adm-btn adm-btn-danger adm-btn-sm"
+                                            onClick={handleDeleteSupplier}
+                                        >
                                             Xóa vĩnh viễn
                                         </button>
-                                        <button className="adm-btn adm-btn-sm" onClick={() => setConfirmDelete(false)}>
+                                        <button
+                                            className="adm-btn adm-btn-sm"
+                                            onClick={() =>
+                                                setConfirmDelete(false)
+                                            }
+                                        >
                                             Hủy
                                         </button>
                                     </div>
                                 ) : (
-                                    <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={() => setConfirmDelete(true)}>
+                                    <button
+                                        className="adm-btn adm-btn-danger adm-btn-sm"
+                                        onClick={() => setConfirmDelete(true)}
+                                    >
                                         <Trash2 size={14} /> Xóa nhà cung cấp
                                     </button>
                                 )}
                             </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="adm-btn" onClick={() => setSelectedSupplier(null)}>
+                            <div style={{ display: "flex", gap: 8 }}>
+                                <button
+                                    className="adm-btn"
+                                    onClick={() => setSelectedSupplier(null)}
+                                >
                                     Hủy
                                 </button>
-                                <button className="adm-btn adm-btn-primary" onClick={handleSaveSupplier}>
+                                <button
+                                    className="adm-btn adm-btn-primary"
+                                    onClick={handleSaveSupplier}
+                                >
                                     <Check size={14} /> Lưu thay đổi
                                 </button>
                             </div>
@@ -291,22 +444,38 @@ export default function AdminSuppliers() {
                 >
                     <div
                         style={{
-                            padding: '12px 14px',
+                            padding: "12px 14px",
                             borderRadius: 8,
                             marginBottom: 16,
                             fontSize: 12.5,
                             lineHeight: 1.5,
-                            background: '#f8fafc',
-                            border: '1px solid #e2e8f0',
-                            color: '#334155',
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            color: "#334155",
                         }}
                     >
-                        <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                            <Info size={16} color="#3b82f6" style={{ flexShrink: 0, marginTop: 2 }} />
+                        <div
+                            style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "flex-start",
+                            }}
+                        >
+                            <Info
+                                size={16}
+                                color="#3b82f6"
+                                style={{ flexShrink: 0, marginTop: 2 }}
+                            />
                             <div>
-                                <strong>Ràng buộc quan hệ CSDL (core-service: suppliers):</strong>
-                                <p style={{ margin: '4px 0 0' }}>
-                                    Nhà cung cấp liên kết với công ty ({selectedSupplier.companyName}) qua <code>company_id</code> và cung ứng danh mục hàng hóa (<code>products: JSONB</code>).
+                                <strong>
+                                    Ràng buộc quan hệ CSDL (core-service:
+                                    suppliers):
+                                </strong>
+                                <p style={{ margin: "4px 0 0" }}>
+                                    Nhà cung cấp liên kết với công ty (
+                                    {selectedSupplier.companyName}) qua{" "}
+                                    <code>company_id</code> và cung ứng danh mục
+                                    hàng hóa (<code>products: JSONB</code>).
                                 </p>
                             </div>
                         </div>
@@ -318,7 +487,12 @@ export default function AdminSuppliers() {
                             <input
                                 className="adm-input"
                                 value={editForm.name}
-                                onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                                onChange={(e) =>
+                                    setEditForm({
+                                        ...editForm,
+                                        name: e.target.value,
+                                    })
+                                }
                             />
                         </div>
                         <div className="adm-field-grid">
@@ -326,16 +500,28 @@ export default function AdminSuppliers() {
                                 <label>Ngành hàng / Danh mục</label>
                                 <input
                                     className="adm-input"
+                                    readOnly
                                     value={editForm.category}
-                                    onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            category: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div className="adm-field">
                                 <label>Công ty đối tác</label>
                                 <input
                                     className="adm-input"
+                                    readOnly
                                     value={editForm.companyName}
-                                    onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            companyName: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                         </div>
@@ -343,8 +529,14 @@ export default function AdminSuppliers() {
                             <label>Người đại diện liên hệ</label>
                             <input
                                 className="adm-input"
+                                readOnly
                                 value={editForm.contactPerson}
-                                onChange={(e) => setEditForm({ ...editForm, contactPerson: e.target.value })}
+                                onChange={(e) =>
+                                    setEditForm({
+                                        ...editForm,
+                                        contactPerson: e.target.value,
+                                    })
+                                }
                             />
                         </div>
                         <div className="adm-field-grid">
@@ -353,7 +545,12 @@ export default function AdminSuppliers() {
                                 <input
                                     className="adm-input"
                                     value={editForm.phone}
-                                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            phone: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                             <div className="adm-field">
@@ -362,7 +559,12 @@ export default function AdminSuppliers() {
                                     className="adm-input"
                                     type="email"
                                     value={editForm.email}
-                                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                    onChange={(e) =>
+                                        setEditForm({
+                                            ...editForm,
+                                            email: e.target.value,
+                                        })
+                                    }
                                 />
                             </div>
                         </div>
