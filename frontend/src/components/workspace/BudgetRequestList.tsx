@@ -69,10 +69,10 @@ export default function BudgetRequestList({
     return (
         <section className="wf-card budget-requests">
             {companyView && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'linear-gradient(135deg, #1b382b 0%, #17846b 100%)', color: '#fff', borderRadius: 8, marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--workspace-gradient)', color: '#063426', borderRadius: 8, marginBottom: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'grid', placeItems: 'center' }}>
-                            <Wallet size={24} color="#fff" />
+                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(0,0,0,0.08)', display: 'grid', placeItems: 'center' }}>
+                            <Wallet size={24} color="#063426" />
                         </div>
                         <div>
                             <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.85, fontWeight: 600 }}>

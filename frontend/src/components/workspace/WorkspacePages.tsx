@@ -407,10 +407,10 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                 }
             />
             {!storehouse && (
-                <div className="wf-card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'linear-gradient(135deg, #1b382b 0%, #17846b 100%)', color: '#fff', borderRadius: 8 }}>
+                <div className="wf-card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--workspace-gradient)', color: '#063426', borderRadius: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'grid', placeItems: 'center' }}>
-                            <Wallet size={24} color="#fff" />
+                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(0,0,0,0.08)', display: 'grid', placeItems: 'center' }}>
+                            <Wallet size={24} color="#063426" />
                         </div>
                         <div>
                             <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.85, fontWeight: 600 }}>
@@ -423,7 +423,7 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                     </div>
                     <div style={{ textAlign: 'right' }}>
                         <small style={{ display: 'block', opacity: 0.85, fontSize: 12 }}>Nguồn tiền dùng để cấp ngân sách cho các kho</small>
-                        <Link to="/company/budget/new" className="adm-btn" style={{ marginTop: 6, background: '#fff', color: '#17846b', fontWeight: 600, border: 0 }}>
+                        <Link to="/company/budget/new" className="adm-btn" style={{ marginTop: 6, background: '#063426', color: '#ffffff', fontWeight: 600, border: 0 }}>
                             Cấp ngân sách kho →
                         </Link>
                     </div>
