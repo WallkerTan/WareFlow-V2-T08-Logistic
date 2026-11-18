@@ -6,6 +6,8 @@ import {
     resolveBudgetRequest,
 } from "../../data/budgetRequests";
 import type { BudgetRequest } from "../../data/budgetRequests";
+import { useAdminData, saveResource } from "../../services/data";
+import { Wallet, AlertCircle } from "lucide-react";
 import "./budget.css";
 
 export default function BudgetRequestList({
@@ -15,6 +17,9 @@ export default function BudgetRequestList({
     requests: BudgetRequest[];
     companyView?: boolean;
 }) {
+    const { raw } = useAdminData('transactions');
+    const companyBalance = raw.transactions.reduce((acc, t) => acc + (t.type === 'INCOME' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
+
     const [query, setQuery] = useState("");
     const [status, setStatus] = useState("all");
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -31,9 +36,26 @@ export default function BudgetRequestList({
     );
     async function resolve(next: "approved" | "rejected" | "cancelled") {
         if (!selected || busy) return;
+        if (next === "approved" && selected.amount > companyBalance) {
+            setError(`Số dư khả dụng của công ty (${budgetMoney(companyBalance)}) không đủ để duyệt yêu cầu cấp ${budgetMoney(selected.amount)}.`);
+            return;
+        }
         setBusy(true);
         try {
             await resolveBudgetRequest(selected.id, next, response);
+            if (next === "approved") {
+                try {
+                    await saveResource("finance", "/transactions", "POST", {
+                        warehouseId: selected.warehouseId,
+                        type: "EXPENSE",
+                        category: "TRANSFER",
+                        amount: selected.amount,
+                        note: `Cấp ngân sách cho kho ${selected.warehouseName} theo yêu cầu #${selected.id}: ${selected.purpose}`
+                    });
+                } catch {
+                    // ignore if already synced
+                }
+            }
             setSelectedId(null);
             setError("");
         } catch (e) {
@@ -46,6 +68,26 @@ export default function BudgetRequestList({
     }
     return (
         <section className="wf-card budget-requests">
+            {companyView && (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'linear-gradient(135deg, #1b382b 0%, #17846b 100%)', color: '#fff', borderRadius: 8, marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.15)', display: 'grid', placeItems: 'center' }}>
+                            <Wallet size={24} color="#fff" />
+                        </div>
+                        <div>
+                            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.85, fontWeight: 600 }}>
+                                Số dư khả dụng hiện tại của công ty
+                            </span>
+                            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 1 }}>
+                                {budgetMoney(companyBalance)}
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ textAlign: 'right', fontSize: 13, opacity: 0.9 }}>
+                        Khi duyệt yêu cầu từ kho, kinh phí sẽ được lấy trực tiếp từ số dư này.
+                    </div>
+                </div>
+            )}
             <div className="wf-section-heading">
                 <div>
                     <h2>
@@ -54,8 +96,7 @@ export default function BudgetRequestList({
                             : "Lịch sử đề nghị chi"}
                     </h2>
                     <p>
-                        {requests.length} yêu cầu · Chọn mã yêu cầu để xem chi
-                        tiết.
+                        {requests.length} yêu cầu · Chọn mã yêu cầu để xem chi tiết.
                     </p>
                 </div>
             </div>
@@ -114,7 +155,12 @@ export default function BudgetRequestList({
                                 <td className="budget-purpose">{r.purpose}</td>
                                 <td>{budgetMoney(r.amount)}</td>
                                 <td>
-                                    {r.neededBy.split("-").reverse().join("/")}
+                                    {r.neededBy
+                                        ? r.neededBy
+                                              .split("-")
+                                              .reverse()
+                                              .join("/")
+                                        : "—"}
                                 </td>
                                 <td>
                                     <span
@@ -125,16 +171,16 @@ export default function BudgetRequestList({
                                 </td>
                             </tr>
                         ))}
+                        {!filtered.length && (
+                            <tr>
+                                <td colSpan={6} className="workspace-empty">
+                                    Không có yêu cầu phù hợp bộ lọc.
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>
-            {!filtered.length && (
-                <div className="workspace-empty">
-                    {requests.length
-                        ? "Không có yêu cầu phù hợp với bộ lọc."
-                        : "Chưa có đề nghị chi."}
-                </div>
-            )}
             <Modal
                 title="Chi tiết đề nghị chi"
                 open={!!selected}
@@ -160,9 +206,11 @@ export default function BudgetRequestList({
                             <dt>Ngày cần cấp</dt>
                             <dd>
                                 {selected.neededBy
-                                    .split("-")
-                                    .reverse()
-                                    .join("/")}
+                                    ? selected.neededBy
+                                          .split("-")
+                                          .reverse()
+                                          .join("/")
+                                    : "—"}
                             </dd>
                             <dt>Ngày tạo</dt>
                             <dd>
@@ -178,6 +226,24 @@ export default function BudgetRequestList({
                                 <h4>Phản hồi từ công ty</h4>
                                 <p>{selected.response}</p>
                             </>
+                        )}
+                        {companyView && selected.status === "pending" && (
+                            <div style={{ margin: '14px 0', padding: '12px 14px', background: companyBalance >= selected.amount ? '#f0fdf4' : '#fef2f2', border: `1px solid ${companyBalance >= selected.amount ? '#bbf7d0' : '#fecaca'}`, borderRadius: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                                    <span>Số dư khả dụng hiện tại:</span>
+                                    <strong style={{ color: companyBalance >= 0 ? '#15803d' : '#b91c1c' }}>{budgetMoney(companyBalance)}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 4 }}>
+                                    <span>Số dư sau khi duyệt cấp:</span>
+                                    <strong style={{ color: (companyBalance - selected.amount) >= 0 ? '#15803d' : '#b91c1c' }}>{budgetMoney(companyBalance - selected.amount)}</strong>
+                                </div>
+                                {companyBalance < selected.amount && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#b91c1c', fontSize: 12, marginTop: 8, fontWeight: 500 }}>
+                                        <AlertCircle size={15} />
+                                        <span>Số dư công ty không đủ để duyệt khoản chi này. Hãy nạp thêm quỹ trước khi duyệt.</span>
+                                    </div>
+                                )}
+                            </div>
                         )}
                         {selected.status === "pending" && companyView && (
                             <label className="wf-field">
@@ -210,7 +276,7 @@ export default function BudgetRequestList({
                                         </button>
                                         <button
                                             className="wf-button wf-button-primary"
-                                            disabled={busy}
+                                            disabled={busy || companyBalance < selected.amount}
                                             onClick={() => resolve("approved")}
                                         >
                                             Duyệt chi

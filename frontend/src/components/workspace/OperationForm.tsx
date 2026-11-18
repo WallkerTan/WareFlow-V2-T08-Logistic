@@ -29,7 +29,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
     const {pathname}=useLocation();const navigate=useNavigate();const scope=useWorkspace();const session=getAuthSession()!;
     const mode:Mode=explicitMode || (pathname.includes('/suppliers')?'supplier':pathname.includes('/products')?'supplierProduct':pathname.includes('/employees')?'employee':pathname.includes('/budget')?'budget':pathname.includes('/inbound')?'po':pathname.includes('/outbound')||pathname.includes('/transfers')?'export':pathname.includes('/shipments')?'shipment':'warehouse');
     const documentMode=['po','export','receipt'].includes(mode);
-    const {raw}=useAdminData(...(documentMode?['products','lots','suppliers'] as const:mode==='supplierProduct'?['suppliers'] as const:mode==='shipment'?['stockDocuments'] as const:[]));
+    const {raw}=useAdminData(...(documentMode?['products','lots','suppliers'] as const:['supplierProduct','inventoryProduct'].includes(mode)?['suppliers','supplierProducts'] as const:mode==='shipment'?['stockDocuments'] as const:[]));
     const [values,setValues]=useState<Record<string,string>>({warehouseId:mode==='budget'||mode==='transaction'&&session.role==='COMPANY_ADMIN'?'':scope.warehouseId,warehouseType:'RENT',businessModel:'OTHER',period:dayKey(new Date()).slice(0,7),type:mode==='transaction'?'INCOME':pathname.includes('/transfers')?'EXPORT_TRANSFER':'EXPORT_SALE',codAmount:'0',...Object.fromEntries(Object.entries(initial||{}).filter(([,v])=>typeof v==='string'||typeof v==='number'||v===null).map(([k,v])=>[k,v===null?'':String(v)]))});
     const warehouseId=values.warehouseId||scope.warehouseId;
     const [lines,setLines]=useState(()=>mode==='receipt'?asRows(initial?.lines).filter(r=>number(r.qty)>number(r.receivedQty)).map(r=>({...newLine(),productId:String(r.productId),qty:String(number(r.qty)-number(r.receivedQty))})):[newLine()]);
@@ -38,13 +38,34 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
     const otherWarehouses=useQuery<Row[]>(mode==='export'?'transfer-warehouses':null,()=>allPages('core','/warehouses/my-company'));
     const targets=useQuery<Row[]>(mode==='export'&&values.type==='EXPORT_TRANSFER'&&warehouseId&&values.targetWarehouseId?`transfer-products:${warehouseId}:${values.targetWarehouseId}`:null,()=>allPages('inventory',`/warehouses/${warehouseId}/transfer-products?targetWarehouseId=${values.targetWarehouseId}`));
     const products=raw.products.filter(r=>r.warehouseId===warehouseId);
+    const availableSupplierProducts = raw.supplierProducts.filter(p => !values.supplierId || String(p.supplierId) === String(values.supplierId));
     const field=(key:string,label:string,type='text',required=true):Field=>({key,label,type,required});
     const select=(key:string,label:string,items:{value:string;label:string}[],required=true):Field=>({key,label,options:items,required});
     let fields:Field[]=[];
     if(mode==='warehouse') fields=[field('name','Tên kho'),select('warehouseType','Hình thức',[{value:'RENT',label:'Cho thuê'},{value:'BUY',label:'Mua bán'}]),field('region','Khu vực'),field('address','Địa chỉ'),{...field('area','Diện tích (m²)','number'),min:0.01},{...field('price','Giá (VNĐ)','number'),min:0}];
     if(mode==='supplier') fields=[field('name','Tên nhà cung cấp'),select('businessModel','Lĩnh vực',models),field('phone','Điện thoại','tel',false),field('email','Email','email',false),field('address','Địa chỉ','text',false)];
     if(mode==='supplierProduct') fields=[select('supplierId','Nhà cung cấp',options(raw.suppliers)),field('sku','Mã sản phẩm'),field('name','Tên sản phẩm'),field('unit','Đơn vị tính'),{...field('price','Đơn giá (VNĐ)','number'),min:0},field('image','Đường dẫn ảnh','url',false)];
-    if(mode==='inventoryProduct') fields=[...(initial?.id?[]:[select('warehouseId','Kho',options(scope.warehouses))]),field('sku','SKU'),field('name','Tên sản phẩm'),field('barcode','Mã vạch','text',false),field('unit','Đơn vị tính'),{...field('minStock','Tồn tối thiểu','number'),min:0}];
+    if(mode==='inventoryProduct') {
+        fields = initial?.id ? [
+            field('name', 'Tên sản phẩm'),
+            field('sku', 'SKU'),
+            field('unit', 'Đơn vị tính'),
+            { ...field('minStock', 'Tồn tối thiểu', 'number'), min: 0 },
+            field('barcode', 'Mã vạch', 'text', false)
+        ] : [
+            select('warehouseId', 'Kho hàng', options(scope.warehouses)),
+            select('supplierId', 'Nhà cung cấp', options(raw.suppliers), false),
+            select('supplierProductId', 'Sản phẩm từ nhà cung cấp', availableSupplierProducts.map(p => ({
+                value: String(p.id),
+                label: `${String(p.name)} (${String(p.sku)}) - Giá: ${Number(p.price || 0).toLocaleString('vi-VN')}₫`
+            })), false),
+            field('name', 'Tên sản phẩm'),
+            field('sku', 'SKU'),
+            field('unit', 'Đơn vị tính'),
+            { ...field('minStock', 'Tồn tối thiểu', 'number'), min: 0 },
+            field('barcode', 'Mã vạch', 'text', false)
+        ];
+    }
     if(mode==='transaction') fields=[select('warehouseId','Kho',options(scope.warehouses),session.role==='WAREHOUSE_MANAGER'),select('type','Loại giao dịch',(session.role==='WAREHOUSE_MANAGER'?['INCOME']:['INCOME','EXPENSE']).map(value=>({value,label:value==='INCOME'?'Thu':'Chi'}))),select('category','Nhóm giao dịch',['SALE','PURCHASE','TRANSFER','FEE','OTHER'].map((value,i)=>({value,label:['Bán hàng','Mua hàng','Điều chuyển','Phí','Khác'][i]}))),{...field('amount','Số tiền (VNĐ)','number'),min:0.01},field('note','Nội dung','textarea',false)];
     if(mode==='employee') fields=[field('fullName','Họ tên'),field('email','Email','email'),field('password','Mật khẩu cấp ban đầu','password')];
     if(mode==='budget') fields=[select('warehouseId','Kho nhận ngân sách',options(scope.warehouses),false),field('period','Kỳ ngân sách','month'),{...field('allocated','Ngân sách cấp (VNĐ)','number'),min:0.01}];
@@ -52,7 +73,29 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
     if(mode==='po') fields=[select('warehouseId','Kho nhận hàng',options(scope.warehouses)),select('supplierId','Nhà cung cấp',options(raw.suppliers)),field('expectedDeliveryDate','Ngày dự kiến nhận','date',false),field('note','Ghi chú','textarea',false)];
     if(mode==='receipt') fields=[field('note','Ghi chú nhận hàng','textarea',false)];
     if(mode==='export') fields=[select('warehouseId','Kho xuất',options(scope.warehouses)),select('type','Loại phiếu',['EXPORT_SALE','EXPORT_TRANSFER','EXPORT_DESTROY','EXPORT_RETURN'].map((value,i)=>({value,label:['Xuất bán','Điều chuyển','Xuất hủy','Trả nhà cung cấp'][i]}))),...(values.type==='EXPORT_TRANSFER'?[select('targetWarehouseId','Kho nhận',options((otherWarehouses.data||[]).filter(w=>w.id!==warehouseId)))]:[]),field('note','Ghi chú','textarea',false)];
-    function change(key:string,value:string) {setValues(v=>({...v,[key]:value}));if(['warehouseId','targetWarehouseId','type'].includes(key))setLines([newLine()]);}
+    function change(key:string,value:string) {
+        if (key === 'supplierId') {
+            setValues(v => ({ ...v, supplierId: value, supplierProductId: '' }));
+            return;
+        }
+        if (key === 'supplierProductId') {
+            const prod = raw.supplierProducts.find(p => String(p.id) === String(value));
+            if (prod) {
+                setValues(v => ({
+                    ...v,
+                    supplierProductId: value,
+                    name: String(prod.name || ''),
+                    sku: String(prod.sku || ''),
+                    unit: String(prod.unit || 'Cái'),
+                    minStock: v.minStock || '10',
+                    image: String(prod.image || '')
+                }));
+                return;
+            }
+        }
+        setValues(v=>({...v,[key]:value}));
+        if(['warehouseId','targetWarehouseId','type'].includes(key))setLines([newLine()]);
+    }
     function changeLine(index:number,key:string,value:string){setLines(list=>list.map((line,i)=>i===index?{...line,[key]:value,...(key==='productId'?{lotId:'',targetProductId:''}:{})}:line));}
     async function save(event:React.FormEvent) {
         event.preventDefault();if(pending||uploading)return;setError('');setPending(true);
@@ -61,7 +104,21 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
             if(mode==='warehouse'){path='/warehouses';body={...values,area:number(values.area),price:number(values.price)};}
             if(mode==='supplier'){path='/suppliers';body={...values,email:values.email||null};}
             if(mode==='supplierProduct'){if(!values.supplierId)throw new Error('Vui lòng chọn nhà cung cấp.');path=`/suppliers/${values.supplierId}/products`;body={...values,price:number(values.price)};}
-            if(mode==='inventoryProduct'){service='inventory';path=`/warehouses/${warehouseId}/products${initial?.id?'/'+initial.id:''}`;body={sku:values.sku,name:values.name,unit:values.unit,barcode:values.barcode||null,minStock:number(values.minStock),images:initial?.images||[]};}
+            if(mode==='inventoryProduct'){
+                if(!warehouseId) throw new Error('Vui lòng chọn kho nhận hàng.');
+                if(!values.name?.trim()) throw new Error('Vui lòng nhập tên sản phẩm.');
+                if(!values.sku?.trim()) throw new Error('Vui lòng nhập mã SKU.');
+                service='inventory';
+                path=`/warehouses/${warehouseId}/products${initial?.id?'/'+initial.id:''}`;
+                body={
+                    sku:values.sku.trim(),
+                    name:values.name.trim(),
+                    unit:values.unit||'Cái',
+                    barcode:values.barcode||null,
+                    minStock:number(values.minStock),
+                    images:values.image?[values.image]:(initial?.images||[])
+                };
+            }
             if(mode==='employee'){path='/employees';if((values.password||'').length<8)throw new Error('Mật khẩu phải có ít nhất 8 ký tự.');}
             if(mode==='budget'){service='finance';path='/budgets'+(initial?.id?'/'+initial.id:'');body={warehouseId:values.warehouseId||null,period:values.period,allocated:number(values.allocated)};}
             if(mode==='transaction'){service='finance';path='/transactions';body={warehouseId:values.warehouseId||(session.role==='WAREHOUSE_MANAGER'?warehouseId:null),type:values.type,category:values.category,amount:number(values.amount),note:values.note};}

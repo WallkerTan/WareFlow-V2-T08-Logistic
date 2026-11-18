@@ -1,4 +1,4 @@
-﻿import RecordsPage from "../components/workspace/RecordsPage";
+import RecordsPage from "../components/workspace/RecordsPage";
 import StorehouseInboundPage from "../page/storehouse/StorehouseInboundPage";
 import StorehouseOutboundPage from "../page/storehouse/StorehouseOutboundPage";
 import StorehouseHistoryPage from "../page/storehouse/StorehouseHistoryPage";
