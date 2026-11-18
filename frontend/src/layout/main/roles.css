@@ -31,15 +31,15 @@
 
 .admin-shell.wf-role-storehouse,
 .wf-role-storehouse {
-    --workspace-accent: oklch(52.14% 0.2671 263.45);
-    --workspace-dark: oklch(44% 0.27 263.69);
-    --workspace-tint: oklch(94% 0.04 268);
-    --workspace-border: oklch(82% 0.09 268);
-    --workspace-glow: rgba(79, 70, 229, 0.35);
-    --workspace-gradient: linear-gradient(135deg in oklch, oklch(49.61% 0.2717 263.69) 0.0%, oklch(50.29% 0.2741 263.66) 3.2%, oklch(51.14% 0.2736 263.56) 6.5%, oklch(52.14% 0.2671 263.45) 9.7%, oklch(53.26% 0.2598 263.33) 12.9%, oklch(54.49% 0.2519 263.22) 16.1%, oklch(55.79% 0.2431 263.15) 19.4%, oklch(57.15% 0.2339 263.12) 22.6%, oklch(58.55% 0.2247 263.17) 25.8%, oklch(59.96% 0.2156 263.31) 29.0%, oklch(61.35% 0.2068 263.56) 32.3%, oklch(62.75% 0.1982 263.96) 35.5%, oklch(64.26% 0.1891 264.55) 38.7%, oklch(65.84% 0.1796 265.29) 41.9%, oklch(67.49% 0.1700 266.14) 45.2%, oklch(69.16% 0.1602 267.04) 48.4%, oklch(70.84% 0.1505 267.96) 51.6%, oklch(72.50% 0.1410 268.85) 54.8%, oklch(74.11% 0.1319 269.65) 58.1%, oklch(75.64% 0.1232 270.33) 61.3%, oklch(77.07% 0.1152 270.85) 64.5%, oklch(78.38% 0.1079 271.14) 67.7%, oklch(79.64% 0.1010 271.25) 71.0%, oklch(80.87% 0.0943 271.19) 74.2%, oklch(82.05% 0.0880 271.02) 77.4%, oklch(83.19% 0.0821 270.75) 80.6%, oklch(84.25% 0.0766 270.42) 83.9%, oklch(85.24% 0.0716 270.06) 87.1%, oklch(86.14% 0.0670 269.70) 90.3%, oklch(86.94% 0.0629 269.38) 93.5%, oklch(87.63% 0.0594 269.12) 96.8%, oklch(88.19% 0.0565 268.96) 100.0%);
-    --adm-blue: oklch(52.14% 0.2671 263.45);
-    --adm-blue-dark: oklch(44% 0.27 263.69);
-    --adm-blue-soft: oklch(94% 0.04 268);
+    --workspace-accent: #564f8a;
+    --workspace-dark: #433c71;
+    --workspace-tint: #f5f3f9;
+    --workspace-border: #dcd7e8;
+    --workspace-glow: transparent;
+    --workspace-gradient: #564f8a;
+    --adm-blue: #564f8a;
+    --adm-blue-dark: #433c71;
+    --adm-blue-soft: #f5f3f9;
 }
 
 /* ---------- Structural Layout ---------- */
@@ -110,9 +110,15 @@
 }
 
 .wf-role-storehouse .wf-sidebar nav a.active {
-    background: var(--workspace-gradient) !important;
+    background: #564f8a !important;
     color: #ffffff !important;
     font-weight: 600 !important;
+    box-shadow: none !important;
+    border-radius: 8px;
+}
+.wf-role-storehouse .wf-sidebar nav a.active svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
 }
 
 .wf-role-company .wf-workspace {
@@ -129,13 +135,16 @@
 }
 
 .wf-role-storehouse .wf-workspace {
-    background: var(--workspace-gradient) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: #ffffff !important;
+    background: #f5f3f9 !important;
+    border-color: #dcd7e8 !important;
+    color: #433c71 !important;
+    box-shadow: none !important;
 }
-.wf-role-storehouse .wf-workspace strong,
+.wf-role-storehouse .wf-workspace strong {
+    color: #2b254e !important;
+}
 .wf-role-storehouse .wf-workspace small {
-    color: #ffffff !important;
+    color: #564f8a !important;
 }
 
 .wf-role-company .wf-mini-mark,
@@ -242,11 +251,11 @@
 
 .wf-role-storehouse .adm-btn-primary,
 .wf-role-storehouse .wf-button-primary {
-    background: var(--workspace-gradient) !important;
-    border: 0 !important;
+    background: #564f8a !important;
+    border: 1px solid #564f8a !important;
     color: #ffffff !important;
     font-weight: 600 !important;
-    box-shadow: 0 4px 14px var(--workspace-glow) !important;
+    box-shadow: none !important;
 }
 
 .wf-role-company .adm-btn-primary:hover,
@@ -258,9 +267,10 @@
 }
 .wf-role-storehouse .adm-btn-primary:hover,
 .wf-role-storehouse .wf-button-primary:hover {
-    background: var(--workspace-dark) !important;
-    border-color: var(--workspace-dark) !important;
+    background: #433c71 !important;
+    border-color: #433c71 !important;
     color: #ffffff !important;
+    box-shadow: none !important;
 }
 
 /* WELCOME BANNER */
@@ -272,10 +282,11 @@
     backdrop-filter: none !important;
 }
 .wf-role-storehouse .workspace-welcome {
-    background: linear-gradient(115deg, var(--workspace-tint), #ffffff) !important;
-    border: 1px solid var(--workspace-border) !important;
-    color: var(--workspace-accent) !important;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.03) !important;
+    background: #f5f3f9 !important;
+    border: 1px solid #dcd7e8 !important;
+    color: #564f8a !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
 }
 .wf-role-company .workspace-welcome h2,
 .wf-role-storehouse .workspace-welcome h2 {
@@ -449,7 +460,7 @@
     padding: 0 36px 16px;
 }
 
-/* ---------- Complete removal of shadow & glass for Company layout ---------- */
+/* ---------- Complete removal of shadow & glass for Company and Storehouse layouts ---------- */
 .wf-role-company,
 .wf-role-company .wf-sidebar,
 .wf-role-company .wf-topbar,
@@ -460,7 +471,18 @@
 .wf-role-company .wf-profile-banner,
 .wf-role-company .workspace-welcome,
 .wf-role-company .adm-btn,
-.wf-role-company .wf-button {
+.wf-role-company .wf-button,
+.wf-role-storehouse,
+.wf-role-storehouse .wf-sidebar,
+.wf-role-storehouse .wf-topbar,
+.wf-role-storehouse .wf-card,
+.wf-role-storehouse .adm-card,
+.wf-role-storehouse .adm-stat,
+.wf-role-storehouse .company-warehouse-card,
+.wf-role-storehouse .wf-profile-banner,
+.wf-role-storehouse .workspace-welcome,
+.wf-role-storehouse .adm-btn,
+.wf-role-storehouse .wf-button {
     box-shadow: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
