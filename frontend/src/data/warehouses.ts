@@ -1,32 +1,112 @@
-﻿import { useMemo, useSyncExternalStore } from 'react';
-export type Status = 'available' | 'pending' | 'active' | 'returned';
-export type Depot = { id: string; name: string; region: string; address: string; area: number; price: number; type: string; status: Status; company: string; image: string };
-export const photos = ['photo-1586528116311-ad8dd3c8310d', 'photo-1565793298595-6d4b2f1c4f4c', 'photo-1486406146926-c627a92ad1ab'];
-const initial: Depot[] = [
-    { id: 'WH-001', name: 'Kho Logistics Tân Bình', region: 'Miền Nam', address: 'KCN Tân Bình, TP. Hồ Chí Minh', area: 2500, price: 125, type: 'Cho thuê', status: 'active', company: 'Công ty TNHH GreenMart', image: photos[0] },
-    { id: 'WH-002', name: 'Kho trung tâm Long Biên', region: 'Miền Bắc', address: 'Long Biên, Hà Nội', area: 1800, price: 90, type: 'Cho thuê', status: 'available', company: '', image: photos[2] },
-    { id: 'WH-003', name: 'Kho công nghiệp Bình Dương', region: 'Miền Nam', address: 'KCN Sóng Thần, Bình Dương', area: 4200, price: 18500, type: 'Mua bán', status: 'pending', company: 'Công ty CP TechViet', image: photos[0] },
-    { id: 'WH-004', name: 'Kho phân phối Đà Nẵng', region: 'Miền Trung', address: 'KCN Hòa Khánh, Đà Nẵng', area: 1200, price: 65, type: 'Cho thuê', status: 'available', company: '', image: photos[2] },
-    { id: 'WH-005', name: 'Kho lạnh Thủ Đức', region: 'Miền Nam', address: 'TP. Thủ Đức, TP. Hồ Chí Minh', area: 3000, price: 210, type: 'Cho thuê', status: 'active', company: 'Công ty TNHH FreshFood', image: photos[0] },
-    { id: 'WH-006', name: 'Kho tổng hợp Hải Phòng', region: 'Miền Bắc', address: 'KCN Đình Vũ, Hải Phòng', area: 3500, price: 15200, type: 'Mua bán', status: 'returned', company: '', image: photos[2] },
-    { id: 'WH-007', name: 'Kho hàng Biên Hòa', region: 'Miền Nam', address: 'KCN Amata, Đồng Nai', area: 2200, price: 110, type: 'Cho thuê', status: 'available', company: '', image: photos[0] },
-    { id: 'WH-008', name: 'Kho phân phối Bắc Ninh', region: 'Miền Bắc', address: 'KCN Tiên Sơn, Bắc Ninh', area: 2800, price: 140, type: 'Cho thuê', status: 'pending', company: 'Công ty CP HomeLiving', image: photos[2] },
-];
-
-const KEY = 'wareflow-depots-v1';
-const EVENT = 'wareflow-warehouses-changed';
-function snapshot() { return localStorage.getItem(KEY); }
-function subscribe(listener: () => void) {
- const onStorage = (event: StorageEvent) => { if (event.key === KEY || event.key === null) listener(); };
- window.addEventListener('storage', onStorage);
- window.addEventListener(EVENT, listener);
- return () => { window.removeEventListener('storage', onStorage); window.removeEventListener(EVENT, listener); };
+import { allPages, object, request } from "../services/api";
+import type { Row } from "../services/api";
+import { saveResource } from "../services/data";
+import { useWorkspace } from "../services/workspace";
+import { useQuery } from "../services/query";
+export type Status = "available" | "pending" | "active" | "returned";
+export type Depot = {
+    id: string;
+    name: string;
+    region: string;
+    address: string;
+    area: number;
+    price: number;
+    type: string;
+    status: Status;
+    company: string;
+    image: string;
+    ownerCompanyId?: string;
+    handover?: Row;
+};
+export function toDepot(w: Row): Depot {
+    const images = object(w.profile).images;
+    return {
+        id: String(w.id),
+        name: String(w.name || ""),
+        region: String(w.region || ""),
+        address: String(w.address || ""),
+        area: Number(w.area) || 0,
+        price: (Number(w.price) || 0) / 1e6,
+        type: w.warehouseType === "BUY" ? "Mua bán" : "Cho thuê",
+        status: String(w.status).toLowerCase() as Status,
+        company: String(w.ownerCompanyName || ""),
+        image: Array.isArray(images) ? String(images[0] || "") : "",
+        ownerCompanyId: String(w.ownerCompanyId || ""),
+        handover: object(w.handover),
+    };
 }
-export function saveDepots(items: Depot[]) {
- localStorage.setItem(KEY, JSON.stringify(items));
- window.dispatchEvent(new Event(EVENT));
+export function useDepots(marketplace = false): Depot[] {
+    const scope = useWorkspace();
+    const market = useQuery<Row[]>(marketplace ? "marketplace" : null, () =>
+        allPages("core", "/warehouses?status=AVAILABLE"),
+    );
+    return (marketplace ? market.data || [] : scope.warehouses)
+        .filter((w) => w.status !== "ARCHIVED")
+        .map(toDepot);
 }
-export function useDepots(): Depot[] {
- const raw = useSyncExternalStore(subscribe, snapshot);
- return useMemo(() => { try { const parsed = raw ? JSON.parse(raw) : initial; return Array.isArray(parsed) ? parsed : initial; } catch { return initial; } }, [raw]);
+export async function createDepot(input: Omit<Depot, "id">) {
+    return saveResource("core", "/warehouses", "POST", {
+        name: input.name,
+        address: input.address,
+        region: input.region,
+        warehouseType: input.type === "Mua bán" ? "BUY" : "RENT",
+        area: input.area,
+        price: Math.round(input.price * 1e6),
+    });
+}
+export async function updateDepotStatus(
+    depot: Depot,
+    status: Status,
+    transactionId?: string,
+) {
+    const transactions = await allPages<Row>("core", "/warehouse-transactions");
+    const candidates = transactions.filter(
+        (t) =>
+            t.warehouseId === depot.id &&
+            ["PENDING", "NEGOTIATING"].includes(String(t.status)),
+    );
+    const pending = transactionId
+        ? candidates.find((t) => t.id === transactionId)
+        : candidates.length === 1
+          ? candidates[0]
+          : undefined;
+    if (candidates.length > 1 && !transactionId)
+        throw new Error("Chọn đề nghị cần xử lý.");
+    if (!pending)
+        throw new Error("Kho chưa có yêu cầu mua/thuê/trả đang chờ xử lý.");
+    const action =
+        status === "active" || status === "returned"
+            ? "approve"
+            : status === "available"
+              ? "reject"
+              : null;
+    if (!action)
+        throw new Error(
+            "Trạng thái này được cập nhật khi công ty gửi yêu cầu.",
+        );
+    return saveResource(
+        "core",
+        "/warehouse-transactions/" + pending.id + "/" + action,
+        "POST",
+        {
+            reason:
+                action === "reject"
+                    ? "Từ chối đề nghị qua quản lý kho"
+                    : undefined,
+        },
+    );
+}
+export function depotImage(image: string, fallback: string) {
+    return /^https?:\/\//.test(image) ? image : fallback;
+}
+export async function uploadImage(file: File, folder = "general") {
+    if (file.size > 10 * 1024 * 1024) throw new Error("Ảnh tối đa 10 MB.");
+    const body = new FormData();
+    body.append("file", file);
+    body.append("folder", folder);
+    return request<{ secureUrl: string; publicId: string }>(
+        "core",
+        "/upload/image",
+        { method: "POST", body },
+    );
 }

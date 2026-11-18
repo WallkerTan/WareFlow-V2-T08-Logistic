@@ -1,7 +1,8 @@
+import { downloadCsv } from '../../utils/export';
 import { useMemo, useState } from 'react';
 import { Download, Fingerprint, Info, Lock, Search, ShieldCheck } from 'lucide-react';
 import { Card, EmptyState, Modal, Pagination, Badge } from '../../components/admin/AdminUI';
-import { systemLogs } from '../../data/adminData';
+import { useAdminData } from '../../services/data';
 import type { SystemLogEntry } from '../../types/admin';
 import { formatDateTime, formatRelativeTime } from '../../utils/format';
 
@@ -17,6 +18,7 @@ const actionMeta: Record<string, { label: string; tone: 'info' | 'success' | 'wa
 };
 
 export default function AdminLogs() {
+    const { systemLogs } = useAdminData('systemLogs');
     const [query, setQuery] = useState('');
     const [actionFilter, setActionFilter] = useState('ALL');
     const [page, setPage] = useState(1);
@@ -34,7 +36,7 @@ export default function AdminLogs() {
             const matchesAction = actionFilter === 'ALL' || entry.action === actionFilter;
             return matchesQuery && matchesAction;
         });
-    }, [query, actionFilter]);
+    }, [systemLogs, query, actionFilter]);
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
@@ -55,7 +57,7 @@ export default function AdminLogs() {
                     <p>Dấu vết toàn bộ thao tác quản trị, giúp đối chiếu và điều tra khi cần thiết.</p>
                 </div>
                 <div className="admin-page-actions">
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={()=>downloadCsv("nhat-ky.csv",["Mã","Hành động","Người thao tác","Nội dung","Ngày"],filtered.map(r=>[r.id,r.action,r.actorName,r.target,r.createdAt]))}>
                         <Download size={15} /> Xuất nhật ký
                     </button>
                 </div>
