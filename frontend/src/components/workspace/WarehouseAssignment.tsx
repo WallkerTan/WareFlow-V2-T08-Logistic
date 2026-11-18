@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { useAdminData, saveResource } from '../../services/data';
 
 /** A completed warehouse deal must be assigned before a manager can access its stock. */
-export default function WarehouseAssignment({ warehouseId }: { warehouseId: string }) {
+export default function WarehouseAssignment({ warehouseId, companyId }: { warehouseId: string; companyId?: string }) {
     const { raw } = useAdminData('users', 'warehouseTransactions');
-    const deal = raw.warehouseTransactions.find(r => r.warehouseId === warehouseId && r.status === 'COMPLETED' && r.type !== 'RETURN');
+    const deal = raw.warehouseTransactions
+        .filter(r => r.warehouseId === warehouseId && r.companyId === companyId &&
+            r.status === 'COMPLETED' && (r.type === 'RENT' || r.type === 'BUY'))
+        .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0];
     const [managerId, setManagerId] = useState('');
     const [note, setNote] = useState('');
     const [busy, setBusy] = useState(false);

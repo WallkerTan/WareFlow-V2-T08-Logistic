@@ -44,6 +44,10 @@ public class User {
 
     private String avatar;
 
+    private String resetCodeHash;
+    private Instant resetCodeExpiresAt;
+    private Integer resetAttempts;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

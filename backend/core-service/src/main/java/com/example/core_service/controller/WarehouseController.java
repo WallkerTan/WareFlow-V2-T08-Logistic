@@ -24,6 +24,11 @@ public class WarehouseController {
 
     private final WarehouseService warehouseService;
 
+    @GetMapping("/my-company")
+    public Page<WarehouseResponse> myCompany(Pageable pageable) {
+        return warehouseService.myCompany(pageable);
+    }
+
     /**
      * SYSTEM_ADMIN: Tạo kho hệ thống mới (ownerCompany = null, status = AVAILABLE).
      * Endpoint: POST /api/core/warehouses

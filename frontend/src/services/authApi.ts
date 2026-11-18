@@ -98,7 +98,23 @@ async function post(
     }
 }
 
+async function postReset(path: string, payload: object, expectedStatus: number) {
+    const response = await fetch(`${baseUrl}/auth/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(15000),
+    });
+    if (response.status !== expectedStatus) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || "Không thể xử lý yêu cầu. Vui lòng thử lại.");
+    }
+}
+
 export const authApi = {
+    forgotPassword: (email: string) => postReset("forgot-password", { email }, 202),
+    resetPassword: (email: string, otp: string, newPassword: string) =>
+        postReset("reset-password", { email, otp, newPassword }, 204),
     login: async (values: LoginRequest) => {
         const result = await post(loginPath, {
             email: values.email.trim().toLowerCase(),

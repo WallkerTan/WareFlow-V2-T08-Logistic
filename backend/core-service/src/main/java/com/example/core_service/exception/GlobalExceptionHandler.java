@@ -95,6 +95,12 @@ public class GlobalExceptionHandler {
                 .body(buildBody(HttpStatus.NOT_FOUND, "Không tìm thấy endpoint: " + ex.getResourcePath(), null));
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied() {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(buildBody(HttpStatus.FORBIDDEN, "Không có quyền truy cập", null));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpectedException(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

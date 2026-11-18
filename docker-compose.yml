@@ -76,6 +76,13 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wareflow_core
+      SMTP_HOST: "${SMTP_HOST:-localhost}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USERNAME: "${SMTP_USERNAME:-}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD:-}"
+      SMTP_FROM: "${SMTP_FROM:-}"
+      SMTP_AUTH: "${SMTP_AUTH:-true}"
+      SMTP_STARTTLS: "${SMTP_STARTTLS:-true}"
       DB_USER: postgres
       DB_PASSWORD: postgres
       EUREKA_HOST: eureka-server

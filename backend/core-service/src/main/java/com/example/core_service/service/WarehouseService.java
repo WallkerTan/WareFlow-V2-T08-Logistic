@@ -28,6 +28,15 @@ public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
 
+    @Transactional(readOnly = true)
+    public Page<WarehouseResponse> myCompany(Pageable pageable) {
+        UUID company = com.example.core_service.security.SecurityUtils.getCurrentCompanyId();
+        if (company == null) throw ApiException.forbidden("Tài khoản không thuộc công ty");
+        return warehouseRepository.findAll((root, query, cb) ->
+                cb.equal(root.get("ownerCompany").get("id"), company), pageable)
+                .map(WarehouseResponse::fromEntity);
+    }
+
     /**
      * SYSTEM_ADMIN tạo kho hệ thống mới.
      * ownerCompany = null  →  kho chưa thuộc về tenant nào (kho sàn).

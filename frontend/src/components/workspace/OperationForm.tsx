@@ -14,7 +14,8 @@ type Mode = 'warehouse'|'supplier'|'supplierProduct'|'employee'|'budget'|'po'|'e
 type Field = {key:string;label:string;type?:string;required?:boolean;options?:{value:string;label:string}[];min?:number};
 const options=(items:Row[],label='name')=>items.map(r=>({value:String(r.id),label:String(r[label]||r.id)}));
 const models=['FOOD','TECH','APPLIANCE','FASHION','OTHER'].map((value,i)=>({value,label:['Thực phẩm','Công nghệ','Gia dụng','Thời trang','Khác'][i]}));
-const newLine=()=>({key:crypto.randomUUID(),productId:'',lotId:'',qty:'',price:'0',targetProductId:'',lotCode:'',expiryDate:'',condition:'OK'});
+let nextLineId = 0;
+const newLine=()=>({key:`line-${++nextLineId}`,productId:'',lotId:'',qty:'',price:'0',targetProductId:'',lotCode:'',expiryDate:'',condition:'OK'});
 export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{back:string;mode?:Mode;initial?:Row;onSaved?:()=>void}) {
     const {pathname}=useLocation();const navigate=useNavigate();const scope=useWorkspace();const session=getAuthSession()!;
     const mode:Mode=explicitMode || (pathname.includes('/suppliers')?'supplier':pathname.includes('/products')?'supplierProduct':pathname.includes('/employees')?'employee':pathname.includes('/budget')?'budget':pathname.includes('/inbound')?'po':pathname.includes('/outbound')||pathname.includes('/transfers')?'export':pathname.includes('/shipments')?'shipment':'warehouse');

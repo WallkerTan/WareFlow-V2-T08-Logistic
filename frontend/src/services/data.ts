@@ -21,13 +21,17 @@ export function useAdminData(...wanted: DataKey[]) {
     const scope = useWorkspace();
     const isAdmin = session?.role === 'SYSTEM_ADMIN';
     const isManager = session?.role === 'WAREHOUSE_MANAGER';
-    const companiesQuery = useQuery<Row[]>('companies', () => isAdmin ? allPages('core', '/companies') : request<Row>('core', '/companies/my-company').then(r => [r]));
+    const companiesQuery = useQuery<Row[]>('companies', async () => {
+        if (isManager) return session.companyId ? [{ id: session.companyId, name: session.companyName }] : [];
+        if (isAdmin) return allPages<Row>('core', '/companies');
+        return [await request<Row>('core', '/companies/my-company')];
+    });
     const companyRows = companiesQuery.data || EMPTY;
     const warehouseRows = scope.warehouses;
     const workingWarehouses = isManager ? warehouseRows.filter(w => w.id === scope.warehouseId) : warehouseRows;
     const companiesIds = isAdmin ? companyRows.map(c => str(c.id)) : [session?.companyId].filter(Boolean) as string[];
     const scopeKey = `${companiesIds.join(',')}:${workingWarehouses.map(w => w.id).join(',')}`;
-    const ready = !scope.loading && !companiesQuery.loading && !companiesQuery.error;
+    const ready = !scope.loading && !scope.error && !companiesQuery.loading && !companiesQuery.error;
     async function acrossWarehouses(service: Service, collection: string): Promise<Row[]> {
         return (await mapLimit(workingWarehouses, async w => (await allPages<Row>(service, `/warehouses/${w.id}/${collection}`)).map(r => ({ ...r, warehouseId: w.id, warehouseName: w.name })))).flat();
     }

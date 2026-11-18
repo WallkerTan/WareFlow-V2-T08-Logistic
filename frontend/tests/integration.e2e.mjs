@@ -45,7 +45,7 @@ function fixture(url, method, body) {
         loginRequests.push(body);
         assert.deepEqual(Object.keys(body).sort(), ['email', 'password', 'remember']);
         assert.equal(body.email, 'test@example.com');
-        if (body.password !== 'correct-password') return [401, { message: 'Invalid credentials' }];
+        if (body.password !== 'correct-password') return [401, { message: 'Email hoặc mật khẩu không chính xác' }];
         return [200, authSession()];
     }
     if (method !== 'GET') {
@@ -74,8 +74,9 @@ function fixture(url, method, body) {
     const inventory = p.match(/^\/api\/inventory\/warehouses\/([^/]+)\/(.+)$/);
     if (inventory) {
         const [, wh, collection] = inventory;
+        if (collection === 'transfer-products') return list([{ id: 'p2', sku: 'SKU1', name: 'Sản phẩm A' }]);
         if (collection === 'products') return list(products.filter(p => p.warehouseId === wh));
-        if (collection.endsWith('/lots')) return [200, [{ id: 'lot1', productId: 'p1', lotCode: 'LOT1', quantity: 12, reserved: 3, available: 9, expiryDate: null, status: 'OK' }]];
+        if (collection.endsWith('/lots')) return [200, (role === 'COMPANY_ADMIN' ? [1, 2, 3, 4] : [1]).map(i => ({ id: 'lot' + i, productId: 'p1', lotCode: 'LOT' + i, quantity: 12, reserved: 3, available: 9, expiryDate: null, status: 'OK' }))];
         if (collection === 'purchase-orders') return list(wh === 'w1' ? [doc] : []);
         if (collection === 'movements') return list([{ id: 'mv1', sku: 'SKU1', lotCode: 'LOT1', documentType: 'RECEIPT', qtyChange: 12, note: 'Nhập hàng', createdAt: past(1) }]);
         return list([]);
@@ -141,6 +142,7 @@ try {
     }
     async function setField(label, value) { await evaluate(`(()=>{const field=[...document.querySelectorAll('label')].find(l=>l.textContent.trim().startsWith(${JSON.stringify(label)}));const el=field?.control||field?.querySelector('input,select,textarea');if(!el)throw Error('Missing field '+${JSON.stringify(label)});const setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value').set;setter.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`); }
     const clickText = text => evaluate(`[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)})?.click()`);
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: 'Object.defineProperty(crypto, "randomUUID", { value: undefined });' });
     await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable'); await send('Fetch.enable', { patterns: [{ urlPattern: '*://*/api/*' }] });
 
     await go('/login', '!!document.querySelector(".auth-submit")');
@@ -190,6 +192,33 @@ try {
     for (const route of ['/company/dashboard', '/company/warehouses', '/company/inventory', '/company/finance', '/company/marketplace', '/company/employees', '/company/transfers', '/company/approvals', '/company/profile', '/company/budget/new', '/company/employees/new', '/company/transfers/new']) {
         await go(route); assert.equal(await evaluate('document.querySelectorAll(".wf-notice[role=alert]").length'), 0, route); console.log('PASS', route);
     }
+    await setField('Kho xuất', 'w1');
+    await setField('Kho nhận', 'w2');
+    await until('!!document.querySelector(\'option[value="p2"]\')');
+    async function fillTransferLine(index, quantity) {
+        for (const [position, value] of ['p1', 'lot' + quantity, 'p2', String(quantity)].entries()) {
+            await evaluate(`(() => {
+                const row = document.querySelectorAll('form section.wf-card')[${index}];
+                const field = row.querySelectorAll('select,input')[${position}];
+                Object.getOwnPropertyDescriptor(Object.getPrototypeOf(field), 'value').set.call(field, ${JSON.stringify(value)});
+                field.dispatchEvent(new Event(field.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+            })()`);
+        }
+    }
+    await fillTransferLine(0, 1);
+    await clickText('Thêm dòng hàng');
+    await fillTransferLine(1, 2);
+    await clickText('Thêm dòng hàng');
+    await fillTransferLine(2, 3);
+    await evaluate('document.querySelectorAll("form section.wf-card button")[1].click()');
+    await clickText('Thêm dòng hàng');
+    await fillTransferLine(2, 4);
+    assert.deepEqual(await evaluate('Array.from(document.querySelectorAll("form section input"), el => el.value)'), ['1', '3', '4']);
+    await evaluate('document.querySelector(".wf-card form").requestSubmit()');
+    await until('location.pathname === "/company/transfers"');
+    const transfer = writes.find(w => w.body?.type === 'EXPORT_TRANSFER');
+    assert.equal(transfer.body.targetWarehouseId, 'w2');
+    assert.deepEqual(transfer.body.lines, [1, 3, 4].map(quantity => ({ lotId: 'lot' + quantity, targetProductId: 'p2', quantity })));
     await go('/company/finance'); await clickText('Ghi nhận thu / chi');
     await setField('Nhóm giao dịch', 'OTHER'); await setField('Số tiền', '123456'); await setField('Nội dung', 'Khoản thu kiểm thử');
     await evaluate('document.querySelector(".adm-modal form").requestSubmit()');

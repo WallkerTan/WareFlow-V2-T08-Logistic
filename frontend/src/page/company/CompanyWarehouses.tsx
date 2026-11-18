@@ -1,3 +1,4 @@
+import { useWorkspace } from "../../services/workspace";
 import WarehouseAssignment from "../../components/workspace/WarehouseAssignment";
 import { formatDateTime } from "../../utils/format";
 import { getAuthSession } from "../../services/authApi";
@@ -22,6 +23,7 @@ export default function CompanyWarehouses() {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<Depot | null>(null);
     const warehouses = useDepots();
+    const scope = useWorkspace();
 
     const company = getAuthSession()?.companyName || "";
     const selectedWarehouse = selected
@@ -135,7 +137,7 @@ export default function CompanyWarehouses() {
                         </article>
                     ))}
                 </div>
-                {!filtered.length && (
+                {!scope.error && !scope.loading && !filtered.length && (
                     <div className="company-warehouse-empty">
                         <strong>Chưa có kho phù hợp</strong>
                         <p>
@@ -215,6 +217,7 @@ export default function CompanyWarehouses() {
                         <WarehouseAssignment
                             key={selectedWarehouse.id}
                             warehouseId={selectedWarehouse.id}
+                            companyId={selectedWarehouse.ownerCompanyId}
                         />
                         <div className="warehouse-detail-sections">
                             <section>
@@ -241,7 +244,7 @@ export default function CompanyWarehouses() {
                                             {formatDateTime(
                                                 String(
                                                     selectedWarehouse.handover
-                                                        ?.handedOverAt || "",
+                                                        ?.handoverTime || selectedWarehouse.handover?.handedOverAt || "",
                                                 ),
                                             )}
                                         </dd>
