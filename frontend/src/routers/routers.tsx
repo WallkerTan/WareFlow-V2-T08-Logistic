@@ -1,4 +1,5 @@
-﻿import StorehouseInboundPage from "../page/storehouse/StorehouseInboundPage";
+﻿import RecordsPage from "../components/workspace/RecordsPage";
+import StorehouseInboundPage from "../page/storehouse/StorehouseInboundPage";
 import StorehouseOutboundPage from "../page/storehouse/StorehouseOutboundPage";
 import StorehouseHistoryPage from "../page/storehouse/StorehouseHistoryPage";
 import AdminWarehousesNewPage from "../page/admin/AdminWarehousesNewPage";
@@ -111,6 +112,7 @@ const router = createBrowserRouter([
                 ),
             },
             { path: "finance", element: <AdminFinance /> },
+            { path: "shipments", element: <RecordsPage mode="shipments" /> },
             { path: "users", element: <AdminUsers /> },
             { path: "logs", element: <AdminLogs /> },
             { path: "notifications", element: <AdminNotifications /> },

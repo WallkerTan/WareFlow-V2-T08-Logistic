@@ -1,3 +1,4 @@
+import { Toaster } from "react-hot-toast";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
@@ -12,6 +13,7 @@ createRoot(document.getElementById("root")!).render(
     <StrictMode>
         <Provider store={Store}>
             <LolClickEffect />
+            <Toaster position="top-right" />
             <RouterProvider router={router_wareflow_v2} />
         </Provider>
     </StrictMode>,

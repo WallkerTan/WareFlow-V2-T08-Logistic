@@ -55,7 +55,7 @@ export default function AdminLayout() {
                         label: "Doanh thu hệ thống",
                         icon: Wallet,
                     },
-                    { to: "/admin/users", label: "Nhân viên", icon: Users },
+                    { to: "/admin/users", label: "Tài khoản", icon: Users },
                     {
                         to: "/admin/profile",
                         label: "Hồ sơ WareFlow",

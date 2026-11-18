@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Bell, Check, CheckCheck, Filter, Search } from 'lucide-react';
 import { Badge, Card, EmptyState } from '../../components/admin/AdminUI';
-import { notifications as seedNotifications } from '../../data/adminData';
+import { useAdminData, saveResource, attempt } from '../../services/data';
 import type { NotificationScope } from '../../types/admin';
 import { formatDateTime, formatRelativeTime } from '../../utils/format';
 
@@ -12,7 +12,8 @@ const scopeMeta: Record<NotificationScope, { label: string; tone: 'info' | 'purp
 };
 
 export default function AdminNotifications() {
-    const [rows, setRows] = useState(seedNotifications);
+    const { notifications: seedNotifications } = useAdminData('notifications');
+    const rows = seedNotifications;
     const [query, setQuery] = useState('');
     const [scopeFilter, setScopeFilter] = useState<'ALL' | NotificationScope>('ALL');
     const [readFilter, setReadFilter] = useState<'ALL' | 'UNREAD'>('ALL');
@@ -32,13 +33,9 @@ export default function AdminNotifications() {
 
     const unreadCount = rows.filter((notification) => !notification.isRead).length;
 
-    function markAllRead() {
-        setRows((current) => current.map((notification) => ({ ...notification, isRead: true })));
-    }
+    async function markAllRead() { await attempt(() => saveResource('core','/notifications/read-all','PATCH')); }
 
-    function toggleRead(id: string) {
-        setRows((current) => current.map((notification) => (notification.id === id ? { ...notification, isRead: !notification.isRead } : notification)));
-    }
+    async function toggleRead(id: string) { if (!rows.find(r=>r.id===id)?.isRead) await attempt(() => saveResource('core','/notifications/'+id+'/read','PATCH')); }
 
     return (
         <>
@@ -156,8 +153,8 @@ export default function AdminNotifications() {
                                     </div>
                                     <button
                                         className="adm-btn adm-btn-sm adm-btn-icon"
-                                        onClick={() => toggleRead(notification.id)}
-                                        aria-label={notification.isRead ? `Đánh dấu chưa đọc: ${notification.title}` : `Đánh dấu đã đọc: ${notification.title}`}
+                                        disabled={notification.isRead} onClick={() => toggleRead(notification.id)}
+                                        aria-label={notification.isRead ? `Đã đọc: ${notification.title}` : `Đánh dấu đã đọc: ${notification.title}`}
                                     >
                                         <Check size={14} />
                                     </button>
