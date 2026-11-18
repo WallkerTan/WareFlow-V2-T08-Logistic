@@ -1,14 +1,16 @@
+import { downloadCsv } from '../../utils/export';
 import { useMemo, useState } from 'react';
 import { Check, Download, Info, KeyRound, Lock, Plus, Search, ShieldCheck, Trash2, Unlock, UserCog, Users } from 'lucide-react';
 import { Badge, Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
-import { users as seedUsers } from '../../data/adminData';
+import { useAdminData, saveResource, attempt } from '../../services/data';
 import type { AdminUser, UserRole, UserStatus } from '../../types/admin';
 import { formatDate, formatRelativeTime, initials, userRoleMeta, userStatusMeta } from '../../utils/format';
 
 const PAGE_SIZE = 6;
 
 export default function AdminUsers() {
-    const [rows, setRows] = useState<AdminUser[]>(seedUsers);
+    const { users: seedUsers, raw } = useAdminData('users');
+    const rows = seedUsers;
     const [query, setQuery] = useState('');
     const [roleFilter, setRoleFilter] = useState<'ALL' | UserRole>('ALL');
     const [statusFilter, setStatusFilter] = useState<'ALL' | UserStatus>('ALL');
@@ -42,54 +44,14 @@ export default function AdminUsers() {
         setConfirmDelete(false);
     };
 
-    const handleSaveUser = () => {
+    const handleSaveUser = async () => {
         if (!selectedUser) return;
-        setRows((prev) =>
-            prev.map((u) =>
-                u.id === selectedUser.id
-                    ? {
-                          ...u,
-                          fullName: editForm.fullName,
-                          email: editForm.email,
-                          role: editForm.role,
-                          status: editForm.status,
-                          companyName: editForm.companyName,
-                      }
-                    : u
-            )
-        );
-        setSelectedUser(null);
-        showToast(`Đã lưu thay đổi người dùng "${editForm.fullName}".`);
+        const original=raw.users.find(r=>r.id===selectedUser.id)!;
+        if (!await attempt(() => saveResource('core', '/users/me', 'PUT', {...original, fullName:editForm.fullName}))) return;
+        setSelectedUser(null); showToast('Đã cập nhật hồ sơ.');
     };
-
-    const handleDeleteUser = () => {
-        if (!selectedUser) return;
-        if (selectedUser.role === 'SYSTEM_ADMIN') {
-            alert('Ràng buộc bảo mật: Không thể xóa tài khoản Quản trị hệ thống tối cao.');
-            return;
-        }
-        setRows((prev) => prev.filter((u) => u.id !== selectedUser.id));
-        const name = selectedUser.fullName;
-        setSelectedUser(null);
-        showToast(`Đã xóa tài khoản "${name}" khỏi hệ thống.`);
-    };
-
-    const toggleLock = (user: AdminUser, e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        const nextStatus: UserStatus = user.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE';
-        setRows((prev) =>
-            prev.map((u) => (u.id === user.id ? { ...u, status: nextStatus } : u))
-        );
-        if (selectedUser?.id === user.id) {
-            setEditForm((f) => ({ ...f, status: nextStatus }));
-        }
-        showToast(
-            nextStatus === 'LOCKED'
-                ? `Đã khóa tài khoản "${user.fullName}".`
-                : `Đã mở khóa tài khoản "${user.fullName}".`
-        );
-    };
-
+    const handleDeleteUser = () => showToast('Không thể xóa tài khoản đang đăng nhập.');
+    const toggleLock = (_user: AdminUser, e?: React.MouseEvent) => { e?.stopPropagation(); showToast('Thao tác quản lý nhân viên thuộc tài khoản quản trị công ty.'); };
     const showToast = (msg: string) => {
         setToast(msg);
         setTimeout(() => setToast(null), 3500);
@@ -124,14 +86,14 @@ export default function AdminUsers() {
         <>
             <div className="admin-page-head">
                 <div>
-                    <h2>Quản lý người dùng</h2>
-                    <p>Phân quyền truy cập, quản lý tài khoản và theo dõi hoạt động của thành viên trên toàn hệ thống.</p>
+                    <h2>Tài khoản quản trị</h2>
+                    <p>Thông tin tài khoản đang đăng nhập. Nhân viên được quản lý trong không gian công ty.</p>
                 </div>
                 <div className="admin-page-actions">
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={()=>downloadCsv("tai-khoan.csv",["Tên","Email","Vai trò","Trạng thái"],rows.map(r=>[r.fullName,r.email,r.role,r.status]))}>
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <button className="adm-btn adm-btn-primary">
+                    <button disabled title="Cấp tài khoản trong không gian công ty" className="adm-btn adm-btn-primary">
                         <Plus size={16} /> Thêm người dùng
                     </button>
                 </div>
@@ -151,7 +113,7 @@ export default function AdminUsers() {
                             </div>
                             <div className="adm-stat-value">{count}</div>
                             <div className="adm-stat-foot">
-                                <span>{Math.round((count / rows.length) * 100)}% tổng số tài khoản</span>
+                                <span>{(rows.length ? Math.round(count / rows.length * 100) : 0)}% tài khoản đang xem</span>
                             </div>
                         </article>
                     );
@@ -263,17 +225,17 @@ export default function AdminUsers() {
                                                 <div style={{ display: 'inline-flex', gap: 6 }}>
                                                     <button
                                                         className="adm-btn adm-btn-sm adm-btn-icon"
-                                                        aria-label={`Đặt lại mật khẩu ${user.fullName}`}
+                                                        disabled title="Gửi email đặt lại mật khẩu sẽ được cấu hình sau" aria-label={`Đặt lại mật khẩu ${user.fullName}`}
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            showToast(`Đã gửi liên kết đặt lại mật khẩu tới ${user.email}`);
+                                                            showToast('Chưa cấu hình email đặt lại mật khẩu.');
                                                         }}
                                                     >
                                                         <KeyRound size={14} />
                                                     </button>
                                                     <button
                                                         className="adm-btn adm-btn-sm adm-btn-icon"
-                                                        aria-label={user.status === 'LOCKED' ? `Mở khoá ${user.fullName}` : `Khoá ${user.fullName}`}
+                                                        disabled title="Không khóa tài khoản đang đăng nhập" aria-label={user.status === 'LOCKED' ? `Mở khoá ${user.fullName}` : `Khoá ${user.fullName}`}
                                                         onClick={(e) => toggleLock(user, e)}
                                                     >
                                                         {user.status === 'LOCKED' ? <Unlock size={14} /> : <Lock size={14} />}
@@ -393,7 +355,7 @@ export default function AdminUsers() {
                                 <input
                                     className="adm-input"
                                     type="email"
-                                    value={editForm.email}
+                                    readOnly value={editForm.email}
                                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                                 />
                             </div>
@@ -401,7 +363,7 @@ export default function AdminUsers() {
                                 <label>Công ty trực thuộc</label>
                                 <input
                                     className="adm-input"
-                                    value={editForm.companyName}
+                                    readOnly value={editForm.companyName}
                                     onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
                                 />
                             </div>
@@ -411,7 +373,7 @@ export default function AdminUsers() {
                                 <label>Vai trò phân quyền</label>
                                 <select
                                     className="adm-select"
-                                    value={editForm.role}
+                                    disabled value={editForm.role}
                                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value as UserRole })}
                                 >
                                     <option value="SYSTEM_ADMIN">Quản trị hệ thống (System Admin)</option>
@@ -423,7 +385,7 @@ export default function AdminUsers() {
                                 <label>Trạng thái tài khoản</label>
                                 <select
                                     className="adm-select"
-                                    value={editForm.status}
+                                    disabled value={editForm.status}
                                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value as UserStatus })}
                                 >
                                     <option value="ACTIVE">Hoạt động (Active)</option>

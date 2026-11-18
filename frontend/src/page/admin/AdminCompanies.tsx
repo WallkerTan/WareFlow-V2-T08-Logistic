@@ -1,8 +1,10 @@
+import { downloadCsv } from '../../utils/export';
+import { object } from '../../services/api';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, Check, Download, Filter, Pencil, Plus, Search, ShieldAlert, Trash2, X } from 'lucide-react';
 import { Badge, Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
-import { companies as seedCompanies } from '../../data/adminData';
+import { useAdminData, saveResource, attempt } from '../../services/data';
 import type { Company, CompanyBusinessModel, CompanyStatus } from '../../types/admin';
 import {
     businessModelMeta,
@@ -33,7 +35,8 @@ const emptyForm: FormValues = {
 };
 
 export default function AdminCompanies() {
-    const [rows, setRows] = useState<Company[]>(seedCompanies);
+    const { companies: seedCompanies, raw } = useAdminData();
+    const rows = seedCompanies;
     const [query, setQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<'ALL' | CompanyStatus>('ALL');
     const [modelFilter, setModelFilter] = useState<'ALL' | CompanyBusinessModel>('ALL');
@@ -98,8 +101,8 @@ export default function AdminCompanies() {
     function validate(): boolean {
         const next: Partial<Record<keyof FormValues, string>> = {};
         if (!form.name.trim()) next.name = 'Vui lòng nhập tên công ty.';
-        if (!/^\d{10}(-?\d{3})?$/.test(form.taxCode.replace(/-/g, ''))) next.taxCode = 'Mã số thuế gồm 10 hoặc 13 chữ số.';
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = 'Email không hợp lệ.';
+        if (form.taxCode && !/^\d{10}(-?\d{3})?$/.test(form.taxCode.replace(/-/g, ''))) next.taxCode = 'Mã số thuế gồm 10 hoặc 13 chữ số.';
+        if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) next.email = 'Email không hợp lệ.';
         if (form.phone.trim() && !/^(0\d{9}|\+84\d{9})$/.test(form.phone.replace(/[\s.-]/g, ''))) {
             next.phone = 'Số điện thoại Việt Nam không hợp lệ.';
         }
@@ -107,55 +110,17 @@ export default function AdminCompanies() {
         return Object.keys(next).length === 0;
     }
 
-    function save() {
-        if (!validate()) return;
-        if (editing) {
-            setRows((current) =>
-                current.map((company) =>
-                    company.id === editing.id
-                        ? {
-                              ...company,
-                              name: form.name.trim(),
-                              taxCode: form.taxCode.replace(/-/g, ''),
-                              email: form.email.trim().toLowerCase(),
-                              phone: form.phone.trim(),
-                              address: form.address.trim(),
-                              businessModel: form.businessModel,
-                          }
-                        : company,
-                ),
-            );
-        } else {
-            setRows((current) => [
-                {
-                    id: `cmp-${Date.now()}`,
-                    name: form.name.trim(),
-                    businessModel: form.businessModel,
-                    status: 'PENDING',
-                    taxCode: form.taxCode.replace(/-/g, ''),
-                    email: form.email.trim().toLowerCase(),
-                    phone: form.phone.trim(),
-                    address: form.address.trim(),
-                    memberCount: 1,
-                    warehouseCount: 0,
-                    createdAt: new Date().toISOString(),
-                },
-                ...current,
-            ]);
-        }
+    async function save() {
+        if (!validate() || !editing) return;
+        if (!await attempt(() => saveResource('core', '/companies/' + editing.id, 'PUT', { ...object(raw.companies.find(r=>r.id===editing.id)?.profile), ...form, taxCode: form.taxCode.replace(/-/g,'') }))) return;
         closeModal();
     }
-
-    function toggleStatus(company: Company) {
-        const nextStatus: CompanyStatus = company.status === 'LOCKED' ? 'ACTIVE' : 'LOCKED';
-        setRows((current) => current.map((row) => (row.id === company.id ? { ...row, status: nextStatus } : row)));
+    async function toggleStatus(company: Company) {
+        await attempt(() => saveResource('core', '/companies/' + company.id + '/status', 'PATCH', { status: company.status === 'ACTIVE' ? 'LOCKED' : 'ACTIVE' }));
     }
-
-    function remove(company: Company) {
-        setRows((current) => current.filter((row) => row.id !== company.id));
-        setConfirmDelete(null);
+    async function remove(company: Company) {
+        if (await attempt(() => saveResource('core', '/companies/' + company.id, 'DELETE'))) setConfirmDelete(null);
     }
-
     return (
         <>
             <div className="admin-page-head">
@@ -164,10 +129,10 @@ export default function AdminCompanies() {
                     <p>Duyệt đăng ký, theo dõi trạng thái và quản lý toàn bộ không gian làm việc trên nền tảng.</p>
                 </div>
                 <div className="admin-page-actions">
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={()=>downloadCsv("cong-ty.csv",["Mã","Tên","Lĩnh vực","Trạng thái","Số kho"],filtered.map(c=>[c.id,c.name,c.businessModel,c.status,c.warehouseCount]))}>
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <button className="adm-btn adm-btn-primary" onClick={openCreate}>
+                    <button className="adm-btn adm-btn-primary" disabled title="Công ty mới được tạo qua đăng ký tài khoản" onClick={openCreate}>
                         <Plus size={16} /> Thêm công ty
                     </button>
                 </div>
@@ -199,9 +164,9 @@ export default function AdminCompanies() {
                             <Check size={17} />
                         </span>
                     </div>
-                    <div className="adm-stat-value">{formatNumber(rows.reduce((sum, company) => sum + company.memberCount, 0))}</div>
+                    <div className="adm-stat-value">{'—'}</div>
                     <div className="adm-stat-foot">
-                        <span>Tính trên tất cả không gian làm việc</span>
+                        <span>Nhân viên được quản lý tại công ty</span>
                     </div>
                 </article>
             </div>
@@ -295,7 +260,7 @@ export default function AdminCompanies() {
                                             <td>
                                                 <Badge label={model.label} tone={model.tone} />
                                             </td>
-                                            <td>{formatNumber(company.memberCount)}</td>
+                                            <td>{'—'}</td>
                                             <td>{formatNumber(company.warehouseCount)}</td>
                                             <td>
                                                 <Badge label={status.label} tone={status.tone} />
@@ -416,7 +381,7 @@ export default function AdminCompanies() {
                                     Email quản trị <span>*</span>
                                 </label>
                                 <input
-                                    id="company-email"
+                                    id="company-email" readOnly title="Email được quản lý tại tài khoản công ty"
                                     className="adm-input"
                                     type="email"
                                     value={form.email}

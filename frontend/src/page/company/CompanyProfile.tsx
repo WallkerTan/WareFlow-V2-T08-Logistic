@@ -5,7 +5,7 @@ export default function CompanyProfile() { const { search } = useLocation();
     return <><div className="wf-notice" style={{ marginBottom: 22 }}><Link to={"/company/warehouses" + search}>Xem danh sách kho công ty đã mua/thuê và thông tin chi tiết →</Link></div><ProfileEditor kind="company" title="Hồ sơ công ty" description="Quản lý thông tin doanh nghiệp và hồ sơ pháp lý của công ty." sections={[
         { title: 'Thông tin doanh nghiệp', description: 'Thông tin nhận diện và lĩnh vực hoạt động.', fields: [
             { name: 'name', label: 'Tên công ty', required: true },
-            { name: 'business_model', label: 'Mô hình kinh doanh', type: 'select', required: true, options: [{ value: 'food', label: 'Thực phẩm' }, { value: 'tech', label: 'Công nghệ' }, { value: 'appliance', label: 'Đồ gia dụng' }, { value: 'fashion', label: 'Thời trang' }] },
+            { name: 'business_model', label: 'Mô hình kinh doanh', type: 'select', required: true, options: [{ value: 'food', label: 'Thực phẩm' }, { value: 'tech', label: 'Công nghệ' }, { value: 'appliance', label: 'Đồ gia dụng' }, { value: 'fashion', label: 'Thời trang' }, { value: 'other', label: 'Khác' }] },
             { name: 'profile.tax_code', label: 'Mã số thuế', hint: 'Thông tin pháp lý trong hồ sơ doanh nghiệp.' },
             { name: 'profile.logo', label: 'Đường dẫn logo', type: 'url', placeholder: 'https://…' },
             { name: 'profile.address', label: 'Địa chỉ trụ sở', type: 'textarea' },

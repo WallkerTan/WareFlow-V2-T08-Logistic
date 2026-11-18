@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, Outlet, Link, useLocation } from "react-router-dom";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { NavLink, Outlet, Link, useLocation, Navigate } from "react-router-dom";
 import { ArrowUpRight, ChevronRight, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import WareFlowFooter from '../common/WareFlowFooter';
@@ -24,15 +24,32 @@ export type WorkspaceConfig = {
         icon: LucideIcon;
     }[];
 };
+import { getAuthSession, clearAuthSession, roleHome, scheduleSessionExpiry } from '../../services/authApi';
+import { WorkspaceProvider, DataStatus, WarehousePicker, useWorkspace } from '../../services/workspace';
+import { clearData } from '../../services/query';
+function WorkspaceOutlet({ scoped }: { scoped: boolean }) {
+    const { warehouseId } = useWorkspace();
+    return <Outlet key={scoped ? warehouseId : 'workspace'} />;
+}
 export default function WorkspaceShell({ config }: {
     config: WorkspaceConfig;
 }) {
     const [expanded, setExpanded] = useState(false);
     const { pathname } = useLocation();
+    const storedSession = useSyncExternalStore(fn => { window.addEventListener('wareflow.auth', fn); return () => window.removeEventListener('wareflow.auth', fn); }, () => sessionStorage.getItem('wareflow.auth'));
+    const session = getAuthSession(storedSession);
+    const expiresAt = session?.expiresAt;
+    useEffect(() => {
+        if (!expiresAt) return;
+        return scheduleSessionExpiry(expiresAt);
+    }, [expiresAt]);
+    if (!session) return <Navigate to="/auth/login" replace />;
+    const allowedRole = { admin: 'SYSTEM_ADMIN', company: 'COMPANY_ADMIN', storehouse: 'WAREHOUSE_MANAGER' }[config.role];
+    if (session.role !== allowedRole) return <Navigate to={roleHome(session.role)} replace />;
     const page = config.links.find((link) => pathname === link.to.split("?")[0])
-        ?.label || "Xem thử phê duyệt";
+        ?.label || "Chi tiết";
     const Icon = config.icon;
-    return (<div className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}>
+    return (<WorkspaceProvider><div className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}>
             <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
                 <div className="wf-sidebar-panel">
                 <Link className="wf-brand" to={config.home} onClick={() => setExpanded(false)}>
@@ -53,7 +70,7 @@ export default function WorkspaceShell({ config }: {
                             {link.label}
                         </NavLink>))}
                 </nav>
-                <div className="workspace-switch"><small>XEM GIAO DIỆN THEO VAI TRÒ</small><Link to="/admin/dashboard">Quản trị hệ thống</Link><Link to="/company/dashboard">Công ty</Link><Link to="/storehouse/inventory">Quản lý kho</Link></div><div className="wf-sidebar-bottom">
+                <div className="wf-sidebar-bottom">
                     <span className="wf-mini-mark">
                         <Icon size={16}/>
                     </span>
@@ -81,15 +98,17 @@ export default function WorkspaceShell({ config }: {
                         <Link className="wf-account" to={config.profile} aria-label={`Hồ sơ ${config.title}`}>
                             <span>{config.avatar}</span>
                         </Link>
-                        <Link className="wf-signin" to="/auth/login">
-                            Đăng nhập <ArrowUpRight size={15}/>
+                        <Link className="wf-signin" to="/auth/login" onClick={() => { clearAuthSession(); clearData(); }}>
+                            Đăng xuất <ArrowUpRight size={15}/>
                         </Link>
                     </div>
                 </header>
                 <main className="wf-content">
-                    <Outlet />
+                    <DataStatus />
+                    {config.role === "storehouse" && <WarehousePicker />}
+                    <WorkspaceOutlet scoped={config.role === 'storehouse'} />
                 </main>
             </div>
             <WareFlowFooter />
-        </div>);
+        </div></WorkspaceProvider>);
 }

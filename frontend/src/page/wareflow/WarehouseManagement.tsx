@@ -1,4 +1,5 @@
-﻿import { useState } from "react";
+import { useAdminData } from '../../services/data';
+import { useState } from "react";
 import { Modal, message } from "antd";
 import {
     ArrowDownToLine,
@@ -25,7 +26,7 @@ import {
 import "./warehouses.css";
 import warehousePhoto from "../../assets/warehouse-photo.jpg";
 
-import { photos, saveDepots, useDepots } from "../../data/warehouses";
+import { createDepot, updateDepotStatus, useDepots } from "../../data/warehouses";
 import type { Depot, Status } from "../../data/warehouses";
 import { Link } from "react-router-dom";
 const statusNames: Record<Status, string> = {
@@ -38,6 +39,8 @@ const format = (n: number) => n.toLocaleString("vi-VN");
 
 export default function WarehouseManagement() {
     const depots = useDepots();
+    const { raw } = useAdminData('warehouseTransactions');
+    const [proposalId,setProposalId]=useState('');
     const [tab, setTab] = useState("all");
     const [query, setQuery] = useState("");
     const [region, setRegion] = useState("");
@@ -49,7 +52,7 @@ export default function WarehouseManagement() {
     const [creating, setCreating] = useState(false);
     const [notifications, setNotifications] = useState(false);
     const [notice, contextHolder] = message.useMessage();
-    const save = saveDepots;
+
     const filtered = depots.filter(
         (d) =>
             (tab === "all" || d.status === tab) &&
@@ -64,21 +67,12 @@ export default function WarehouseManagement() {
     const currentPage = Math.min(page, pages);
     const visible = filtered.slice((currentPage - 1) * 6, currentPage * 6);
     const resetPage = () => setPage(1);
-    const updateStatus = (status: Status) => {
-        if (!selected) return;
-        save(
-            depots.map((d) =>
-                d.id === selected.id
-                    ? {
-                          ...d,
-                          status,
-                          company: status === "available" ? "" : d.company,
-                      }
-                    : d,
-            ),
-        );
-        setSelected(null);
-        notice.success("Đã cập nhật trạng thái kho");
+    const [busy, setBusy] = useState(false);
+    const updateStatus = async (status: Status) => {
+        if (!selected || busy) return; setBusy(true);
+        try { await updateDepotStatus(selected,status,proposalId||undefined); setSelected(null); notice.success('Đã xử lý yêu cầu kho.'); }
+        catch(e) { notice.error(e instanceof Error?e.message:'Không lưu được trạng thái.'); }
+        finally { setBusy(false); }
     };
     const exportCSV = () => {
         const rows = [
@@ -516,7 +510,7 @@ export default function WarehouseManagement() {
                         Modal.info({
                             title: "Trung tâm trợ giúp",
                             content:
-                                "Thêm kho thuộc hệ thống, lọc danh sách hoặc mở Chi tiết để xử lý đề nghị mua/thuê. Phí giao dịch hệ thống là 5%. Đây là bản giao diện dùng dữ liệu mẫu, chưa kết nối máy chủ.",
+                                "Thêm kho thuộc hệ thống, lọc danh sách hoặc mở Chi tiết để xử lý đề nghị mua/thuê.",
                         })
                     }
                 >
@@ -596,9 +590,9 @@ export default function WarehouseManagement() {
                                     : "WareFlow — quản trị hệ thống"}
                             </p>
                             <p>
-                                Nhân viên nhận bàn giao: Chưa có dữ liệu
+                                Nhân viên nhận bàn giao: {String(selected.handover?.managerName||selected.handover?.managerId||'Chưa bàn giao')}
                                 <br />
-                                Thời gian bàn giao: Chưa có dữ liệu
+                                Thời gian bàn giao: {String(selected.handover?.handedOverAt||'Chưa bàn giao')}
                             </p>
                             <div className="wm-info">
                                 Kho đang hoạt động được bàn giao cho công ty.
@@ -610,16 +604,9 @@ export default function WarehouseManagement() {
                         {selected.status === "pending" && (
                             <>
                                 <div className="wm-info">
-                                    Đề nghị{" "}
-                                    {selected.type === "Cho thuê"
-                                        ? "thuê"
-                                        : "mua"}{" "}
-                                    kho từ {selected.company}. Phí hệ thống 5%:{" "}
-                                    <strong>
-                                        {format(selected.price * 0.05)} triệu
-                                        đồng
-                                    </strong>
-                                    .
+                                    <label className="wf-field"><span>Đề nghị cần xử lý</span><select value={proposalId} onChange={e=>setProposalId(e.target.value)}><option value="">Chọn đề nghị</option>{raw.warehouseTransactions.filter(t=>t.warehouseId===selected.id&&['PENDING','NEGOTIATING'].includes(String(t.status))).map(t=><option key={String(t.id)} value={String(t.id)}>{String(t.companyName)} · {Number(t.offeredPrice).toLocaleString('vi-VN')} ₫</option>)}</select></label>
+                                    Kiểm tra công ty và giá đề nghị trước khi duyệt.
+                                    Phí được ghi nhận theo giao dịch đã duyệt.
                                 </div>
                                 <div className="wm-modal-actions">
                                     <button
@@ -636,13 +623,13 @@ export default function WarehouseManagement() {
                                         onClick={() => updateStatus("active")}
                                     >
                                         <Check size={16} />
-                                        Duyệt & bàn giao
+                                        Duyệt đề nghị
                                     </button>
                                 </div>
                             </>
                         )}
                         {selected.status === "returned" && (
-                            <button
+                            <button disabled title="Trạng thái kho được cập nhật qua giao dịch hoàn trả"
                                 className="wm-primary"
                                 onClick={() => updateStatus("available")}
                             >
@@ -661,31 +648,14 @@ export default function WarehouseManagement() {
             >
                 <form
                     className="wm-form"
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                         e.preventDefault();
                         const data = new FormData(e.currentTarget);
-                        const next =
-                            Math.max(
-                                0,
-                                ...depots.map((d) =>
-                                    Number(d.id.replace("WH-", "")),
-                                ),
-                            ) + 1;
-                        save([
-                            {
-                                id: `WH-${String(next).padStart(3, "0")}`,
-                                name: String(data.get("name")).trim(),
-                                address: String(data.get("address")).trim(),
-                                region: String(data.get("region")),
-                                type: String(data.get("type")),
-                                area: Number(data.get("area")),
-                                price: Number(data.get("price")),
-                                status: "available",
-                                company: "",
-                                image: photos[0],
-                            },
-                            ...depots,
-                        ]);
+                        if (busy) return;
+                        setBusy(true);
+                        try { await createDepot({ name:String(data.get('name')).trim(),address:String(data.get('address')).trim(),region:String(data.get('region')),type:String(data.get('type')),area:Number(data.get('area')),price:Number(data.get('price')),status:'available',company:'',image:'' }); }
+                        catch(error) { notice.error(error instanceof Error?error.message:'Không tạo được kho.'); return; }
+                        finally { setBusy(false); }
                         setCreating(false);
                         setTab("all");
                         setQuery("");
@@ -774,7 +744,7 @@ export default function WarehouseManagement() {
                         >
                             Hủy bỏ
                         </button>
-                        <button className="wm-primary" type="submit">
+                        <button className="wm-primary" type="submit" disabled={busy}>
                             <Plus size={16} />
                             Thêm kho mới
                         </button>

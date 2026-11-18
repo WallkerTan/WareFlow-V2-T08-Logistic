@@ -1,24 +1,22 @@
-import { useMemo, useState } from 'react';
+import { downloadCsv } from '../../utils/export';
+import { percentage, cashSeries, cashSummary, inPeriod, growth, percentLabel } from '../../utils/analytics';
+import { useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Check, Download, Info, Receipt, Search, ShieldCheck, Wallet } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge, Card, EmptyState, Modal, Pagination, Progress } from '../../components/admin/AdminUI';
-import { budgets, transactions as seedTransactions } from '../../data/adminData';
+import { useAdminData } from '../../services/data';
 import type { Transaction, TransactionType } from '../../types/admin';
 import { formatCompactCurrency, formatCurrency, formatDateTime, transactionCategoryMeta, transactionTypeMeta } from '../../utils/format';
 
 const PAGE_SIZE = 6;
 
-const cashflow = [
-    { month: 'T5', income: 312, expense: 186 },
-    { month: 'T6', income: 358, expense: 204 },
-    { month: 'T7', income: 331, expense: 192 },
-    { month: 'T8', income: 402, expense: 228 },
-    { month: 'T9', income: 447, expense: 241 },
-    { month: 'T10', income: 512, expense: 268 },
-];
-
 export default function AdminFinance() {
-    const [rows, setRows] = useState<Transaction[]>(seedTransactions);
+    const { budgets, transactions: seedTransactions } = useAdminData('budgets', 'transactions');
+    const [range, setRange] = useState('90');
+    const rows = inPeriod(seedTransactions, Number(range));
+    const cashflow = cashSeries(seedTransactions, Number(range));
+    const sums = cashSummary(rows);
+    const previous = cashSummary(inPeriod(seedTransactions, Number(range), new Date(), true));
     const [query, setQuery] = useState('');
     const [typeFilter, setTypeFilter] = useState<'ALL' | TransactionType>('ALL');
     const [page, setPage] = useState(1);
@@ -31,21 +29,14 @@ export default function AdminFinance() {
         setNoteForm(tx.note);
     };
 
-    const handleSaveNote = () => {
-        if (!selectedTx) return;
-        setRows((prev) =>
-            prev.map((t) => (t.id === selectedTx.id ? { ...t, note: noteForm } : t))
-        );
-        setSelectedTx(null);
-        showToast(`Đã cập nhật giải trình cho giao dịch #${selectedTx.id}.`);
-    };
+    const handleSaveNote = () => { showToast('Giao dịch đã ghi sổ được giữ nguyên để đối soát.'); };
 
     const showToast = (msg: string) => {
         setToast(msg);
         setTimeout(() => setToast(null), 3500);
     };
 
-    const filtered = useMemo(() => {
+    const filtered = (() => {
         const keyword = query.trim().toLowerCase();
         return rows.filter((transaction) => {
             const matchesQuery =
@@ -55,7 +46,7 @@ export default function AdminFinance() {
             const matchesType = typeFilter === 'ALL' || transaction.type === typeFilter;
             return matchesQuery && matchesType;
         });
-    }, [rows, query, typeFilter]);
+    })();
 
     const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
@@ -68,10 +59,10 @@ export default function AdminFinance() {
         };
     }
 
-    const totalIncome = rows.filter((t) => t.type === 'INCOME').reduce((sum, t) => sum + t.amount, 0);
-    const totalExpense = rows.filter((t) => t.type !== 'INCOME').reduce((sum, t) => sum + t.amount, 0);
-    const totalFee = rows.filter((t) => t.type === 'SYSTEM_FEE').reduce((sum, t) => sum + t.amount, 0);
-    const profit = totalIncome - totalExpense;
+    const totalIncome = sums.income;
+    const totalExpense = sums.expense;
+    const totalFee = sums.fee;
+    const profit = sums.net;
 
     return (
         <>
@@ -80,8 +71,8 @@ export default function AdminFinance() {
                     <h2>Tài chính</h2>
                     <p>Giám sát doanh thu, chi phí vận hành và ngân sách của các doanh nghiệp trên nền tảng.</p>
                 </div>
-                <div className="admin-page-actions">
-                    <button className="adm-btn">
+                <div className="admin-page-actions"><select className="adm-select" aria-label="Kỳ báo cáo" value={range} onChange={e=>setRange(e.target.value)}><option value="30">30 ngày</option><option value="90">90 ngày</option><option value="365">365 ngày</option></select>
+                    <button className="adm-btn" onClick={()=>downloadCsv("thu-chi.csv",["Mã","Ngày","Loại","Kho","Số tiền","Ghi chú"],filtered.map(t=>[t.id,t.createdAt,t.type,t.warehouseName,t.amount,t.note]))}>
                         <Download size={15} /> Xuất báo cáo
                     </button>
                 </div>
@@ -97,7 +88,7 @@ export default function AdminFinance() {
                     </div>
                     <div className="adm-stat-value adm-text-success">{formatCompactCurrency(totalIncome)}</div>
                     <div className="adm-stat-foot">
-                        <span className="adm-trend adm-trend-up">▲ 14.6%</span>
+                        <span className="adm-trend adm-trend-up">{percentLabel(growth(sums.income, previous.income))}</span>
                         <span>so với kỳ trước</span>
                     </div>
                 </article>
@@ -110,20 +101,20 @@ export default function AdminFinance() {
                     </div>
                     <div className="adm-stat-value adm-text-danger">{formatCompactCurrency(totalExpense)}</div>
                     <div className="adm-stat-foot">
-                        <span className="adm-trend adm-trend-down">▼ 8.2%</span>
+                        <span className="adm-trend adm-trend-down">{percentLabel(growth(sums.expense, previous.expense))}</span>
                         <span>so với kỳ trước</span>
                     </div>
                 </article>
                 <article className="adm-stat">
                     <div className="adm-stat-top">
-                        <span className="adm-stat-label">Lợi nhuận gộp</span>
+                        <span className="adm-stat-label">Chênh lệch thu chi</span>
                         <span className="adm-stat-icon is-purple">
                             <Wallet size={17} />
                         </span>
                     </div>
                     <div className="adm-stat-value">{formatCompactCurrency(profit)}</div>
                     <div className="adm-stat-foot">
-                        <span>Biên {Math.round((profit / totalIncome) * 100)}%</span>
+                        <span>Biên {percentLabel(sums.margin)}</span>
                     </div>
                 </article>
                 <article className="adm-stat">
@@ -141,7 +132,7 @@ export default function AdminFinance() {
             </div>
 
             <div className="adm-grid-2">
-                <Card title="Dòng tiền theo tháng" subtitle="Đơn vị: triệu đồng">
+                <Card title="Dòng tiền trong kỳ" subtitle="Đơn vị: triệu đồng">
                     <div className="adm-chart-box">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={cashflow} margin={{ top: 6, right: 6, left: -18, bottom: 0 }}>
@@ -168,17 +159,17 @@ export default function AdminFinance() {
                     </div>
                 </Card>
 
-                <Card title="Ngân sách theo kho" subtitle="Mức sử dụng hạn mức tháng 10/2026">
+                <Card title="Ngân sách theo kho" subtitle="Mức sử dụng hạn mức tháng hiện tại">
                     <ul className="adm-list" style={{ margin: -18, marginTop: -18 }}>
                         {budgets.map((budget) => {
-                            const percent = Math.round((budget.spent / budget.allocated) * 100);
+                            const percent = percentage(budget.spent, budget.allocated);
                             return (
                                 <li className="adm-list-item" key={budget.id}>
                                     <div className="adm-list-text">
                                         <strong>{budget.warehouseName ?? 'Tổng công ty'}</strong>
                                         <div className="adm-progress-row" style={{ marginTop: 8 }}>
-                                            <Progress value={percent} tone={percent >= 90 ? 'danger' : percent >= 70 ? 'warning' : 'success'} />
-                                            <span>{percent}%</span>
+                                            <Progress value={percent ?? 0} tone={(percent ?? 0) >= 90 ? 'danger' : (percent ?? 0) >= 70 ? 'warning' : 'success'} />
+                                            <span>{percentLabel(percent)}</span>
                                         </div>
                                     </div>
                                     <div className="adm-list-meta">
@@ -312,7 +303,7 @@ export default function AdminFinance() {
                                 <button className="adm-btn" onClick={() => setSelectedTx(null)}>
                                     Đóng
                                 </button>
-                                <button className="adm-btn adm-btn-primary" onClick={handleSaveNote}>
+                                <button className="adm-btn adm-btn-primary" disabled title="Giao dịch đã ghi sổ" onClick={handleSaveNote}>
                                     <Check size={14} /> Lưu giải trình
                                 </button>
                             </div>
@@ -379,10 +370,10 @@ export default function AdminFinance() {
                                 />
                             </div>
                             <div className="adm-field">
-                                <label>Phí hệ thống 5% (Ước tính)</label>
+                                <label>Phí ghi nhận trong giao dịch</label>
                                 <input
                                     className="adm-input"
-                                    value={formatCurrency(Math.round(selectedTx.amount * 0.05))}
+                                    value={selectedTx.type === 'SYSTEM_FEE' ? formatCurrency(selectedTx.amount) : 'Xem giao dịch phí riêng'}
                                     disabled
                                     style={{ background: '#f8fafc', cursor: 'not-allowed' }}
                                 />
@@ -422,7 +413,7 @@ export default function AdminFinance() {
                             <textarea
                                 className="adm-input"
                                 rows={3}
-                                value={noteForm}
+                                readOnly value={noteForm}
                                 onChange={(e) => setNoteForm(e.target.value)}
                                 placeholder="Nhập ghi chú giải trình giao dịch…"
                             />

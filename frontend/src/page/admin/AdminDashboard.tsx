@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { cashSeries, cashSummary, inPeriod, percentage, percentLabel } from '../../utils/analytics';
+import { useState } from 'react';
 import {
     Area,
     AreaChart,
@@ -28,7 +29,8 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Badge, Card, Modal, Progress, StatCard } from '../../components/admin/AdminUI';
-import { companies, notifications, products, shipments, systemLogs, transactions, users, warehouses } from '../../data/adminData';
+import { useAdminData } from '../../services/data';
+import { invalidateData } from '../../services/query';
 import type { Company, Shipment } from '../../types/admin';
 import {
     companyStatusMeta,
@@ -40,61 +42,21 @@ import {
     shipmentStatusMeta,
 } from '../../utils/format';
 
-const revenueTrend = [
-    { month: 'T5', revenue: 312, expense: 186 },
-    { month: 'T6', revenue: 358, expense: 204 },
-    { month: 'T7', revenue: 331, expense: 192 },
-    { month: 'T8', revenue: 402, expense: 228 },
-    { month: 'T9', revenue: 447, expense: 241 },
-    { month: 'T10', revenue: 512, expense: 268 },
-];
-
-const warehouseLoad = [
-    { name: 'Bình Dương', value: 91, label: 'Kho Đông Á' },
-    { name: 'Quận 7', value: 82, label: 'Kho trung chuyển' },
-    { name: 'Thủ Đức', value: 64, label: 'Kho lạnh' },
-    { name: 'Long An', value: 58, label: 'Kho nông sản' },
-    { name: 'Quận 10', value: 47, label: 'Kho công nghệ' },
-];
-
-const companyDistribution = [
-    { name: 'Hoạt động', value: 4, color: '#4567ed' },
-    { name: 'Chờ duyệt', value: 2, color: '#d99220' },
-    { name: 'Đã khoá', value: 2, color: '#d34b58' },
-];
-
-const donutColors = companyDistribution.map((entry) => entry.color);
-
 export default function AdminDashboard() {
+    const { companies, notifications, products, shipments, systemLogs, transactions, users, warehouses, budgets, raw } = useAdminData('notifications', 'products', 'shipments', 'systemLogs', 'transactions', 'users', 'budgets');
     const [range, setRange] = useState<'30' | '90' | '365'>('90');
     const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
-    const metrics = useMemo(() => {
-        const activeCompanies = companies.filter((company) => company.status === 'ACTIVE').length;
-        const pendingCompanies = companies.filter((company) => company.status === 'PENDING').length;
-        const activeWarehouses = warehouses.filter((warehouse) => warehouse.status === 'ACTIVE').length;
-        const lowStock = products.filter((product) => product.stock < product.minStock).length;
-        const inTransit = shipments.filter((shipment) => shipment.status === 'IN_TRANSIT').length;
-        const totalRevenue = transactions
-            .filter((transaction) => transaction.type === 'INCOME')
-            .reduce((sum, transaction) => sum + transaction.amount, 0);
-        const totalExpense = transactions
-            .filter((transaction) => transaction.type !== 'INCOME')
-            .reduce((sum, transaction) => sum + transaction.amount, 0);
-        return {
-            activeCompanies,
-            pendingCompanies,
-            activeWarehouses,
-            lowStock,
-            inTransit,
-            totalRevenue,
-            totalExpense,
-            margin: Math.round(((totalRevenue - totalExpense) / totalRevenue) * 100),
-        };
-    }, []);
+    const current = inPeriod(transactions, Number(range));
+    const sums = cashSummary(current);
+    const revenueTrend = cashSeries(transactions, Number(range));
+    const companyDistribution = [{name:'Hoạt động', status:'ACTIVE', color:'#4567ed'}, {name:'Chờ duyệt', status:'PENDING', color:'#d99220'}, {name:'Đã khoá', status:'LOCKED', color:'#d34b58'}].map(item => ({...item, value: companies.filter(c => c.status === item.status).length}));
+    const donutColors = companyDistribution.map(d => d.color);
+    const warehouseLoad = warehouses.map(w => ({name:w.id, label:w.name, value:raw.products.filter(p => p.warehouseId === w.id).reduce((sum,p) => sum+Number(p.quantity||0),0)})).sort((a,b)=>b.value-a.value).slice(0,5);
+    const metrics = { activeCompanies:companies.filter(c=>c.status==='ACTIVE').length, pendingCompanies:companies.filter(c=>c.status==='PENDING').length, activeWarehouses:warehouses.filter(w=>w.status==='ACTIVE').length, lowStock:products.filter(p=>p.stock<p.minStock).length, inTransit:shipments.filter(s=>s.status==='IN_TRANSIT').length, totalRevenue:sums.income, totalExpense:sums.expense, margin:percentLabel(sums.margin) };
 
-    const recentCompanies = companies.slice(0, 5);
+    const recentCompanies = [...companies].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)).slice(0, 5);
     const recentLogs = systemLogs.slice(0, 5);
     const pendingShipments = shipments.filter((shipment) => shipment.status === 'CREATED' || shipment.status === 'IN_TRANSIT');
     const unreadNotifications = notifications.filter((item) => !item.isRead);
@@ -112,7 +74,7 @@ export default function AdminDashboard() {
                         <option value="90">90 ngày gần nhất</option>
                         <option value="365">12 tháng gần nhất</option>
                     </select>
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={invalidateData}>
                         <RefreshCw size={15} /> Làm mới
                     </button>
                     <Link to="/admin/companies" className="adm-btn adm-btn-primary">
@@ -131,12 +93,12 @@ export default function AdminDashboard() {
                     footnote="cần phê duyệt"
                 />
                 <StatCard
-                    label="Người dùng hoạt động"
-                    value={formatNumber(users.length * 16)}
+                    label="Tài khoản đang đăng nhập"
+                    value={formatNumber(users.filter(u => u.status === 'ACTIVE').length)}
                     icon={<Users size={17} />}
                     tone="success"
-                    trend="8.4%"
-                    footnote="so với tháng trước"
+                    trend=""
+                    footnote="Tài khoản được phép xem"
                 />
                 <StatCard
                     label="Kho đang vận hành"
@@ -151,7 +113,7 @@ export default function AdminDashboard() {
                     value={formatNumber(metrics.lowStock)}
                     icon={<Package size={17} />}
                     tone="warning"
-                    trend="3 mã"
+                    trend={`${metrics.lowStock} mã`}
                     trendDirection="down"
                     footnote="dưới mức tối thiểu"
                 />
@@ -258,8 +220,8 @@ export default function AdminDashboard() {
 
             <div className="adm-grid-equal">
                 <Card
-                    title="Tải trọng kho hàng"
-                    subtitle="Tỷ lệ sử dụng sức chứa hiện tại"
+                    title="Số lượng hàng theo kho"
+                    subtitle="Tổng tồn thực tế theo dữ liệu hàng hóa"
                     action={
                         <Link to="/admin/warehouses" className="adm-link" style={{ fontSize: 12 }}>
                             Xem tất cả
@@ -270,16 +232,16 @@ export default function AdminDashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={warehouseLoad} layout="vertical" margin={{ top: 4, right: 24, left: 4, bottom: 0 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#eef1f7" horizontal={false} />
-                                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 10.5, fill: '#9aa4b6' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => `${value}%`} />
+                                <XAxis type="number" domain={[0, "auto"]} tick={{ fontSize: 10.5, fill: '#9aa4b6' }} axisLine={false} tickLine={false} tickFormatter={(value: number) => formatNumber(Number(value))} />
                                 <YAxis type="category" dataKey="label" width={104} tick={{ fontSize: 11, fill: '#738096' }} axisLine={false} tickLine={false} />
                                 <Tooltip
                                     cursor={{ fill: '#f6f8fc' }}
                                     contentStyle={{ borderRadius: 10, border: '1px solid #e6eaf2', fontSize: 12 }}
-                                    formatter={(value: number | string) => [`${value}%`, 'Tải trọng']}
+                                    formatter={(value: number | string) => [formatNumber(Number(value)), 'Số lượng tồn']}
                                 />
                                 <Bar dataKey="value" radius={[0, 5, 5, 0]} barSize={16}>
                                     {warehouseLoad.map((entry) => (
-                                        <Cell key={entry.name} fill={entry.value >= 85 ? '#d34b58' : entry.value >= 60 ? '#d99220' : '#4567ed'} />
+                                        <Cell key={entry.name} fill="#4567ed" />
                                     ))}
                                 </Bar>
                             </BarChart>
@@ -415,17 +377,12 @@ export default function AdminDashboard() {
             </div>
 
             <div className="adm-grid-equal">
-                <Card title="Ngân sách tháng 10/2026" subtitle="So sánh hạn mức và chi phí thực tế">
+                <Card title="Ngân sách tháng hiện tại" subtitle="So sánh hạn mức và chi phí thực tế">
                     <ul className="adm-list" style={{ margin: -18, marginTop: -18 }}>
-                        {[
-                            { label: 'Tổng công ty', budget: 900_000_000, spent: 512_300_000 },
-                            { label: 'Kho trung chuyển quận 7', budget: 240_000_000, spent: 168_400_000 },
-                            { label: 'Kho lạnh Thủ Đức', budget: 120_000_000, spent: 86_900_000 },
-                            { label: 'Kho tổng Đông Á Bình Dương', budget: 380_000_000, spent: 341_600_000 },
-                        ].map((row) => {
-                            const percent = Math.round((row.spent / row.budget) * 100);
+                        {budgets.map(b=>({label:b.warehouseName||"Toàn công ty",budget:b.allocated,spent:b.spent,id:b.id})).map((row) => {
+                            const percent = Math.round(percentage(row.spent,row.budget)||0);
                             return (
-                                <li className="adm-list-item" key={row.label}>
+                                <li className="adm-list-item" key={row.id}>
                                     <div className="adm-list-text">
                                         <strong>{row.label}</strong>
                                         <div className="adm-progress-row" style={{ marginTop: 8 }}>
@@ -478,7 +435,7 @@ export default function AdminDashboard() {
                                 <small>Sau khi trừ toàn bộ chi phí vận hành</small>
                             </div>
                             <div className="adm-list-meta">
-                                <strong>{metrics.margin}%</strong>
+                                <strong>{metrics.margin}</strong>
                             </div>
                         </li>
                         <li className="adm-list-item">
@@ -530,7 +487,7 @@ export default function AdminDashboard() {
                             <div>
                                 <strong>Ràng buộc quan hệ CSDL (core-service: companies):</strong>
                                 <p style={{ margin: '4px 0 0' }}>
-                                    Công ty hiện đang có {selectedCompany.warehouseCount} kho hàng và {selectedCompany.memberCount} thành viên liên kết.
+                                    Công ty hiện đang có {selectedCompany.warehouseCount} kho hàng. Nhân viên được quản lý trong không gian công ty.
                                 </p>
                             </div>
                         </div>

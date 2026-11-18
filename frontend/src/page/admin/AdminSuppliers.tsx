@@ -1,14 +1,17 @@
+import { Link } from 'react-router-dom';
+import { downloadCsv } from '../../utils/export';
 import { useMemo, useState } from 'react';
 import { Check, Download, Info, Mail, Phone, Plus, Search, ShieldAlert, Trash2, Truck } from 'lucide-react';
 import { Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
-import { suppliers as seedSuppliers } from '../../data/adminData';
+import { useAdminData, saveResource, attempt } from '../../services/data';
 import type { Supplier } from '../../types/admin';
 import { formatDate, formatNumber } from '../../utils/format';
 
 const PAGE_SIZE = 6;
 
 export default function AdminSuppliers() {
-    const [rows, setRows] = useState<Supplier[]>(seedSuppliers);
+    const { suppliers: seedSuppliers, raw } = useAdminData('suppliers','supplierProducts');
+    const rows = seedSuppliers;
     const [query, setQuery] = useState('');
     const [page, setPage] = useState(1);
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
@@ -43,34 +46,17 @@ export default function AdminSuppliers() {
         setConfirmDelete(false);
     };
 
-    const handleSaveSupplier = () => {
+    const handleSaveSupplier = async () => {
         if (!selectedSupplier) return;
-        setRows((prev) =>
-            prev.map((s) =>
-                s.id === selectedSupplier.id
-                    ? {
-                          ...s,
-                          ...editForm,
-                      }
-                    : s
-            )
-        );
-        setSelectedSupplier(null);
-        showToast(`Đã lưu thay đổi cho nhà cung cấp "${editForm.name}".`);
+        const original = raw.suppliers.find(r=>r.id===selectedSupplier.id);
+        if (!await attempt(() => saveResource('core', '/suppliers/' + selectedSupplier.id, 'PUT', { ...original, name:editForm.name, phone:editForm.phone, email:editForm.email || null, businessModel:editForm.category }))) return;
+        setSelectedSupplier(null); showToast('Đã lưu nhà cung cấp.');
     };
-
-    const handleDeleteSupplier = () => {
+    const handleDeleteSupplier = async () => {
         if (!selectedSupplier) return;
-        if (selectedSupplier.productCount > 0) {
-            alert('Ràng buộc CSDL: Nhà cung cấp đang liên kết sản phẩm, không thể xóa trực tiếp!');
-            return;
-        }
-        setRows((prev) => prev.filter((s) => s.id !== selectedSupplier.id));
-        const name = selectedSupplier.name;
-        setSelectedSupplier(null);
-        showToast(`Đã xóa nhà cung cấp "${name}" khỏi hệ thống.`);
+        if (!await attempt(() => saveResource('core', '/suppliers/' + selectedSupplier.id, 'DELETE'))) return;
+        setSelectedSupplier(null); showToast('Đã xóa nhà cung cấp.');
     };
-
     const showToast = (msg: string) => {
         setToast(msg);
         setTimeout(() => setToast(null), 3500);
@@ -108,12 +94,12 @@ export default function AdminSuppliers() {
                     <p>Quản lý đối tác cung ứng, danh mục sản phẩm và thông tin liên hệ trên toàn hệ thống.</p>
                 </div>
                 <div className="admin-page-actions">
-                    <button className="adm-btn">
+                    <button className="adm-btn" onClick={()=>downloadCsv("nha-cung-cap.csv",["Tên","Lĩnh vực","Email","Điện thoại"],filtered.map(r=>[r.name,r.category,r.email,r.phone]))}>
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <button className="adm-btn adm-btn-primary">
+                    <Link className="adm-btn adm-btn-primary" to="/admin/suppliers/new">
                         <Plus size={16} /> Thêm nhà cung cấp
-                    </button>
+                    </Link>
                 </div>
             </div>
 
@@ -326,7 +312,7 @@ export default function AdminSuppliers() {
                                 <label>Ngành hàng / Danh mục</label>
                                 <input
                                     className="adm-input"
-                                    value={editForm.category}
+                                    readOnly value={editForm.category}
                                     onChange={(e) => setEditForm({ ...editForm, category: e.target.value })}
                                 />
                             </div>
@@ -334,7 +320,7 @@ export default function AdminSuppliers() {
                                 <label>Công ty đối tác</label>
                                 <input
                                     className="adm-input"
-                                    value={editForm.companyName}
+                                    readOnly value={editForm.companyName}
                                     onChange={(e) => setEditForm({ ...editForm, companyName: e.target.value })}
                                 />
                             </div>
@@ -343,7 +329,7 @@ export default function AdminSuppliers() {
                             <label>Người đại diện liên hệ</label>
                             <input
                                 className="adm-input"
-                                value={editForm.contactPerson}
+                                readOnly value={editForm.contactPerson}
                                 onChange={(e) => setEditForm({ ...editForm, contactPerson: e.target.value })}
                             />
                         </div>

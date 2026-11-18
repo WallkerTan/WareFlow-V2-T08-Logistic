@@ -1,17 +1,20 @@
+import { useAdminData, saveResource, attempt } from '../../services/data';
 import { useState } from 'react';
 import { AlertTriangle, ArrowDownToLine, ArrowRight, Boxes, CalendarClock, CheckCircle2, ChevronLeft, ChevronRight, Eye, Package, Search, Settings2, ShieldAlert } from 'lucide-react';
 import { Modal } from 'antd';
-import { availableQuantity, daysRemaining, lotStatus, products, stockLots as initialLots } from '../../data/stockLots';
+import { availableQuantity, daysRemaining, lotStatus } from '../../data/stockLots';
 import type { LotStatus, StockLot } from '../../data/stockLots';
 import './stock-lots.css';
 
 const labels: Record<LotStatus, string> = { ok: 'Bình thường', near_expiry: 'Sắp hết hạn', expired: 'Đã hết hạn', damaged: 'Hư hỏng' };
 const number = (value: number) => value.toLocaleString('vi-VN');
 const date = (value: string | null) => value ? value.split('-').reverse().join('/') : 'Không có HSD';
-const productOf = (lot: StockLot) => products.find(product => product.id === lot.product_id)!;
 
 export default function StockLots() {
-    const [stockLots, setStockLots] = useState<StockLot[]>(initialLots);
+    const { raw } = useAdminData('products','lots');
+    const products = raw.products.map(p=>({id:String(p.id),name:String(p.name),sku:String(p.sku),barcode:String(p.barcode||''),unit:String(p.unit||''),min_stock:Number(p.minStock)||0}));
+    const stockLots:StockLot[] = raw.lots.filter(l=>products.some(p=>p.id===l.productId)).map(l=>({id:String(l.id),product_id:String(l.productId),lot_code:String(l.lotCode),expiry_date:l.expiryDate?String(l.expiryDate):null,quantity:Number(l.quantity)||0,reserved:Number(l.reserved)||0,status:String(l.status).toLowerCase() as LotStatus,created_at:String(l.createdAt||'')}));
+    const productOf = (lot:StockLot)=>products.find(p=>p.id===lot.product_id) || {id:lot.product_id,name:'—',sku:'—',barcode:'',unit:'',min_stock:0};
     const [tab, setTab] = useState<'lots' | 'alerts'>('lots');
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('all');
@@ -41,12 +44,13 @@ export default function StockLots() {
     const pageCount = Math.max(1, Math.ceil(filtered.length / 6));
     const currentPage = Math.min(page, pageCount);
     function showStatus(value: string) { setStatus(value); setPage(1); setTab('lots'); }
-    function markDamaged() {
+    async function markDamaged() {
         if (!selected || selected.status === 'damaged') return;
         const updated: StockLot = { ...selected, status: 'damaged' };
-        setStockLots(lots => lots.map(lot => lot.id === updated.id ? updated : lot));
+        const lot=raw.lots.find(l=>l.id===selected.id)!;
+        if(!await attempt(()=>saveResource('inventory','/warehouses/'+lot.warehouseId+'/products/'+lot.productId+'/lots/'+lot.id+'/condition?status=DAMAGED','PATCH'))) return;
         setSelected(updated);
-        setNotice(`Đã đánh dấu ${updated.lot_code} là hàng lỗi/hỏng trong phiên xem trước. Chưa lưu lên hệ thống.`);
+        setNotice(`Đã đánh dấu ${updated.lot_code} là hàng lỗi/hỏng trong phiên hiện tại. Chưa lưu lên hệ thống.`);
     }
     function exportCsv() {
         const rows = [['Mã lô', 'SKU', 'Sản phẩm', 'Đơn vị', 'Hạn sử dụng', 'Tồn thực tế', 'Đặt giữ', 'Khả dụng', 'Trạng thái'], ...filtered.map(lot => [lot.lot_code, productOf(lot).sku, productOf(lot).name, productOf(lot).unit, date(lot.expiry_date), lot.quantity, lot.reserved, availableQuantity(lot, threshold), labels[lotStatus(lot, threshold)]])];
@@ -56,7 +60,7 @@ export default function StockLots() {
     }
     return <div className="sl-page">
         <div className="sl-heading"><div><span className="sl-eyebrow">QUẢN LÝ TỒN KHO</span><h1>Lô hàng & cảnh báo</h1><p>Theo dõi từng lô hàng. Chủ động kiểm soát tồn kho và hạn sử dụng.</p></div><button className="sl-button" onClick={exportCsv}><ArrowDownToLine size={16} /> Xuất danh sách</button></div>
-        <div className="sl-demo"><span className="sl-dot" /> Chế độ xem trước · Dữ liệu mẫu <span>Cảnh báo được tính theo ngày hiện tại</span></div>
+        <div className="sl-demo"><span className="sl-dot" /> Dữ liệu từ kho đang quản lý <span>Cảnh báo được tính theo ngày hiện tại</span></div>
         <div className="sl-stats">
             {[{ title: 'Tổng lô hàng', value: stockLots.length, sub: `${products.length} sản phẩm đang theo dõi`, icon: Boxes, tone: 'purple', action: () => showStatus('all') }, { title: 'Sắp hết hạn', value: near.length, sub: `Trong ${threshold} ngày tới`, icon: CalendarClock, tone: 'amber', action: () => showStatus('near_expiry') }, { title: 'Đã hết hạn', value: expired.length, sub: 'Cần kiểm tra và xử lý', icon: ShieldAlert, tone: 'red', action: () => showStatus('expired') }, { title: 'Dưới tồn tối thiểu', value: low.length, sub: 'Sản phẩm cần bổ sung', icon: Package, tone: 'blue', action: () => { setTab('alerts'); setAlertFilter('low'); } }].map(item => <button className={`sl-stat sl-${item.tone}`} key={item.title} onClick={item.action}><div><span>{item.title}</span><strong>{item.value.toString().padStart(2, '0')}</strong><small>{item.sub}</small></div><span className="sl-stat-icon"><item.icon size={22} /></span></button>)}
         </div>
@@ -71,8 +75,8 @@ export default function StockLots() {
             </> : <div className="sl-alerts"><div className="sl-alert-filters">{[['all', 'Tất cả'], ['expired', 'Hết hạn'], ['near_expiry', 'Sắp hết hạn'], ['low', 'Tồn thấp'], ['damaged', 'Hư hỏng']].map(([key, label]) => <button key={key} className={alertFilter === key ? 'active' : ''} onClick={() => setAlertFilter(key)}>{label}</button>)}</div>{alerts.filter(alert => alertFilter === 'all' || alert.type === alertFilter).map(alert => <article className={`sl-alert sl-alert-${alert.type}`} key={alert.key}><span className="sl-alert-icon"><AlertTriangle size={20} /></span><div><h3>{alert.title}</h3><p>{alert.text}</p><small>{alert.advice}</small></div><button onClick={() => { if (alert.lot) setSelected(alert.lot); else { setProductId(alert.key); setStatus('all'); setSearch(''); setPage(1); setTab('lots'); } }}>Xem chi tiết <ArrowRight size={15} /></button></article>)}{!alerts.some(alert => alertFilter === 'all' || alert.type === alertFilter) && <div className="sl-empty"><CheckCircle2 size={32} /><h3>Không có cảnh báo</h3><p>Không có mục nào thuộc nhóm này.</p></div>}</div>}
         </section>
         <p className="sl-footnote"><ShieldAlert size={15} /> Khả dụng = tồn thực tế − đặt giữ; lô hết hạn hoặc hư hỏng có khả dụng bằng 0. Cảnh báo tồn thấp tính trên tổng khả dụng của từng sản phẩm trong kho.</p>
-        <Modal title={selected ? `Chi tiết lô ${selected.lot_code}` : ''} open={!!selected} onCancel={() => setSelected(null)} footer={<div className="sl-detail-actions"><button className="sl-button" disabled={selected?.status === 'damaged'} onClick={markDamaged}><ShieldAlert size={16} />{selected?.status === 'damaged' ? 'Đã đánh dấu lỗi/hỏng' : 'Đánh dấu hàng lỗi/hỏng'}</button><button className="sl-button" onClick={() => setSelected(null)}>Đóng</button></div>}><p className="sl-modal-intro">Thông tin truy vết lô hàng · Dữ liệu mẫu</p>{selected && <><div className="sl-detail-grid">{[['Sản phẩm', productOf(selected).name], ['SKU', productOf(selected).sku], ['Mã vạch', productOf(selected).barcode], ['Đơn vị tính', productOf(selected).unit], ['Ngày tạo', date(selected.created_at)], ['Hạn sử dụng', date(selected.expiry_date)], ['Tồn thực tế', number(selected.quantity)], ['Đang đặt giữ', number(selected.reserved)], ['Khả dụng', number(availableQuantity(selected, threshold))], ['Trạng thái', labels[lotStatus(selected, threshold)]]].map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div><div className="sl-detail-note">Biến động tồn kho và xử lý hàng lỗi phải thực hiện qua phiếu kho. Không sửa trực tiếp số lượng lô hàng.</div></>}</Modal>
-        <Modal title="Cấu hình cảnh báo" open={settings} onCancel={() => setSettings(false)} onOk={() => { setThreshold(draftThreshold); setSettings(false); setPage(1); setNotice('Đã áp dụng ngưỡng cảnh báo cho phiên xem trước.'); }} okText="Áp dụng" cancelText="Hủy" okButtonProps={{ disabled: !Number.isInteger(draftThreshold) || draftThreshold < 1 || draftThreshold > 365 }}><div className="sl-settings"><label htmlFor="expiry-threshold">Cảnh báo trước hạn sử dụng (ngày)</label><input id="expiry-threshold" type="number" min={1} max={365} value={Number.isNaN(draftThreshold) ? '' : draftThreshold} onChange={event => setDraftThreshold(event.target.valueAsNumber)} /><p>Nhập từ 1 đến 365 ngày. Ngày hết hạn vẫn được tính là sắp hết hạn; từ ngày kế tiếp được tính là hết hạn.</p><p>Tồn tối thiểu lấy theo trường min_stock của từng sản phẩm. Cấu hình chỉ áp dụng trong phiên hiện tại.</p></div></Modal>
+        <Modal title={selected ? `Chi tiết lô ${selected.lot_code}` : ''} open={!!selected} onCancel={() => setSelected(null)} footer={<div className="sl-detail-actions"><button className="sl-button" disabled={selected?.status === 'damaged'} onClick={markDamaged}><ShieldAlert size={16} />{selected?.status === 'damaged' ? 'Đã đánh dấu lỗi/hỏng' : 'Đánh dấu hàng lỗi/hỏng'}</button><button className="sl-button" onClick={() => setSelected(null)}>Đóng</button></div>}><p className="sl-modal-intro">Thông tin truy vết lô hàng</p>{selected && <><div className="sl-detail-grid">{[['Sản phẩm', productOf(selected).name], ['SKU', productOf(selected).sku], ['Mã vạch', productOf(selected).barcode], ['Đơn vị tính', productOf(selected).unit], ['Ngày tạo', date(selected.created_at)], ['Hạn sử dụng', date(selected.expiry_date)], ['Tồn thực tế', number(selected.quantity)], ['Đang đặt giữ', number(selected.reserved)], ['Khả dụng', number(availableQuantity(selected, threshold))], ['Trạng thái', labels[lotStatus(selected, threshold)]]].map(([key, value]) => <div key={key}><span>{key}</span><strong>{value}</strong></div>)}</div><div className="sl-detail-note">Biến động tồn kho và xử lý hàng lỗi phải thực hiện qua phiếu kho. Không sửa trực tiếp số lượng lô hàng.</div></>}</Modal>
+        <Modal title="Cấu hình cảnh báo" open={settings} onCancel={() => setSettings(false)} onOk={() => { setThreshold(draftThreshold); setSettings(false); setPage(1); setNotice('Đã áp dụng ngưỡng cảnh báo cho phiên hiện tại.'); }} okText="Áp dụng" cancelText="Hủy" okButtonProps={{ disabled: !Number.isInteger(draftThreshold) || draftThreshold < 1 || draftThreshold > 365 }}><div className="sl-settings"><label htmlFor="expiry-threshold">Cảnh báo trước hạn sử dụng (ngày)</label><input id="expiry-threshold" type="number" min={1} max={365} value={Number.isNaN(draftThreshold) ? '' : draftThreshold} onChange={event => setDraftThreshold(event.target.valueAsNumber)} /><p>Nhập từ 1 đến 365 ngày. Ngày hết hạn vẫn được tính là sắp hết hạn; từ ngày kế tiếp được tính là hết hạn.</p><p>Tồn tối thiểu lấy theo trường min_stock của từng sản phẩm. Cấu hình chỉ áp dụng trong phiên hiện tại.</p></div></Modal>
     </div>;
 }
 

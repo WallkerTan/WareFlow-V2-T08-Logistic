@@ -40,7 +40,9 @@ export function formatArea(value: number): string {
 }
 
 export function formatDate(value: string): string {
+    if (!value || !Number.isFinite(Date.parse(value))) return '—';
     return new Date(value).toLocaleDateString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -48,7 +50,9 @@ export function formatDate(value: string): string {
 }
 
 export function formatDateTime(value: string): string {
+    if (!value || !Number.isFinite(Date.parse(value))) return '—';
     return new Date(value).toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
@@ -58,6 +62,7 @@ export function formatDateTime(value: string): string {
 }
 
 export function formatRelativeTime(value: string): string {
+    if (!value || !Number.isFinite(Date.parse(value))) return '—';
     const diff = Date.now() - new Date(value).getTime();
     const minutes = Math.floor(diff / 60_000);
     if (minutes < 1) return 'vừa xong';

@@ -22,9 +22,8 @@ export type AuthResponse = {
 
 const AUTH_SESSION_KEY = 'wareflow.auth';
 
-// Cookie-based session: the server must issue an HttpOnly session cookie.
-// URLs are configurable until the backend auth contract is available.
-const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+// The gateway routes authentication to core; subsequent requests use the bearer token.
+const baseUrl = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '') + '/core';
 const loginPath = import.meta.env.VITE_AUTH_LOGIN_PATH || '/auth/login';
 const registerPath = import.meta.env.VITE_AUTH_REGISTER_PATH || '/auth/register-company';
 
@@ -74,7 +73,9 @@ export const authApi = {
         const result = await post(loginPath, {
             email: values.email.trim().toLowerCase(), password: values.password, remember: !!values.remember,
         });
-        if (result.accessToken) sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(result));
+        if (!result.accessToken || !result.userId || !['SYSTEM_ADMIN', 'COMPANY_ADMIN', 'WAREHOUSE_MANAGER'].includes(result.role) || !Number.isFinite(Date.parse(result.expiresAt)) || Date.parse(result.expiresAt) <= Date.now()) throw new Error('Phản hồi đăng nhập không hợp lệ.');
+        sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(result));
+        window.dispatchEvent(new Event('wareflow.auth'));
         return result;
     },
     registerCompany: (values: CompanyRegistrationRequest) => post(registerPath, {
@@ -84,17 +85,25 @@ export const authApi = {
     }),
 };
 
-export function getAuthSession(): AuthResponse | null {
-    const value = sessionStorage.getItem(AUTH_SESSION_KEY);
+export function getAuthSession(value = sessionStorage.getItem(AUTH_SESSION_KEY)): AuthResponse | null {
     if (!value) return null;
     try {
-        return JSON.parse(value) as AuthResponse;
+        const session = JSON.parse(value) as AuthResponse;
+        if (!session.accessToken || !session.userId || !['SYSTEM_ADMIN', 'COMPANY_ADMIN', 'WAREHOUSE_MANAGER'].includes(session.role) || !Number.isFinite(Date.parse(session.expiresAt)) || Date.parse(session.expiresAt) <= Date.now()) return null;
+        return session;
     } catch {
         sessionStorage.removeItem(AUTH_SESSION_KEY);
         return null;
     }
 }
 
+export function roleHome(role: string) { return role === 'SYSTEM_ADMIN' ? '/admin/dashboard' : role === 'WAREHOUSE_MANAGER' ? '/storehouse/inventory' : '/company/dashboard'; }
 export function clearAuthSession() {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
+    window.dispatchEvent(new Event('wareflow.auth'));
+}
+
+export function scheduleSessionExpiry(expiresAt: string) {
+    const timer = window.setTimeout(clearAuthSession, Math.min(2147483647, Math.max(0, Date.parse(expiresAt) - Date.now())));
+    return () => window.clearTimeout(timer);
 }

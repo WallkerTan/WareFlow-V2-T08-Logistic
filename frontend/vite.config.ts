@@ -13,9 +13,8 @@ export default defineConfig(({ mode }) => {
             strictPort: true,
             proxy: {
                 '/api': {
-                    target: env.API_PROXY_TARGET || 'http://127.0.0.1:8081',
+                    target: env.API_PROXY_TARGET || 'http://127.0.0.1:8080',
                     changeOrigin: true,
-                    rewrite: (path) => path.replace(/^\/api/, ''),
                 },
             },
         },

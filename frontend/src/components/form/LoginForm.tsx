@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import AuthField from "./AuthField";
-import { getAuthSession } from "../../services/authApi";
+import { getAuthSession, roleHome } from "../../services/authApi";
 
 export type LoginValues = {
     email: string;
@@ -35,9 +35,7 @@ export default function LoginForm({ onSubmit }: Props) {
                 "Đăng nhập thành công. Phiên làm việc đã được máy chủ xác nhận.",
             );
             navigate(
-                getAuthSession()?.role === "SYSTEM_ADMIN"
-                    ? "/admin/dashboard"
-                    : "/dashboard",
+                roleHome(getAuthSession()?.role || ''),
                 { replace: true },
             );
         } catch (error) {
