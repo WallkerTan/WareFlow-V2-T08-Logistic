@@ -34,6 +34,7 @@ const writes = [];
 const reads = [];
 const failures = [];
 const runtimeErrors = [];
+const networkErrors = [];
 const keepAlive = setInterval(() => {}, 1000);
 const authSession = () => ({ userId: role === 'WAREHOUSE_MANAGER' ? 'manager' : role === 'COMPANY_ADMIN' ? 'company' : 'admin', role, accessToken: 'browser-test', expiresAt: '2999-01-01T00:00:00Z', fullName: 'Người kiểm tra', email: 'test@example.com', companyId: role === 'SYSTEM_ADMIN' ? null : 'c1', companyName: role === 'SYSTEM_ADMIN' ? null : 'Công ty A' });
 function fixture(url, method, body) {
@@ -92,6 +93,7 @@ try {
         const message = JSON.parse(data);
         if (message.id) { const p = pending.get(message.id); pending.delete(message.id); if (message.error) p?.reject(Error(message.error.message)); else p?.resolve(message.result); }
         if (message.method === 'Runtime.exceptionThrown') runtimeErrors.push(message.params.exceptionDetails.exception?.description || message.params.exceptionDetails.text);
+        if (message.method === 'Network.loadingFailed') networkErrors.push({ type: message.params.type, error: message.params.errorText, blocked: message.params.blockedReason });
         if (message.method === 'Fetch.requestPaused') {
             const { request, requestId } = message.params;
             try {
@@ -108,7 +110,7 @@ try {
     async function login(as) { role = as; await go('/auth/login', '!!document.querySelector("form")'); await evaluate(`sessionStorage.setItem('wareflow.auth', ${JSON.stringify(JSON.stringify(authSession()))})`); }
     async function setField(label, value) { await evaluate(`(()=>{const el=[...document.querySelectorAll('label')].find(l=>l.textContent.trim().startsWith(${JSON.stringify(label)}))?.querySelector('input,select,textarea');if(!el)throw Error('Missing field '+${JSON.stringify(label)});const setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value').set;setter.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`); }
     const clickText = text => evaluate(`[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)})?.click()`);
-    await send('Page.enable'); await send('Runtime.enable'); await send('Fetch.enable', { patterns: [{ urlPattern: '*://*/api/*' }] });
+    await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable'); await send('Fetch.enable', { patterns: [{ urlPattern: '*://*/api/*' }] });
 
     await login('SYSTEM_ADMIN');
     await go('/admin/dashboard');
@@ -178,4 +180,7 @@ try {
     assert.deepEqual(runtimeErrors, []);
     console.log('Screenshots:', profile);
     console.log('PASS: authenticated APIs, pagination, charts, fees, error/retry, write failure/success, all role routes, warehouse switching, mobile and role guards');
+} catch (error) {
+    console.error('Browser diagnostics:', JSON.stringify({ runtimeErrors, networkErrors, failures, page: await evaluate?.('({url:location.href,ready:document.readyState,html:document.documentElement.outerHTML.slice(0,2000)})').catch(() => null) }, null, 2));
+    throw error;
 } finally { clearInterval(keepAlive); socket?.close(); chrome.kill(); }

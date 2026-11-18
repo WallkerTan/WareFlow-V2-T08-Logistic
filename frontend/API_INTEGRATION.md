@@ -60,3 +60,11 @@ Company data is scoped by the authenticated company. Warehouse managers only see
 ## Validation
 
 `npm test` checks period boundaries across years, decimal sums, fees, safe ranges, zero denominators, chart reconciliation, bearer headers, pagination, malformed responses and session expiry. `npm run test:ui` checks the active admin/company/warehouse routes, calculations, failed/successful writes, profile and product updates, changing warehouses, mobile overflow and role guards. Live reads were checked against the four services through both Nginx and the Vite proxy on 2026-11-18.
+
+The production bundle can be checked by starting `npm run preview -- --host 127.0.0.1 --port 4173 --strictPort`, setting `TEST_ORIGIN=http://127.0.0.1:4173`, then running `npm run test:ui`. Browser failures print runtime, network and page diagnostics.
+
+## Deployment record
+
+Frontend application commit `5bb9d87` was deployed on 2026-11-18 to `/opt/wareflow/frontend/dist`. The previous bundle is backed up in `/root/wareflow-backups/20261118-011904-frontend-5bb9d87/frontend-before.tar.gz`. Assets were copied before atomically replacing `index.html`; existing hashed assets remain available for open browser tabs. The running backend was not rebuilt.
+
+Public HTTP checks confirmed that the deployed HTML, JavaScript and CSS match the local build by SHA-256, and that all four service health endpoints return `UP`. The production UI suite runs locally with intercepted API fixtures. Direct browser navigation to the VPS IP was blocked by the test browser (`ERR_BLOCKED_BY_CLIENT`), so it is not reported as a successful live browser check.
