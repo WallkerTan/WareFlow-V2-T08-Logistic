@@ -3,14 +3,15 @@ import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import AuthField from "./AuthField";
-import { getAuthSession, roleHome } from "../../services/authApi";
+import { roleHome } from "../../services/authApi";
+import type { AuthResponse } from "../../services/authApi";
 
 export type LoginValues = {
     email: string;
     password: string;
     remember: boolean;
 };
-type Props = { onSubmit?: (values: LoginValues) => Promise<unknown> };
+type Props = { onSubmit: (values: LoginValues) => Promise<AuthResponse> };
 
 export default function LoginForm({ onSubmit }: Props) {
     "use no memo";
@@ -28,14 +29,13 @@ export default function LoginForm({ onSubmit }: Props) {
         setMessage("");
         setSuccess(false);
         try {
-            if (!onSubmit) return;
-            await onSubmit(values);
+            const session = await onSubmit(values);
             setSuccess(true);
             setMessage(
                 "Đăng nhập thành công. Phiên làm việc đã được máy chủ xác nhận.",
             );
             navigate(
-                roleHome(getAuthSession()?.role || ''),
+                roleHome(session.role),
                 { replace: true },
             );
         } catch (error) {
@@ -47,7 +47,7 @@ export default function LoginForm({ onSubmit }: Props) {
         }
     }
     return (
-        <form className="auth-form" onSubmit={handleSubmit(submit)} noValidate>
+        <form className="auth-form" onSubmit={handleSubmit(submit)} aria-busy={isSubmitting} noValidate>
             <AuthField
                 id="email"
                 label="Email công việc"
@@ -76,10 +76,12 @@ export default function LoginForm({ onSubmit }: Props) {
                 })}
                 error={errors.password?.message}
             />
-            <label className="auth-checkbox">
-                <input type="checkbox" {...register("remember")} /> Ghi nhớ đăng
-                nhập
-            </label>
+            <div className="auth-login-options">
+                <label className="auth-checkbox">
+                    <input type="checkbox" {...register("remember")} /> Ghi nhớ đăng nhập
+                </label>
+                <Link to="/auth/forgot-password">Quên mật khẩu?</Link>
+            </div>
             {message && (
                 <div
                     className={`auth-notice ${success ? "auth-notice-success" : "auth-notice-error"}`}
@@ -88,7 +90,7 @@ export default function LoginForm({ onSubmit }: Props) {
                     {message}
                 </div>
             )}
-            <button className="auth-submit" disabled={isSubmitting}>
+            <button type="submit" className="auth-submit" disabled={isSubmitting}>
                 {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
                 <ArrowRight size={18} />
             </button>

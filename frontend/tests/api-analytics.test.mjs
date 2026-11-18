@@ -105,3 +105,30 @@ test('malformed or expired auth sessions are rejected', () => {
     storage.set('wareflow.auth', JSON.stringify({ accessToken: 'x', userId: 'u', role: 'SYSTEM_ADMIN', expiresAt: '2000-01-01' }));
     assert.equal(auth.getAuthSession(), null);
 });
+
+test('login sends only credentials and uses the account role returned by the backend', async () => {
+    for (const [role, home] of [['SYSTEM_ADMIN', '/admin/dashboard'], ['COMPANY_ADMIN', '/company/dashboard'], ['WAREHOUSE_MANAGER', '/storehouse/inventory']]) {
+        globalThis.fetch = async (url, options) => {
+            assert.equal(url, '/api/core/auth/login');
+            assert.equal(options.method, 'POST');
+            assert.deepEqual(JSON.parse(options.body), { email: 'test@example.com', password: 'unchanged password ', remember: false });
+            return json({ accessToken: 'test-token', userId: role, role, expiresAt: '2999-01-01T00:00:00Z' });
+        };
+        const result = await auth.authApi.login({ email: ' TEST@EXAMPLE.COM ', password: 'unchanged password ', remember: false });
+        assert.equal(auth.getAuthSession().role, role);
+        assert.equal(auth.roleHome(result.role), home);
+        auth.clearAuthSession();
+    }
+});
+
+test('failed login and invalid server sessions do not authenticate the user', async () => {
+    const values = { email: 'test@example.com', password: 'wrong-password', remember: false };
+    globalThis.fetch = async () => json({ message: 'Invalid credentials' }, 401);
+    await assert.rejects(auth.authApi.login(values), /Email hoặc mật khẩu không chính xác/);
+    assert.equal(auth.getAuthSession(), null);
+    for (const response of [{}, { accessToken: 'test-token', userId: 'u', role: 'UNKNOWN', expiresAt: '2999-01-01T00:00:00Z' }, { accessToken: 'test-token', userId: 'u', role: 'SYSTEM_ADMIN', expiresAt: '2000-01-01T00:00:00Z' }]) {
+        globalThis.fetch = async () => json(response);
+        await assert.rejects(auth.authApi.login(values), /Phản hồi đăng nhập không hợp lệ/);
+        assert.equal(auth.getAuthSession(), null);
+    }
+});

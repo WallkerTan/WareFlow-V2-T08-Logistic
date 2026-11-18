@@ -31,6 +31,7 @@ let failNotifications = false;
 let failSupplier = false;
 let socket, send, evaluate;
 const writes = [];
+const loginRequests = [];
 const reads = [];
 const failures = [];
 const runtimeErrors = [];
@@ -40,6 +41,13 @@ const authSession = () => ({ userId: role === 'WAREHOUSE_MANAGER' ? 'manager' : 
 function fixture(url, method, body) {
     const p = url.pathname;
     const page = Number(url.searchParams.get('page') || 0);
+    if (p === '/api/core/auth/login' && method === 'POST') {
+        loginRequests.push(body);
+        assert.deepEqual(Object.keys(body).sort(), ['email', 'password', 'remember']);
+        assert.equal(body.email, 'test@example.com');
+        if (body.password !== 'correct-password') return [401, { message: 'Invalid credentials' }];
+        return [200, authSession()];
+    }
     if (method !== 'GET') {
         writes.push({ p, method, body });
         if (p === '/api/core/suppliers' && failSupplier) return [409, { message: 'Nhà cung cấp đã tồn tại' }];
@@ -98,8 +106,10 @@ try {
             const { request, requestId } = message.params;
             try {
                 const headers = Object.fromEntries(Object.entries(request.headers).map(([k, v]) => [k.toLowerCase(), v]));
-                if (headers.authorization !== 'Bearer browser-test') failures.push('Missing authorization: ' + request.url);
+                const isLogin = new URL(request.url).pathname === '/api/core/auth/login';
+                if (!isLogin && headers.authorization !== 'Bearer browser-test') failures.push('Missing authorization: ' + request.url);
                 const [status, result] = fixture(new URL(request.url), request.method, request.postData ? JSON.parse(request.postData) : undefined);
+                if (isLogin) await sleep(350);
                 await send('Fetch.fulfillRequest', { requestId, responseCode: status, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify(result)).toString('base64') });
             } catch (e) { failures.push(String(e)); }
         }
@@ -107,12 +117,46 @@ try {
     evaluate = async expression => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
     async function until(expression, label = expression) { for (let i = 0; i < 150; i++) { if (await evaluate(expression)) return; await sleep(100); } throw Error('Timed out: ' + label + '\n' + await evaluate('document.body.innerText.slice(0,2500)')); }
     async function go(route, ready = '!!document.querySelector(".wf-content")') { await send('Page.navigate', { url: origin + route }); await until(ready); await until('![...document.querySelectorAll(".wf-notice")].some(e=>e.textContent.includes("Đang tải"))'); await sleep(150); }
-    async function login(as) { role = as; await go('/auth/login', '!!document.querySelector("form")'); await evaluate(`sessionStorage.setItem('wareflow.auth', ${JSON.stringify(JSON.stringify(authSession()))})`); }
-    async function setField(label, value) { await evaluate(`(()=>{const el=[...document.querySelectorAll('label')].find(l=>l.textContent.trim().startsWith(${JSON.stringify(label)}))?.querySelector('input,select,textarea');if(!el)throw Error('Missing field '+${JSON.stringify(label)});const setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value').set;setter.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`); }
+    async function pressEnter() {
+        await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: '\r' });
+        await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
+    }
+    async function login(as, keyboard = false) {
+        role = as;
+        await go('/auth/login', '!!document.querySelector(".auth-submit")');
+        assert.equal(await evaluate('!!document.querySelector("form select") || document.body.innerText.includes("Vai trò đăng nhập")'), false, 'no role selector');
+        assert.equal(await evaluate('getComputedStyle(document.querySelector(".auth-submit")).color'), 'rgb(255, 255, 255)', 'white login label');
+        await setField('Email công việc', 'TEST@example.com');
+        await setField('Mật khẩu', 'correct-password');
+        const before = loginRequests.length;
+        if (keyboard) { await evaluate('document.querySelector("#password").focus()'); await pressEnter(); }
+        else await evaluate('document.querySelector(".auth-submit").click()');
+        await until('document.querySelector(".auth-submit")?.disabled', 'pending login disables submit');
+        if (keyboard) await pressEnter();
+        const destination = as === 'SYSTEM_ADMIN' ? '/admin/dashboard' : as === 'COMPANY_ADMIN' ? '/company/dashboard' : '/storehouse/inventory';
+        await until(`location.pathname === ${JSON.stringify(destination)} && !!document.querySelector('.wf-content')`, 'server role determines home');
+        assert.equal(loginRequests.length, before + 1, 'one API request per login');
+        assert.equal(await evaluate('JSON.parse(sessionStorage.getItem("wareflow.auth")).role'), as);
+        console.log('PASS login', as, keyboard ? 'Enter' : 'button');
+    }
+    async function setField(label, value) { await evaluate(`(()=>{const field=[...document.querySelectorAll('label')].find(l=>l.textContent.trim().startsWith(${JSON.stringify(label)}));const el=field?.control||field?.querySelector('input,select,textarea');if(!el)throw Error('Missing field '+${JSON.stringify(label)});const setter=Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el),'value').set;setter.call(el,${JSON.stringify(value)});el.dispatchEvent(new Event(el.tagName==='SELECT'?'change':'input',{bubbles:true}));})()`); }
     const clickText = text => evaluate(`[...document.querySelectorAll('button,a')].find(e=>e.textContent.trim()===${JSON.stringify(text)})?.click()`);
     await send('Page.enable'); await send('Runtime.enable'); await send('Network.enable'); await send('Fetch.enable', { patterns: [{ urlPattern: '*://*/api/*' }] });
 
-    await login('SYSTEM_ADMIN');
+    await go('/login', '!!document.querySelector(".auth-submit")');
+    assert.equal(await evaluate('location.pathname'), '/auth/login', 'login alias uses the real form');
+    await evaluate('document.querySelector(".auth-submit").click()');
+    await until('document.querySelectorAll("input[aria-invalid=true]").length === 2', 'required credentials');
+    assert.equal(loginRequests.length, 0, 'empty credentials do not call API');
+    await setField('Email công việc', 'test@example.com'); await setField('Mật khẩu', 'wrong-password');
+    await evaluate('document.querySelector("#password").focus()'); await pressEnter();
+    await until('document.querySelector(".auth-notice[role=alert]")?.textContent.includes("Email hoặc mật khẩu không chính xác")', 'invalid password message');
+    assert.equal(await evaluate('sessionStorage.getItem("wareflow.auth")'), null, 'failed login cannot create a session');
+    assert.equal(await evaluate('location.pathname'), '/auth/login');
+    assert.equal(await evaluate('document.querySelector(".auth-submit").disabled'), false, 'login can be retried');
+    const loginScreenshot = await send('Page.captureScreenshot', { format: 'png' });
+    await writeFile(path.join(profile, 'login.png'), Buffer.from(loginScreenshot.data, 'base64'));
+    await login('SYSTEM_ADMIN', true);
     await go('/admin/dashboard');
     assert.equal(await evaluate('document.querySelector(".adm-stat-value").textContent'), '2', 'all company pages loaded');
     assert.ok(reads.some(url => url.includes('companies?') && url.includes('page=1')));
@@ -179,7 +223,7 @@ try {
     assert.deepEqual(failures, []);
     assert.deepEqual(runtimeErrors, []);
     console.log('Screenshots:', profile);
-    console.log('PASS: authenticated APIs, pagination, charts, fees, error/retry, write failure/success, all role routes, warehouse switching, mobile and role guards');
+    console.log('PASS: credential login, Enter/button submit, server role routing, authenticated APIs, pagination, charts, fees, error/retry, write failure/success, all role routes, warehouse switching, mobile and role guards');
 } catch (error) {
     console.error('Browser diagnostics:', JSON.stringify({ runtimeErrors, networkErrors, failures, page: await evaluate?.('({url:location.href,ready:document.readyState,html:document.documentElement.outerHTML.slice(0,2000)})').catch(() => null) }, null, 2));
     throw error;
