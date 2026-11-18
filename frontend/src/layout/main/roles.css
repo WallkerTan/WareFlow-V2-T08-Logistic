@@ -18,15 +18,15 @@
 
 .admin-shell.wf-role-company,
 .wf-role-company {
-    --workspace-accent: oklch(72.44% 0.1488 165.23);
-    --workspace-dark: oklch(62% 0.16 165);
-    --workspace-tint: oklch(95% 0.05 167);
-    --workspace-border: oklch(85% 0.08 165);
-    --workspace-glow: rgba(0, 185, 124, 0.35);
-    --workspace-gradient: linear-gradient(180deg in oklch, oklch(88.97% 0.1772 167.35) 0.0%, oklch(88.71% 0.1835 165.69) 14.3%, oklch(88.32% 0.1891 163.31) 28.6%, oklch(87.22% 0.1914 161.41) 42.9%, oklch(84.71% 0.1866 161.09) 57.1%, oklch(80.36% 0.1738 162.30) 71.4%, oklch(75.70% 0.1591 164.02) 85.7%, oklch(72.44% 0.1488 165.23) 100.0%);
-    --adm-blue: oklch(72.44% 0.1488 165.23);
-    --adm-blue-dark: oklch(62% 0.16 165);
-    --adm-blue-soft: oklch(95% 0.05 167);
+    --workspace-accent: #318269;
+    --workspace-dark: #246853;
+    --workspace-tint: #f0f7f4;
+    --workspace-border: #cfe0d8;
+    --workspace-glow: transparent;
+    --workspace-gradient: #318269;
+    --adm-blue: #318269;
+    --adm-blue-dark: #246853;
+    --adm-blue-soft: #f0f7f4;
 }
 
 .admin-shell.wf-role-storehouse,
@@ -98,9 +98,15 @@
 }
 
 .wf-role-company .wf-sidebar nav a.active {
-    background: var(--workspace-gradient) !important;
-    color: #063426 !important;
-    font-weight: 700 !important;
+    background: #318269 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    border-radius: 8px;
+}
+.wf-role-company .wf-sidebar nav a.active svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
 }
 
 .wf-role-storehouse .wf-sidebar nav a.active {
@@ -110,15 +116,16 @@
 }
 
 .wf-role-company .wf-workspace {
-    background: var(--workspace-gradient) !important;
-    border-color: rgba(0, 0, 0, 0.08) !important;
-    color: #063426 !important;
+    background: #f0f7f4 !important;
+    border-color: #cfe0d8 !important;
+    color: #246853 !important;
+    box-shadow: none !important;
 }
 .wf-role-company .wf-workspace strong {
-    color: #063426 !important;
+    color: #1a4f40 !important;
 }
 .wf-role-company .wf-workspace small {
-    color: #114c39 !important;
+    color: #318269 !important;
 }
 
 .wf-role-storehouse .wf-workspace {
@@ -226,11 +233,11 @@
 /* PRIMARY BUTTONS */
 .wf-role-company .adm-btn-primary,
 .wf-role-company .wf-button-primary {
-    background: var(--workspace-gradient) !important;
-    border: 0 !important;
-    color: #063426 !important;
-    font-weight: 700 !important;
-    box-shadow: 0 4px 14px var(--workspace-glow) !important;
+    background: #318269 !important;
+    border: 1px solid #318269 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
 }
 
 .wf-role-storehouse .adm-btn-primary,
@@ -243,8 +250,13 @@
 }
 
 .wf-role-company .adm-btn-primary:hover,
+.wf-role-company .wf-button-primary:hover {
+    background: #246853 !important;
+    border-color: #246853 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
 .wf-role-storehouse .adm-btn-primary:hover,
-.wf-role-company .wf-button-primary:hover,
 .wf-role-storehouse .wf-button-primary:hover {
     background: var(--workspace-dark) !important;
     border-color: var(--workspace-dark) !important;
@@ -252,7 +264,13 @@
 }
 
 /* WELCOME BANNER */
-.wf-role-company .workspace-welcome,
+.wf-role-company .workspace-welcome {
+    background: #f0f7f4 !important;
+    border: 1px solid #cfe0d8 !important;
+    color: #318269 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
 .wf-role-storehouse .workspace-welcome {
     background: linear-gradient(115deg, var(--workspace-tint), #ffffff) !important;
     border: 1px solid var(--workspace-border) !important;
@@ -363,7 +381,12 @@
     background: linear-gradient(110deg, var(--workspace-tint), #ffffff) !important;
     border: 1px solid var(--workspace-border) !important;
 }
-.wf-role-company .wf-profile-icon,
+.wf-role-company .wf-profile-icon {
+    background: #ffffff !important;
+    border: 1px solid var(--workspace-border) !important;
+    color: var(--workspace-accent) !important;
+    box-shadow: none !important;
+}
 .wf-role-storehouse .wf-profile-icon {
     background: #ffffff !important;
     border: 1px solid var(--workspace-border) !important;
@@ -426,7 +449,23 @@
     padding: 0 36px 16px;
 }
 
-/* ---------- Responsive Breakpoints ---------- */
+/* ---------- Complete removal of shadow & glass for Company layout ---------- */
+.wf-role-company,
+.wf-role-company .wf-sidebar,
+.wf-role-company .wf-topbar,
+.wf-role-company .wf-card,
+.wf-role-company .adm-card,
+.wf-role-company .adm-stat,
+.wf-role-company .company-warehouse-card,
+.wf-role-company .wf-profile-banner,
+.wf-role-company .workspace-welcome,
+.wf-role-company .adm-btn,
+.wf-role-company .wf-button {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
 @media (max-width: 1100px) {
     .wf-topbar-actions .wf-signin {
         display: none;

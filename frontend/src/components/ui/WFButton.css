@@ -1,0 +1,92 @@
+:root {
+  --lightgray: #eef2f6;
+  --btn-accent: #4f78d9;
+  --btn-active: #3c62bf;
+}
+
+.wf-role-company {
+  --btn-accent: #318269;
+  --btn-active: #246853;
+  --lightgray: #edf5f1;
+}
+
+.wf-role-storehouse {
+  --btn-accent: #4361ee;
+  --btn-active: #364fc7;
+}
+
+/* User's animated reveal button pattern */
+button.wf-btn-anim,
+.wf-btn-anim {
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  padding: 0.6em 2em;
+  font-size: 15px;
+  background: transparent;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+  color: var(--btn-accent, #4f78d9);
+  z-index: 1;
+  font-family: inherit;
+  font-weight: 500;
+  border-radius: 6px;
+  transition: color 0.3s;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+button.wf-btn-anim:disabled,
+.wf-btn-anim:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.wf-btn-anim span,
+.wf-btn-anim span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  z-index: -1;
+  border: 3px solid var(--btn-accent, #4f78d9);
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+button.wf-btn-anim span::before,
+.wf-btn-anim span::before {
+  content: "";
+  display: block;
+  position: absolute;
+  width: 8%;
+  height: 500%;
+  background: var(--lightgray, #eef2f6);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-60deg);
+  transition: all 0.3s;
+}
+
+button.wf-btn-anim:hover:not(:disabled) span::before,
+.wf-btn-anim:hover:not(:disabled) span::before {
+  transform: translate(-50%, -50%) rotate(-90deg);
+  width: 100%;
+  background: var(--btn-accent, #4f78d9);
+}
+
+button.wf-btn-anim:hover:not(:disabled),
+.wf-btn-anim:hover:not(:disabled) {
+  color: #ffffff !important;
+}
+
+button.wf-btn-anim:active:not(:disabled) span::before,
+.wf-btn-anim:active:not(:disabled) span::before {
+  background: var(--btn-active, #3c62bf);
+}

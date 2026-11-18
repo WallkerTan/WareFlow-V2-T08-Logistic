@@ -4,6 +4,7 @@ import { allPages, object } from './api';
 import type { Row } from './api';
 import { getAuthSession } from './authApi';
 import { invalidateData, useDataStatus, useQuery } from './query';
+import { WFSpinner } from '../components/ui/WFSpinner';
 
 type Scope = { warehouses: Row[]; warehouseId: string; warehouse: Row | undefined; selectWarehouse: (id: string) => void; loading: boolean };
 const Context = createContext<Scope>({ warehouses: [], warehouseId: '', warehouse: undefined, selectWarehouse: () => {}, loading: true });
@@ -29,5 +30,14 @@ export function WarehousePicker() {
 }
 export function DataStatus() {
     const status = useDataStatus();
-    return <>{status.loading && <div className="wf-notice" role="status">Đang tải dữ liệu…</div>}{status.errors.map(error => <div key={error} className="wf-notice" role="alert">{error} <button className="adm-btn" onClick={invalidateData}>Thử lại</button></div>)}</>;
+    return (
+        <>
+            {status.loading && <WFSpinner />}
+            {status.errors.map(error => (
+                <div key={error} className="wf-notice" role="alert">
+                    {error} <button className="adm-btn" onClick={invalidateData}>Thử lại</button>
+                </div>
+            ))}
+        </>
+    );
 }
