@@ -87,6 +87,25 @@
 .landing-page .login {
     font-weight: 700;
 }
+.landing-page .login-btn-header {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 22px;
+    border-radius: 10px;
+    background: #4169e8;
+    color: #ffffff !important;
+    font-weight: 700;
+    font-size: 14px;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(65, 105, 232, 0.25);
+    transition: background 0.2s, transform 0.15s;
+}
+.landing-page .login-btn-header:hover {
+    background: #2b52d4;
+    color: #ffffff !important;
+    transform: translateY(-1px);
+}
 .landing-page .button {
     display: inline-flex;
     align-items: center;

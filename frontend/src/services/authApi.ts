@@ -39,6 +39,7 @@ async function post(path: string, payload: LoginRequest | CompanyRegistrationReq
             signal: controller.signal,
         });
         if (!response.ok) {
+            const data = await response.json().catch(() => null) as { message?: string; error?: string } | null;
             const messages: Record<number, string> = {
                 400: 'Thông tin gửi lên chưa hợp lệ. Vui lòng kiểm tra lại.',
                 401: 'Email hoặc mật khẩu không chính xác.',
@@ -48,7 +49,7 @@ async function post(path: string, payload: LoginRequest | CompanyRegistrationReq
                 422: 'Thông tin chưa đáp ứng yêu cầu của máy chủ.',
                 429: 'Bạn đã thử quá nhiều lần. Vui lòng đợi rồi thử lại.',
             };
-            throw new Error(messages[response.status] || 'Dịch vụ xác thực đang gặp sự cố. Vui lòng thử lại sau.');
+            throw new Error(data?.message || data?.error || messages[response.status] || 'Dịch vụ xác thực đang gặp sự cố. Vui lòng thử lại sau.');
         }
         // A dev-server HTML fallback must never be treated as successful auth.
         if (!response.headers.get('content-type')?.includes('application/json')) {
@@ -75,6 +76,7 @@ export const authApi = {
         });
         if (!result.accessToken || !result.userId || !['SYSTEM_ADMIN', 'COMPANY_ADMIN', 'WAREHOUSE_MANAGER'].includes(result.role) || !Number.isFinite(Date.parse(result.expiresAt)) || Date.parse(result.expiresAt) <= Date.now()) throw new Error('Phản hồi đăng nhập không hợp lệ.');
         sessionStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(result));
+        if (values.remember) localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(result));
         window.dispatchEvent(new Event('wareflow.auth'));
         return result;
     },
@@ -85,7 +87,7 @@ export const authApi = {
     }),
 };
 
-export function getAuthSession(value = sessionStorage.getItem(AUTH_SESSION_KEY)): AuthResponse | null {
+export function getAuthSession(value = sessionStorage.getItem(AUTH_SESSION_KEY) || localStorage.getItem(AUTH_SESSION_KEY)): AuthResponse | null {
     if (!value) return null;
     try {
         const session = JSON.parse(value) as AuthResponse;
@@ -93,13 +95,21 @@ export function getAuthSession(value = sessionStorage.getItem(AUTH_SESSION_KEY))
         return session;
     } catch {
         sessionStorage.removeItem(AUTH_SESSION_KEY);
+        localStorage.removeItem(AUTH_SESSION_KEY);
         return null;
     }
 }
 
-export function roleHome(role: string) { return role === 'SYSTEM_ADMIN' ? '/admin/dashboard' : role === 'WAREHOUSE_MANAGER' ? '/storehouse/inventory' : '/company/dashboard'; }
+export function roleHome(role: string) {
+    const r = (role || '').trim().toUpperCase();
+    if (r === 'SYSTEM_ADMIN' || r === 'ADMIN') return '/admin/dashboard';
+    if (r === 'WAREHOUSE_MANAGER' || r === 'STOREHOUSE' || r === 'WAREHOUSE') return '/storehouse/inventory';
+    return '/company/dashboard';
+}
+
 export function clearAuthSession() {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
+    localStorage.removeItem(AUTH_SESSION_KEY);
     window.dispatchEvent(new Event('wareflow.auth'));
 }
 

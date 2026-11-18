@@ -90,9 +90,9 @@ export default function LoginForm({ onSubmit }: Props) {
                     {message}
                 </div>
             )}
-            <button type="submit" className="auth-submit" disabled={isSubmitting}>
-                {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
-                <ArrowRight size={18} />
+            <button type="submit" className="auth-submit" style={{ color: '#ffffff' }} disabled={isSubmitting}>
+                <span style={{ color: '#ffffff', fontWeight: 600 }}>{isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}</span>
+                <ArrowRight size={18} color="#ffffff" />
             </button>
             <p className="auth-switch">
                 Chưa có tài khoản?{" "}

@@ -31,7 +31,7 @@ const LandingPage = () => {
                     <a className="login" href="#contact" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                         <PhoneCall size={16} /> Liên hệ tư vấn
                     </a>
-                    <Link className="login" to="/auth/login">
+                    <Link className="login-btn-header" to="/auth/login" style={{ color: '#ffffff' }}>
                         Đăng nhập
                     </Link>
                     <Link className="button button-small" to="/auth/register">

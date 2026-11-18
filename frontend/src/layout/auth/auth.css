@@ -376,15 +376,18 @@
     border:0;
     border-radius:8px;
     background:var(--auth-blue);
-    color:#fff;
+    color:#ffffff !important;
     font:inherit;
-    font-size:13px;
+    font-size:14px;
     font-weight:600;
     cursor:pointer;
     box-shadow:0 5px 12px #4567ed25;
     transition:background .15s,transform .15s}
+.auth-page .auth-submit * {
+    color:#ffffff !important}
 .auth-page .auth-submit:hover {
     background:#3557d6;
+    color:#ffffff !important;
     transform:translateY(-1px)}
 .auth-page .auth-submit:disabled {
     opacity:.6;
