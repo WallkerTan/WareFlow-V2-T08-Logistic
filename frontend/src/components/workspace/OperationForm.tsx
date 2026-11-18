@@ -14,7 +14,17 @@ type Mode = 'warehouse'|'supplier'|'supplierProduct'|'employee'|'budget'|'po'|'e
 type Field = {key:string;label:string;type?:string;required?:boolean;options?:{value:string;label:string}[];min?:number};
 const options=(items:Row[],label='name')=>items.map(r=>({value:String(r.id),label:String(r[label]||r.id)}));
 const models=['FOOD','TECH','APPLIANCE','FASHION','OTHER'].map((value,i)=>({value,label:['Thực phẩm','Công nghệ','Gia dụng','Thời trang','Khác'][i]}));
-const newLine=()=>({key:crypto.randomUUID(),productId:'',lotId:'',qty:'',price:'0',targetProductId:'',lotCode:'',expiryDate:'',condition:'OK'});
+const generateUUID = () => {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        const v = c === 'x' ? r : (r & 0x3) | 0x8;
+        return v.toString(16);
+    });
+};
+const newLine=()=>({key:generateUUID(),productId:'',lotId:'',qty:'',price:'0',targetProductId:'',lotCode:'',expiryDate:'',condition:'OK'});
 export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{back:string;mode?:Mode;initial?:Row;onSaved?:()=>void}) {
     const {pathname}=useLocation();const navigate=useNavigate();const scope=useWorkspace();const session=getAuthSession()!;
     const mode:Mode=explicitMode || (pathname.includes('/suppliers')?'supplier':pathname.includes('/products')?'supplierProduct':pathname.includes('/employees')?'employee':pathname.includes('/budget')?'budget':pathname.includes('/inbound')?'po':pathname.includes('/outbound')||pathname.includes('/transfers')?'export':pathname.includes('/shipments')?'shipment':'warehouse');
@@ -50,7 +60,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
             let service:Service='core';let path='';let body:unknown=values;
             if(mode==='warehouse'){path='/warehouses';body={...values,area:number(values.area),price:number(values.price)};}
             if(mode==='supplier'){path='/suppliers';body={...values,email:values.email||null};}
-            if(mode==='supplierProduct'){path=`/suppliers/${values.supplierId}/products`;body={...values,price:number(values.price)};}
+            if(mode==='supplierProduct'){if(!values.supplierId)throw new Error('Vui lòng chọn nhà cung cấp.');path=`/suppliers/${values.supplierId}/products`;body={...values,price:number(values.price)};}
             if(mode==='inventoryProduct'){service='inventory';path=`/warehouses/${warehouseId}/products${initial?.id?'/'+initial.id:''}`;body={sku:values.sku,name:values.name,unit:values.unit,barcode:values.barcode||null,minStock:number(values.minStock),images:initial?.images||[]};}
             if(mode==='employee'){path='/employees';if((values.password||'').length<8)throw new Error('Mật khẩu phải có ít nhất 8 ký tự.');}
             if(mode==='budget'){service='finance';path='/budgets'+(initial?.id?'/'+initial.id:'');body={warehouseId:values.warehouseId||null,period:values.period,allocated:number(values.allocated)};}
