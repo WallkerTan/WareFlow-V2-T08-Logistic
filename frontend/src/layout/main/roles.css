@@ -180,6 +180,16 @@
     font-weight: 700;
 }
 
+.wf-account > img,
+.wf-account img.wf-account-avatar-img {
+    width: 31px;
+    height: 31px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--workspace-border);
+    display: block;
+}
+
 .wf-topbar-actions .wf-signin {
     font-size: 11px;
 }

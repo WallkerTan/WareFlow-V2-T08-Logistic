@@ -9,6 +9,8 @@ import {
     Users,
     History,
     Bell,
+    ClipboardCheck,
+    Building,
 } from "lucide-react";
 import WorkspaceShell from "../../components/workspace/WorkspaceShell";
 export default function AdminLayout() {
@@ -36,9 +38,19 @@ export default function AdminLayout() {
                         icon: Building2,
                     },
                     {
+                        to: "/admin/approvals/companies",
+                        label: "Duyệt công ty",
+                        icon: ClipboardCheck,
+                    },
+                    {
                         to: "/admin/warehouses",
                         label: "Quản lý kho",
                         icon: Warehouse,
+                    },
+                    {
+                        to: "/admin/approvals/warehouses",
+                        label: "Duyệt kho hàng",
+                        icon: Building,
                     },
                     {
                         to: "/admin/suppliers",
