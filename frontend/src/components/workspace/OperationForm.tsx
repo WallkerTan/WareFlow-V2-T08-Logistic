@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { allPages, number, rows as asRows } from '../../services/api';
 import type { Row, Service } from '../../services/api';
@@ -30,7 +31,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
     const mode:Mode=explicitMode || (pathname.includes('/suppliers')?'supplier':pathname.includes('/products')?'supplierProduct':pathname.includes('/employees')?'employee':pathname.includes('/budget')?'budget':pathname.includes('/inbound')?'po':pathname.includes('/outbound')||pathname.includes('/transfers')?'export':pathname.includes('/shipments')?'shipment':'warehouse');
     const documentMode=['po','export','receipt'].includes(mode);
     const {raw}=useAdminData(...(documentMode?['products','lots','suppliers'] as const:['supplierProduct','inventoryProduct'].includes(mode)?['suppliers','supplierProducts'] as const:mode==='shipment'?['stockDocuments'] as const:[]));
-    const [values,setValues]=useState<Record<string,string>>({warehouseId:mode==='budget'||mode==='transaction'&&session.role==='COMPANY_ADMIN'?'':scope.warehouseId,warehouseType:'RENT',businessModel:'OTHER',period:dayKey(new Date()).slice(0,7),type:mode==='transaction'?'INCOME':pathname.includes('/transfers')?'EXPORT_TRANSFER':'EXPORT_SALE',codAmount:'0',...Object.fromEntries(Object.entries(initial||{}).filter(([,v])=>typeof v==='string'||typeof v==='number'||v===null).map(([k,v])=>[k,v===null?'':String(v)]))});
+    const [values,setValues]=useState<Record<string,string>>({warehouseId:mode==='budget'||mode==='transaction'&&session.role==='COMPANY_ADMIN'?'':scope.warehouseId,warehouseType:'RENT',businessModel:'OTHER',period:dayKey(new Date()).slice(0,7),type:mode==='transaction'?'INCOME':pathname.includes('/transfers')?'EXPORT_TRANSFER':'EXPORT_SALE',category:mode==='transaction'?'SALE':'OTHER',codAmount:'0',...Object.fromEntries(Object.entries(initial||{}).filter(([,v])=>typeof v==='string'||typeof v==='number'||v===null).map(([k,v])=>[k,v===null?'':String(v)]))});
     const warehouseId=values.warehouseId||scope.warehouseId;
     const [lines,setLines]=useState(()=>mode==='receipt'?asRows(initial?.lines).filter(r=>number(r.qty)>number(r.receivedQty)).map(r=>({...newLine(),productId:String(r.productId),qty:String(number(r.qty)-number(r.receivedQty))})):[newLine()]);
     const [pending,setPending]=useState(false);const [error,setError]=useState('');
@@ -121,7 +122,18 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
             }
             if(mode==='employee'){path='/employees';if((values.password||'').length<8)throw new Error('Mật khẩu phải có ít nhất 8 ký tự.');}
             if(mode==='budget'){service='finance';path='/budgets'+(initial?.id?'/'+initial.id:'');body={warehouseId:values.warehouseId||null,period:values.period,allocated:number(values.allocated)};}
-            if(mode==='transaction'){service='finance';path='/transactions';body={warehouseId:values.warehouseId||(session.role==='WAREHOUSE_MANAGER'?warehouseId:null),type:values.type,category:values.category,amount:number(values.amount),note:values.note};}
+            if(mode==='transaction'){
+                service='finance';
+                path='/transactions';
+                const whId = values.warehouseId && values.warehouseId.trim() !== '' ? values.warehouseId.trim() : (session.role==='WAREHOUSE_MANAGER' ? warehouseId : null);
+                body={
+                    warehouseId: whId || null,
+                    type: values.type || 'INCOME',
+                    category: values.category || 'SALE',
+                    amount: number(values.amount),
+                    note: values.note ? values.note.trim() : ''
+                };
+            }
             if(mode==='shipment'){service='delivery';path=`/warehouses/${warehouseId}/shipments`;body={documentId:values.documentId,carrier:values.carrier,trackingCode:values.trackingCode,codAmount:number(values.codAmount)};}
             if(documentMode){
                 if(!warehouseId)throw new Error('Chọn kho trước khi lập phiếu.');
@@ -133,6 +145,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved}:{
                 if(mode==='export')body={type:values.type,targetWarehouseId:values.type==='EXPORT_TRANSFER'?values.targetWarehouseId:null,note:values.note,lines:lines.map(l=>({lotId:l.lotId,quantity:number(l.qty),targetProductId:values.type==='EXPORT_TRANSFER'?l.targetProductId:null}))};
             }
             await saveResource(service,path,['inventoryProduct','budget'].includes(mode)&&initial?.id?'PUT':'POST',body);
+            toast.success(mode === 'transaction' ? 'Đã lưu giao dịch thu/chi thành công!' : 'Đã lưu dữ liệu thành công!');
             if(onSaved)onSaved();else navigate(back);
         }catch(e){setError(e instanceof Error?e.message:'Không lưu được dữ liệu.');}finally{setPending(false);}
     }

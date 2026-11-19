@@ -25,7 +25,8 @@ export function useAdminData(...wanted: DataKey[]) {
     const companyRows = companiesQuery.data || EMPTY;
     const warehouseRows = scope.warehouses;
     const workingWarehouses = isManager ? warehouseRows.filter(w => w.id === scope.warehouseId) : warehouseRows;
-    const companiesIds = isAdmin ? companyRows.map(c => str(c.id)) : [session?.companyId].filter(Boolean) as string[];
+    const myCompanyId = str(session?.companyId || companyRows[0]?.id);
+    const companiesIds = isAdmin ? companyRows.map(c => str(c.id)) : [myCompanyId].filter(Boolean);
     const scopeKey = `${companiesIds.join(',')}:${workingWarehouses.map(w => w.id).join(',')}`;
     const ready = !scope.loading && !companiesQuery.loading && !companiesQuery.error;
     async function acrossWarehouses(service: Service, collection: string): Promise<Row[]> {
@@ -33,10 +34,21 @@ export function useAdminData(...wanted: DataKey[]) {
     }
     async function finance(collection: string) {
         const today = dayKey(new Date()); const year = Number(today.slice(0, 4));
-        // Two comparison windows (up to 365 days each) may cross three calendar years.
-        const periods = collection === 'transactions' ? [year - 2, year - 1, year].map(String) : [collection === 'budgets' ? today.slice(0, 7) : ''];
+        // Fetch current and previous years so charts have full timeline
+        const periods = collection === 'transactions' ? [year - 1, year].map(String) : [today.slice(0, 7), `${year}`];
         const jobs = companiesIds.flatMap(companyId => periods.map(period => ({ companyId, period })));
-        return (await mapLimit(jobs, async j => (await allPages<Row>('finance', `/${collection}${query({ companyId: isAdmin ? j.companyId : undefined, period: j.period, warehouseId: isManager ? scope.warehouseId : undefined })}`)).map(r => ({ ...r, companyId: j.companyId })))).flat();
+        return (await mapLimit(jobs, async j => {
+            try {
+                const list = await allPages<Row>('finance', `/${collection}${query({
+                    companyId: isAdmin ? j.companyId : undefined,
+                    period: j.period,
+                    warehouseId: isManager ? scope.warehouseId : undefined
+                })}`);
+                return list.map(r => ({ ...r, companyId: j.companyId }));
+            } catch {
+                return [];
+            }
+        })).flat();
     }
     function resource(key: DataKey, loader: () => Promise<Row[]>) {
         // Hooks run in a fixed order; only the requests needed by this view are enabled.
@@ -73,7 +85,29 @@ export function useAdminData(...wanted: DataKey[]) {
     const suppliers: Supplier[] = raw.suppliers.map(r => ({ ...r, id: str(r.id), name: str(r.name), category: str(r.businessModel), companyName: companyName(r.companyId), contactPerson: str(r.contactPerson), phone: str(r.phone), email: str(r.email), productCount: raw.supplierProducts.filter(p => p.supplierId === r.id).length, createdAt: str(r.createdAt) }));
     const products: Product[] = raw.products.map(r => ({ ...r, id: str(r.id), sku: str(r.sku), barcode: str(r.barcode), name: str(r.name), unit: str(r.unit), warehouseName: warehouseName(r.warehouseId), stock: number(r.quantity), minStock: number(r.minStock), price: number(r.price), updatedAt: str(r.updatedAt || r.createdAt) }));
     const supplierProducts: Product[] = raw.supplierProducts.map(r => ({ ...r, id: str(r.id), sku: str(r.sku), barcode: str(r.barcode), name: str(r.name), unit: str(r.unit), warehouseName: str(r.supplierName), stock: 0, minStock: 0, price: number(r.price), updatedAt: str(r.updatedAt) }));
-    const transactions: Transaction[] = raw.transactions.map(r => ({ ...r, id: str(r.id), type: r.type as Transaction['type'], category: r.category as Transaction['category'], amount: number(r.amount), warehouseName: r.warehouseId ? warehouseName(r.warehouseId) : null, note: str(r.note), createdAt: str(r.createdAt) }));
+    const financeTx: Transaction[] = raw.transactions.map(r => ({
+        ...r,
+        id: str(r.id),
+        type: (r.type as Transaction['type']) || 'INCOME',
+        category: (r.category as Transaction['category']) || 'OTHER',
+        amount: number(r.amount),
+        warehouseName: r.warehouseId ? warehouseName(r.warehouseId) : 'Toàn công ty',
+        note: str(r.note || 'Giao dịch thu chi'),
+        createdAt: str(r.createdAt || (r as Record<string, unknown>).created_at || new Date().toISOString())
+    }));
+    const warehouseTx: Transaction[] = raw.warehouseTransactions
+        .filter(w => w.status === 'COMPLETED' && (!myCompanyId || String(w.companyId) === myCompanyId))
+        .map(w => ({
+            id: `WT-${w.id}`,
+            type: 'EXPENSE' as const,
+            category: 'PURCHASE' as const,
+            amount: number(w.offeredPrice || w.price || 0),
+            warehouseName: warehouseName(w.warehouseId) || str(w.warehouseName) || 'Kho hàng',
+            note: `Chi phí ${w.type === 'BUY' ? 'mua' : 'thuê'} kho ${str(w.warehouseName || w.warehouseId)}`,
+            createdAt: str(w.createdAt || (w as Record<string, unknown>).created_at || new Date().toISOString())
+        }))
+        .filter(w => w.amount > 0);
+    const transactions: Transaction[] = [...financeTx, ...warehouseTx].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     const budgets: Budget[] = raw.budgets.map(r => ({ ...r, id: str(r.id), period: str(r.period), warehouseName: r.warehouseId ? warehouseName(r.warehouseId) : null, allocated: number(r.allocated), spent: number(r.spent) }));
     const notifications: AdminNotification[] = raw.notifications.map(r => ({ ...r, id: str(r.id), scope: r.scope as AdminNotification['scope'], type: str(r.type), title: str(r.title), body: str(object(r.payload).message || object(r.payload).description || object(r.payload).reason), isRead: Boolean(r.isRead), createdAt: str(r.createdAt) }));
     const systemLogs: SystemLogEntry[] = raw.systemLogs.map(r => ({ ...r, id: str(r.id), action: str(r.action), actorName: str(r.actorName), companyName: str(r.companyName), target: str(object(r.metadata).description || object(r.target).targetType), ipAddress: str(object(r.metadata).clientIp), createdAt: str(r.createdAt) }));
