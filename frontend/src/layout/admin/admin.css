@@ -1648,6 +1648,19 @@
     cursor: not-allowed;
 }
 
+.adm-page-ellipsis {
+    min-width: 28px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--adm-ink-muted, #8a96a8);
+    font-size: 13px;
+    font-weight: 600;
+    user-select: none;
+    letter-spacing: 1px;
+}
+
 /* ---------- Misc ---------- */
 
 .adm-inline-note {

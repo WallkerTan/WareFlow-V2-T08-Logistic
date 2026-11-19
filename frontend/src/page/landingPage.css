@@ -1,4 +1,4 @@
-html {
+html:has(.landing-page) {
     scroll-behavior: smooth !important;
 }
 

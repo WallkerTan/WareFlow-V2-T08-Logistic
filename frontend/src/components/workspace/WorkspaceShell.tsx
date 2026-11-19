@@ -68,6 +68,10 @@ export default function WorkspaceShell({
         return scheduleSessionExpiry(expiresAt);
     }, [expiresAt]);
 
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    }, [pathname]);
+
     const userProfileQuery = useQuery<{ avatar?: string; profile?: { avatar?: string; logo?: string } }>(
         session?.userId ? `user-profile:${session.userId}` : null,
         () => request('core', '/users/me').catch(() => ({} as { avatar?: string }))

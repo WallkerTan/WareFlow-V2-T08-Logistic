@@ -32,9 +32,13 @@ export function DataStatus() {
     const status = useDataStatus();
     return (
         <>
-            {status.loading && <WFSpinner />}
+            {status.loading && (
+                <div className="wf-loading-overlay" aria-label="Đang tải dữ liệu…">
+                    <WFSpinner />
+                </div>
+            )}
             {status.errors.map(error => (
-                <div key={error} className="wf-notice" role="alert">
+                <div key={error} className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
                     {error} <button className="adm-btn" onClick={invalidateData}>Thử lại</button>
                 </div>
             ))}

@@ -44,6 +44,8 @@
 
 /* ---------- Structural Layout ---------- */
 .wf-shell .wf-content {
+    max-width: 1400px;
+    width: 100%;
     margin: 0 auto;
     flex: 1;
 }
@@ -456,8 +458,7 @@
     display: none;
 }
 .wf-role-admin:has(.wm-page) .wf-content {
-    max-width: 1600px;
-    padding: 0 36px 16px;
+    max-width: 1400px;
 }
 
 /* ---------- Complete removal of shadow & glass for Company and Storehouse layouts ---------- */
@@ -556,8 +557,5 @@
     }
     .wf-topbar-actions {
         gap: 7px;
-    }
-    .wf-role-admin:has(.wm-page) .wf-content {
-        padding: 0 16px 10px;
     }
 }
