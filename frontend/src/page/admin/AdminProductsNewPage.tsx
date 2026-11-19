@@ -1,2 +1,15 @@
-import { PreviewForm } from '../../components/workspace/WorkspacePages';
-export default function AdminProductsNewPage() { return (<PreviewForm title={'Thêm sản phẩm cho nhà cung cấp'} fields={['Nhà cung cấp', 'Mã sản phẩm', 'Tên sản phẩm', 'Danh mục', 'Đơn vị tính', 'Đơn giá', 'Mô tả']} back={'/admin/products'}/>); }
+import OperationForm from '../../components/workspace/OperationForm';
+
+export default function AdminProductsNewPage() {
+    return (
+        <section className="wf-section">
+            <div className="admin-page-head">
+                <div>
+                    <h2>Thêm sản phẩm cho nhà cung cấp</h2>
+                    <p>Điền thông tin sản phẩm để liên kết với nhà cung cấp.</p>
+                </div>
+            </div>
+            <OperationForm mode="supplierProduct" back="/admin/products" />
+        </section>
+    );
+}

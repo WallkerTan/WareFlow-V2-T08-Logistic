@@ -2,6 +2,8 @@ import { Toaster } from "react-hot-toast";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "./components/ui/WFSpinner.css";
+import "./components/ui/WFButton.css";
 import "antd/dist/reset.css";
 import { RouterProvider } from "react-router-dom";
 import router_wareflow_v2 from "./routers/routers";
