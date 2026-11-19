@@ -391,6 +391,7 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
     const sums = cashSummary(rows);
     const strokeColor = storehouse ? "#7955c1" : "#17846b";
     const fillColor = storehouse ? "#f3edfc" : "#eaf6f1";
+    const companyBalance = transactions.reduce((acc, t) => acc + (t.type === 'INCOME' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
     return (
         <>
             <Heading
@@ -405,6 +406,29 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                         : { to: "/company/budget/new", label: "Cấp ngân sách" }
                 }
             />
+            {!storehouse && (
+                <div className="wf-card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--workspace-gradient)', color: '#ffffff', borderRadius: 8, boxShadow: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.2)', display: 'grid', placeItems: 'center' }}>
+                            <Wallet size={24} color="#ffffff" />
+                        </div>
+                        <div>
+                            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.92, fontWeight: 600, color: '#ffffff' }}>
+                                SỐ DƯ KHẢ DỤNG CÔNG TY
+                            </span>
+                            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2, color: '#ffffff' }}>
+                                {formatCurrency(companyBalance)}
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <small style={{ display: 'block', opacity: 0.92, fontSize: 12, color: '#ffffff' }}>Nguồn tiền dùng để cấp ngân sách cho các kho</small>
+                        <Link to="/company/budget/new" className="adm-btn" style={{ marginTop: 6, background: '#ffffff', color: '#246853', fontWeight: 700, border: 0, boxShadow: 'none' }}>
+                            Cấp ngân sách kho →
+                        </Link>
+                    </div>
+                </div>
+            )}
             {!storehouse && <Stats />}
             <div className="workspace-toolbar">
                 <button

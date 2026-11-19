@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, LogOut, Plus, RefreshCw, Search, ShieldCheck, Warehouse } from 'lucide-react';
 import { clearAuthSession, getAuthSession } from '../services/authApi';
+import { WFSpinner } from '../components/ui/WFSpinner';
 import './dashboard.css';
 
 type CompanyItem = { id: string; name: string; businessModel: string; status: string; createdAt: string };
@@ -198,7 +199,7 @@ export default function AdminDashboardPage() {
             <section className="dashboard-panel" id="companies">
                 <div className="dashboard-panel-heading"><div><h2>Quản lý công ty</h2><p>Tìm kiếm, lọc và cập nhật trạng thái công ty</p></div><span>{companyTotal} công ty</span></div>
                 <div className="admin-toolbar"><label className="admin-search"><Search size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="Tìm theo tên công ty" /></label><select value={companyStatus} onChange={event => setCompanyStatus(event.target.value)} aria-label="Lọc trạng thái công ty"><option value="">Tất cả trạng thái</option><option value="PENDING">Chờ duyệt</option><option value="ACTIVE">Đang hoạt động</option><option value="LOCKED">Đã khóa</option></select></div>
-                {loading ? <div className="dashboard-empty">Đang tải công ty…</div> : companies.length === 0 ? <div className="dashboard-empty">Không có công ty phù hợp.</div> :
+                {loading ? <WFSpinner /> : companies.length === 0 ? <div className="dashboard-empty">Không có công ty phù hợp.</div> :
                     <div className="dashboard-table-wrap"><table className="dashboard-table"><thead><tr><th>Tên công ty</th><th>Lĩnh vực</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead><tbody>
                         {companies.map(company => <tr key={company.id}><td><strong>{company.name}</strong></td><td>{company.businessModel || '—'}</td><td><span className={`dashboard-status status-${company.status?.toLowerCase()}`}>{company.status || '—'}</span></td><td>{company.createdAt ? new Date(company.createdAt).toLocaleDateString('vi-VN') : '—'}</td><td><div className="admin-actions">{company.status !== 'ACTIVE' && <button disabled={saving} onClick={() => void changeCompanyStatus(company, 'ACTIVE')}>{company.status === 'LOCKED' ? 'Mở khóa' : 'Kích hoạt'}</button>}{company.status !== 'LOCKED' && <button className="danger" disabled={saving} onClick={() => void changeCompanyStatus(company, 'LOCKED')}>Khóa</button>}</div></td></tr>)}
                     </tbody></table></div>}
@@ -211,14 +212,14 @@ export default function AdminDashboardPage() {
                     <label>Khu vực<input name="region" required maxLength={255} /></label><label>Địa chỉ<input name="address" maxLength={1000} /></label>
                     <div className="admin-form-actions"><button type="button" className="dashboard-outline-button" onClick={() => setShowWarehouseForm(false)}>Hủy</button><button className="admin-primary-button" disabled={saving}>{saving ? 'Đang lưu…' : 'Lưu kho'}</button></div>
                 </form>}
-                {loading ? <div className="dashboard-empty">Đang tải kho…</div> : warehouses.length === 0 ? <div className="dashboard-empty">Chưa có kho hệ thống.</div> :
+                {loading ? <WFSpinner /> : warehouses.length === 0 ? <div className="dashboard-empty">Chưa có kho hệ thống.</div> :
                     <div className="dashboard-table-wrap"><table className="dashboard-table"><thead><tr><th>Tên kho</th><th>Khu vực</th><th>Loại</th><th>Diện tích</th><th>Trạng thái</th></tr></thead><tbody>
                         {warehouses.map(item => <tr key={item.id}><td><strong>{item.name}</strong></td><td>{item.region || '—'}</td><td>{item.warehouseType || '—'}</td><td>{item.area} m²</td><td><span className="dashboard-status">{item.status || '—'}</span></td></tr>)}
                     </tbody></table></div>}
             </section>
             <section className="dashboard-panel admin-warehouse-panel" id="transactions">
                 <div className="dashboard-panel-heading"><div><h2>Đề nghị mua/thuê</h2><p>Thương lượng, duyệt hoặc từ chối đề nghị từ các công ty</p></div><span>{transactions.filter(item => item.status === 'PENDING' || item.status === 'NEGOTIATING').length} cần xử lý</span></div>
-                {loading ? <div className="dashboard-empty">Đang tải đề nghị…</div> : transactions.length === 0 ? <div className="dashboard-empty">Chưa có đề nghị mua/thuê nào.</div> : <div className="dashboard-transaction-list">{transactions.map(transaction => <article className="dashboard-transaction" key={transaction.id}>
+                {loading ? <WFSpinner /> : transactions.length === 0 ? <div className="dashboard-empty">Chưa có đề nghị mua/thuê nào.</div> : <div className="dashboard-transaction-list">{transactions.map(transaction => <article className="dashboard-transaction" key={transaction.id}>
                     <div className="dashboard-transaction-top"><div><strong>{transaction.warehouseName}</strong><span>{transaction.companyName} · {transaction.type === 'BUY' ? 'Mua' : 'Thuê'} · {transaction.offeredPrice?.toLocaleString('vi-VN') ?? 'Chưa đề xuất giá'}</span></div><span className={`dashboard-status status-${transaction.status.toLowerCase()}`}>{transaction.status}</span></div>
                     <div className="dashboard-messages">{transaction.negotiation?.messages?.length ? transaction.negotiation.messages.map((message, index) => <p key={`${transaction.id}-${index}`}><strong>{message.senderRole === 'SYSTEM_ADMIN' ? 'Admin' : 'Công ty'}:</strong> {message.message}{message.offeredPrice != null ? ` · Giá đề xuất ${message.offeredPrice.toLocaleString('vi-VN')}` : ''}</p>) : <p>Chưa có nội dung thương lượng.</p>}</div>
                     {(transaction.status === 'PENDING' || transaction.status === 'NEGOTIATING') && <div className="admin-actions"><button disabled={saving} onClick={() => void negotiate(transaction)}>Thương lượng</button><button disabled={saving} onClick={() => void decide(transaction, 'approve')}>Duyệt</button><button className="danger" disabled={saving} onClick={() => void decide(transaction, 'reject')}>Từ chối</button></div>}

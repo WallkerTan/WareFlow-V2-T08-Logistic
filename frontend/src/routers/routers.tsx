@@ -1,4 +1,4 @@
-﻿import RecordsPage from "../components/workspace/RecordsPage";
+import RecordsPage from "../components/workspace/RecordsPage";
 import StorehouseInboundPage from "../page/storehouse/StorehouseInboundPage";
 import StorehouseOutboundPage from "../page/storehouse/StorehouseOutboundPage";
 import StorehouseHistoryPage from "../page/storehouse/StorehouseHistoryPage";
@@ -6,6 +6,8 @@ import AdminWarehousesNewPage from "../page/admin/AdminWarehousesNewPage";
 import AdminCompanyDetailPage from "../page/admin/AdminCompanyDetailPage";
 import AdminSuppliersNewPage from "../page/admin/AdminSuppliersNewPage";
 import AdminProductsNewPage from "../page/admin/AdminProductsNewPage";
+import AdminCompanyApprovals from "../page/admin/AdminCompanyApprovals";
+import AdminWarehouseApprovals from "../page/admin/AdminWarehouseApprovals";
 import CompanyDashboardPage from "../page/company/CompanyDashboardPage";
 import CompanyInventoryPage from "../page/company/CompanyInventoryPage";
 import CompanyFinancePage from "../page/company/CompanyFinancePage";
@@ -48,6 +50,7 @@ import AdminUsers from "../page/admin/AdminUsers";
 import AdminLogs from "../page/admin/AdminLogs";
 import AdminNotifications from "../page/admin/AdminNotifications";
 import StockLots from "../page/storehouse/StockLots";
+
 const router = createBrowserRouter([
     { path: "/", element: <LandingPage /> },
     { path: "/LandingPage", element: <Navigate to="/" replace /> },
@@ -68,6 +71,7 @@ const router = createBrowserRouter([
             { index: true, element: <Navigate to="dashboard" replace /> },
             { path: "dashboard", element: <AdminDashboard /> },
             { path: "companies", element: <AdminCompanies /> },
+            { path: "approvals/companies", element: <AdminCompanyApprovals /> },
             {
                 path: "companies/:companyId",
                 element: <AdminCompanyDetailPage />,
@@ -85,6 +89,7 @@ const router = createBrowserRouter([
                     </>
                 ),
             },
+            { path: "approvals/warehouses", element: <AdminWarehouseApprovals /> },
             {
                 path: "suppliers",
                 element: (
@@ -181,4 +186,5 @@ const router = createBrowserRouter([
     { path: "/register", element: <Navigate to="/auth/register" replace /> },
     { path: "*", element: <NotFound /> },
 ]);
+
 export default router;
