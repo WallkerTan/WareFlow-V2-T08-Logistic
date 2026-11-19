@@ -76,6 +76,7 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wareflow_core
+      FINANCE_SERVICE_URL: http://finance-service:8083
       DB_USER: postgres
       DB_PASSWORD: postgres
       EUREKA_HOST: eureka-server
@@ -185,4 +186,3 @@ networks:
 
 volumes:
   postgres_data:
-

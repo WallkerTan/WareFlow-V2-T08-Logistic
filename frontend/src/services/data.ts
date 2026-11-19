@@ -21,13 +21,15 @@ export function useAdminData(...wanted: DataKey[]) {
     const scope = useWorkspace();
     const isAdmin = session?.role === 'SYSTEM_ADMIN';
     const isManager = session?.role === 'WAREHOUSE_MANAGER';
-    const companiesQuery = useQuery<Row[]>('companies', () => isAdmin ? allPages('core', '/companies') : request<Row>('core', '/companies/my-company').then(r => [r]));
+    const companiesQuery = useQuery<Row[]>('companies', () => isAdmin ? allPages('core', '/companies') : isManager
+        ? Promise.resolve(session?.companyId ? [{ id: session.companyId, name: session.companyName }] : [])
+        : request<Row>('core', '/companies/my-company').then(r => [r]));
     const companyRows = companiesQuery.data || EMPTY;
     const warehouseRows = scope.warehouses;
     const workingWarehouses = isManager ? warehouseRows.filter(w => w.id === scope.warehouseId) : warehouseRows;
     const companiesIds = isAdmin ? companyRows.map(c => str(c.id)) : [session?.companyId].filter(Boolean) as string[];
     const scopeKey = `${companiesIds.join(',')}:${workingWarehouses.map(w => w.id).join(',')}`;
-    const ready = !scope.loading && !companiesQuery.loading && !companiesQuery.error;
+    const ready = !scope.loading && !companiesQuery.loading && (!companiesQuery.error || companiesQuery.data !== undefined);
     async function acrossWarehouses(service: Service, collection: string): Promise<Row[]> {
         return (await mapLimit(workingWarehouses, async w => (await allPages<Row>(service, `/warehouses/${w.id}/${collection}`)).map(r => ({ ...r, warehouseId: w.id, warehouseName: w.name })))).flat();
     }
@@ -43,7 +45,7 @@ export function useAdminData(...wanted: DataKey[]) {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         return useQuery<Row[]>(ready && wanted.includes(key) && (!isManager || !!scope.warehouseId || ['users','notifications'].includes(key)) ? `data:${key}:${scopeKey}` : null, loader);
     }
-    const usersQuery = resource('users', () => isAdmin || isManager ? request<Row>('core', '/users/me').then(r => [r]) : allPages('core', '/employees'));
+    const usersQuery = resource('users', () => isAdmin ? allPages('core', '/users') : isManager ? request<Row>('core', '/users/me').then(r => [r]) : allPages('core', '/employees'));
     const suppliersQuery = resource('suppliers', () => allPages('core', '/suppliers'));
     const supplierProductsQuery = resource('supplierProducts', async () => {
         const suppliers = await allPages<Row>('core', '/suppliers');

@@ -15,7 +15,9 @@ globalThis.sessionStorage = { getItem: k => storage.get(k) ?? null, setItem: (k,
 globalThis.window = { setTimeout, clearTimeout, dispatchEvent: () => {} };
 const authUrl = moduleUrl('../src/services/authApi.ts');
 const auth = await import(authUrl);
-const api = await import(moduleUrl('../src/services/api.ts', [["'./authApi'", JSON.stringify(authUrl)]]));
+const apiUrl = moduleUrl('../src/services/api.ts', [["'./authApi'", JSON.stringify(authUrl)]]);
+const api = await import(apiUrl);
+const catalog = await import(moduleUrl('../src/services/supplierCatalog.ts', [["'./api'", JSON.stringify(apiUrl)]]));
 const originalFetch = globalThis.fetch;
 afterEach(() => { globalThis.fetch = originalFetch; storage.clear(); });
 const now = new Date('2026-01-01T18:00:00Z'); // January 2 in Vietnam.
@@ -131,4 +133,31 @@ test('failed login and invalid server sessions do not authenticate the user', as
         await assert.rejects(auth.authApi.login(values), /Phản hồi đăng nhập không hợp lệ/);
         assert.equal(auth.getAuthSession(), null);
     }
+});
+
+test('purchase orders resolve supplier products to warehouse IDs and preserve negotiated prices', async () => {
+    const products = [{ id: 'supplier-1', sku: 'SKU-1', name: 'Existing item', unit: 'box', price: 100 }, { id: 'supplier-2', sku: 'SKU-2', name: 'New item', unit: 'box', price: 200 }];
+    const requests = [];
+    globalThis.fetch = async (url, options) => {
+        requests.push({ url, body: JSON.parse(options.body) });
+        return json({ id: 'warehouse-product-2', warehouseId: 'w1', sku: 'SKU-2' });
+    };
+    const result = await catalog.purchaseOrderLines('w1', products, [{ id: 'warehouse-product-1', warehouseId: 'w1', sku: 'sku-1' }], [
+        { productId: 'supplier-1', qty: '2', price: '90' }, { productId: 'supplier-2', qty: '3', price: '200' },
+    ]);
+    assert.deepEqual(result, [{ productId: 'warehouse-product-1', qty: 2, price: 90 }, { productId: 'warehouse-product-2', qty: 3, price: 200 }]);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url, '/api/inventory/warehouses/w1/products');
+    assert.equal(requests[0].body.sku, 'SKU-2');
+});
+
+test('switching supplier cannot submit a product from the previous supplier', async () => {
+    globalThis.fetch = async () => { assert.fail('Invalid selection must be rejected before writing'); };
+    await assert.rejects(catalog.purchaseOrderLines('w1', [], [], [{ productId: 'old-supplier-product', qty: '1', price: '10' }]), /nhà cung cấp/);
+});
+
+test('concurrent catalogue imports reuse the existing warehouse SKU after a conflict', async () => {
+    globalThis.fetch = async (url, options) => options.method === 'POST' ? json({ message: 'SKU exists' }, 409) : json([{ id: 'concurrent-item', sku: 'SKU-1', warehouseId: 'w1' }]);
+    const result = await catalog.purchaseOrderLines('w1', [{ id: 'sp1', sku: 'SKU-1', name: 'Item' }], [], [{ productId: 'sp1', qty: '2', price: '10' }]);
+    assert.equal(result[0].productId, 'concurrent-item');
 });

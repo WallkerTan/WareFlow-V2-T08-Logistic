@@ -33,6 +33,17 @@ public class FinanceAccessService {
         } catch (ResponseStatusException ex) { throw ex; }
         catch (Exception ex) { throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token"); }
     }
+    public void authenticateCoreService(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer "))
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Service token required");
+        try {
+            Claims claims = Jwts.parser().verifyWith(key).requireIssuer(issuer).requireSubject("core-service")
+                    .require("role", "SERVICE").build().parseSignedClaims(authorization.substring(7)).getPayload();
+            if (claims.getExpiration() == null || claims.getAudience() == null || !claims.getAudience().contains("finance-service"))
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid service token");
+        } catch (ResponseStatusException error) { throw error; }
+        catch (Exception error) { throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid service token"); }
+    }
     public UUID company(Identity user, UUID requested) {
         if ("SYSTEM_ADMIN".equals(user.role())) {
             if (requested == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "companyId is required for system admin");

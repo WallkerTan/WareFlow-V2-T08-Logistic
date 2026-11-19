@@ -43,4 +43,6 @@ public class Supplier {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
+
+    private Instant deletedAt;
 }

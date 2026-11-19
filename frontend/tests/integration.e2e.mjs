@@ -52,16 +52,21 @@ function fixture(url, method, body) {
         writes.push({ p, method, body });
         if (p === '/api/core/suppliers' && failSupplier) return [409, { message: 'Nhà cung cấp đã tồn tại' }];
         if (p === '/api/core/suppliers') suppliers.push({ ...body, id: 's-new' });
-        if (/\/products$/.test(p) && method === 'POST') products.push({ ...body, id: 'p-new', warehouseId: p.split('/')[4], quantity: 0, available: 0 });
+        if (/\/api\/inventory\/warehouses\/[^/]+\/products$/.test(p) && method === 'POST') {
+            const product = { ...body, id: 'p-new-' + products.length, warehouseId: p.split('/')[4], quantity: 0, available: 0 };
+            products.push(product); return [201, product];
+        }
+        if (p === '/api/finance/transactions') transactions.push({ ...body, id: 'tx-new-' + transactions.length, companyId: 'c1', createdAt: past(0) });
         if (p.endsWith('/n1/read')) notifications[0].isRead = true;
         return [200, { ...body, id: 'created' }];
     }
     reads.push(p + url.search);
     const list = items => [200, { content: items, totalPages: 1, totalElements: items.length, number: 0, size: 100 }];
     if (p === '/api/core/companies') return [200, { content: [companies[page]], totalPages: 2, totalElements: 2, number: page, size: 1 }];
-    if (p === '/api/core/companies/my-company') return [200, companies[0]];
+    if (p === '/api/core/companies/my-company') return role === 'WAREHOUSE_MANAGER' ? [403, { message: 'Company admin only' }] : [200, companies[0]];
     if (p === '/api/core/warehouses' || p === '/api/core/warehouses/my-company') return list(url.searchParams.get('status') ? [] : warehouses);
     if (p === '/api/core/users/me') return [200, { id: authSession().userId, fullName: 'Người kiểm tra', email: 'test@example.com', role, status: 'ACTIVE', profile: {}, companyId: authSession().companyId }];
+    if (p === '/api/core/users') return list([employee, { id: 'admin', fullName: 'Quản trị viên', email: 'admin@example.com', role: 'SYSTEM_ADMIN', status: 'ACTIVE', profile: {} }]);
     if (p === '/api/core/employees') return [200, [employee]];
     if (p === '/api/core/suppliers') return list(suppliers);
     if (/\/suppliers\/[^/]+\/products$/.test(p)) return [200, [{ id: 'sp-' + p.split('/')[4], sku: 'SP1', name: 'Sản phẩm cung ứng', unit: 'cái', price: 20000 }]];
@@ -111,12 +116,37 @@ try {
                 const [status, result] = fixture(new URL(request.url), request.method, request.postData ? JSON.parse(request.postData) : undefined);
                 if (isLogin) await sleep(350);
                 await send('Fetch.fulfillRequest', { requestId, responseCode: status, responseHeaders: [{ name: 'Content-Type', value: 'application/json' }], body: Buffer.from(JSON.stringify(result)).toString('base64') });
-            } catch (e) { failures.push(String(e)); }
+            } catch (e) {
+                // Navigation can cancel a background refresh after Chrome has paused it.
+                if (!String(e).includes('Invalid InterceptionId')) failures.push(String(e));
+            }
         }
     };
     evaluate = async expression => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true }); if (r.exceptionDetails) throw Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
     async function until(expression, label = expression) { for (let i = 0; i < 150; i++) { if (await evaluate(expression)) return; await sleep(100); } throw Error('Timed out: ' + label + '\n' + await evaluate('document.body.innerText.slice(0,2500)')); }
     async function go(route, ready = '!!document.querySelector(".wf-content")') { await send('Page.navigate', { url: origin + route }); await until(ready); await until('![...document.querySelectorAll(".wf-notice")].some(e=>e.textContent.includes("Đang tải"))'); await sleep(150); }
+    async function notifyFromAnotherTab() {
+        const target = await (await fetch('http://127.0.0.1:9225/json/new?' + encodeURIComponent(origin + '/favicon.svg'), { method: 'PUT' })).json();
+        const other = new WebSocket(target.webSocketDebuggerUrl);
+        try {
+            await new Promise((resolve, reject) => { other.onopen = resolve; other.onerror = reject; });
+            await sleep(300);
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => reject(Error('Cross-tab notification timed out')), 5000);
+                other.onmessage = ({ data }) => {
+                    const message = JSON.parse(data);
+                    if (message.id !== 1) return;
+                    clearTimeout(timeout);
+                    if (message.result?.exceptionDetails || message.error) reject(Error(JSON.stringify(message)));
+                    else resolve();
+                };
+                other.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression: 'localStorage.setItem("wareflow.data.changed", crypto.randomUUID())' } }));
+            });
+        } finally {
+            other.close();
+            await fetch('http://127.0.0.1:9225/json/close/' + target.id);
+        }
+    }
     async function pressEnter() {
         await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13, text: '\r' });
         await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 });
@@ -165,6 +195,15 @@ try {
     assert.ok(await evaluate('document.querySelectorAll(".adm-stat-value")[1].textContent.includes("25")'), 'expense includes fee once');
     assert.ok(await evaluate('document.querySelectorAll(".adm-stat-value")[2].textContent.includes("75")'));
     assert.equal(await evaluate('/NaN|Infinity/.test(document.body.innerText)'), false);
+    transactions.push({ id: 'warehouse-charge', companyId: 'c1', warehouseId: 'w1', type: 'EXPENSE', category: 'FEE', amount: 7000000, note: 'Tiền thuê kho mới', createdAt: past(0) });
+    await notifyFromAnotherTab();
+    await until('document.querySelectorAll(".adm-stat-value")[1].textContent.includes("32")', 'another tab updates finance totals without navigation');
+    assert.ok(await evaluate('document.body.innerText.includes("Tiền thuê kho mới")'), 'new warehouse charge appears in the ledger');
+    await evaluate("window.__pageMarker = 'same-document'");
+    transactions.push({ id: 'remote-charge', companyId: 'c1', warehouseId: 'w1', type: 'EXPENSE', category: 'FEE', amount: 1000000, note: 'Giao dịch từ thiết bị khác', createdAt: past(0) });
+    await sleep(16000);
+    await until('document.querySelectorAll(".adm-stat-value")[1].textContent.includes("33")', 'polling picks up changes from other devices');
+    assert.equal(await evaluate('window.__pageMarker'), 'same-document', 'refresh does not reload the page');
     await evaluate(`(()=>{const s=document.querySelector('[aria-label="Kỳ báo cáo"]');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(s,'365');s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
     await until('document.querySelectorAll(".adm-stat-value")[0].textContent.includes("150")', 'report range recalculated');
     await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1000, deviceScaleFactor: 1, mobile: false });
@@ -195,6 +234,7 @@ try {
     await evaluate('document.querySelector(".adm-modal form").requestSubmit()');
     await until('!document.querySelector(".adm-modal")');
     assert.ok(writes.some(w => w.p === '/api/finance/transactions' && w.body.amount === 123456 && w.body.type === 'INCOME' && w.body.warehouseId === null));
+    await until('document.body.innerText.includes("Khoản thu kiểm thử")', 'saving immediately refreshes the current layout');
     await go('/company/profile');
     await until('document.querySelector("input[name=name]")?.value==="Công ty A"');
     await setField('Tên công ty', 'Công ty cập nhật'); await evaluate('document.querySelector(".wf-profile-form").requestSubmit()');
@@ -210,6 +250,24 @@ try {
     await evaluate('document.querySelector(".adm-modal form").requestSubmit()');
     await until('document.body.innerText.includes("Hàng mới") && !document.querySelector(".adm-modal")');
     assert.ok(writes.some(w => w.p === '/api/inventory/warehouses/w1/products' && w.body.sku === 'NEW-SKU' && w.body.minStock === 2));
+    await go('/storehouse/inbound/new');
+    await setField('Nhà cung cấp', 's1');
+    await until('!!document.querySelector("option[value=sp-s1]")', 'supplier catalogue loaded');
+    await setField('Sản phẩm', 'sp-s1'); await setField('Số lượng', '3');
+    assert.equal(await evaluate('[...document.querySelectorAll("label")].find(l=>l.textContent.startsWith("Đơn giá")).querySelector("input").value'), '20000', 'catalogue price prefilled');
+    await evaluate('document.querySelector(".wf-card form").requestSubmit()');
+    await until('location.pathname === "/storehouse/inbound"');
+    const imported = products.find(p => p.sku === 'SP1' && p.warehouseId === 'w1');
+    assert.ok(imported, 'supplier product registered in warehouse');
+    assert.ok(writes.some(w => w.p.endsWith('/purchase-orders') && w.body.supplierId === 's1' && w.body.lines[0].productId === imported.id && w.body.lines[0].price === 20000), 'PO uses warehouse product ID and supplier price');
+    await go('/storehouse/inventory'); await clickText('Thêm sản phẩm');
+    await until('!!document.querySelector(".adm-modal option[value=s1]")', 'add-product supplier options loaded');
+    await setField('Nhà cung cấp', 's1'); await until('!!document.querySelector("option[value=sp-s1]")');
+    await setField('Sản phẩm của nhà cung cấp', 'sp-s1');
+    assert.equal(await evaluate('[...document.querySelectorAll("label")].find(l=>l.textContent.startsWith("SKU")).querySelector("input").value'), 'SP1', 'add-product form imports supplier SKU');
+    await setField('Nhà cung cấp', 's-new');
+    assert.equal(await evaluate('[...document.querySelectorAll("label")].find(l=>l.textContent.startsWith("SKU")).querySelector("input").value'), '', 'changing supplier clears previous product');
+    await go('/storehouse/inventory');
     await evaluate(`(()=>{const s=document.querySelector('[aria-label="Kho đang làm việc"]');s.value='w2';s.dispatchEvent(new Event('change',{bubbles:true}));})()`);
     await until('!document.body.innerText.includes("Sản phẩm A")', 'changing warehouse drops old stock');
     await go('/storehouse/finance');

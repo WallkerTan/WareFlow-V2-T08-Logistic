@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { allPages, object } from './api';
 import type { Row } from './api';
 import { getAuthSession } from './authApi';
-import { invalidateData, useDataStatus, useQuery } from './query';
+import { invalidateData, useDataStatus, useDataSync, useQuery } from './query';
 
 type Scope = { warehouses: Row[]; warehouseId: string; warehouse: Row | undefined; selectWarehouse: (id: string) => void; loading: boolean };
 const Context = createContext<Scope>({ warehouses: [], warehouseId: '', warehouse: undefined, selectWarehouse: () => {}, loading: true });
@@ -11,6 +11,7 @@ const Context = createContext<Scope>({ warehouses: [], warehouseId: '', warehous
 // eslint-disable-next-line react-refresh/only-export-components
 export const useWorkspace = () => useContext(Context);
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+    useDataSync();
     const session = getAuthSession()!;
     const source = useQuery('scope-warehouses', async () => {
         const data = await allPages<Row>('core', session.role === 'SYSTEM_ADMIN' ? '/warehouses' : '/warehouses/my-company');

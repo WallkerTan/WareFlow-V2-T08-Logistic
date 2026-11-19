@@ -93,7 +93,7 @@ export default function AdminDashboard() {
                     footnote="cần phê duyệt"
                 />
                 <StatCard
-                    label="Tài khoản đang đăng nhập"
+                    label="Tài khoản hoạt động"
                     value={formatNumber(users.filter(u => u.status === 'ACTIVE').length)}
                     icon={<Users size={17} />}
                     tone="success"

@@ -59,6 +59,7 @@ public class WarehouseTransactionService {
     private final SystemLogService               systemLogService;
     private final NotificationService            notificationService;
     private final InventorySnapshotClient        inventorySnapshotClient;
+    private final WarehouseFinanceService        warehouseFinanceService;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 1. TẠO ĐỀ NGHỊ MUA / THUÊ KHO
@@ -105,7 +106,7 @@ public class WarehouseTransactionService {
                 .company(company)
                 .type(request.getType())
                 .status(WarehouseTransactionStatus.PENDING)
-                .offeredPrice(request.getOfferedPrice())
+                .offeredPrice(request.getOfferedPrice() != null ? request.getOfferedPrice() : warehouse.getPrice())
                 .negotiation(Map.of("messages", List.of()))
                 .build();
 
@@ -228,9 +229,9 @@ public class WarehouseTransactionService {
      */
     @Transactional
     public WarehouseTransactionResponse approve(UUID id) {
-        WarehouseTransaction transaction = getTransaction(id);
+        WarehouseTransaction transaction = transactionRepository.findForUpdate(id)
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy đề nghị giao dịch"));
         UserPrincipal current = SecurityUtils.getCurrentUser();
-        ensureCanDecide(transaction, current);
         ensureOpen(transaction);
 
         if (transaction.getType() == WarehouseTransactionType.RETURN) {
@@ -240,7 +241,14 @@ public class WarehouseTransactionService {
         User approver = userRepository.findById(current.getId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy người duyệt"));
 
-        Warehouse warehouse = transaction.getWarehouse();
+        Warehouse warehouse = warehouseRepository.findForUpdate(transaction.getWarehouse().getId())
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy kho"));
+        ensureCanDecide(transaction, current);
+        if (warehouse.getStatus() != WarehouseStatus.AVAILABLE && warehouse.getStatus() != WarehouseStatus.PENDING)
+            throw ApiException.conflict("Kho đã được xử lý bởi giao dịch khác");
+        if (transaction.getOfferedPrice() == null) transaction.setOfferedPrice(warehouse.getPrice());
+        if (transaction.getOfferedPrice() == null || transaction.getOfferedPrice().signum() <= 0)
+            throw ApiException.badRequest("Giao dịch cần giá mua/thuê lớn hơn 0 để ghi nhận thu chi");
         Company buyerCompany = transaction.getCompany();
 
         // ── Chuyển quyền sở hữu kho ──
@@ -250,9 +258,13 @@ public class WarehouseTransactionService {
         // ── Hoàn tất giao dịch ──
         transaction.setApprovedBy(approver);
         transaction.setStatus(WarehouseTransactionStatus.COMPLETED);
+        transaction.setCompletedAt(Instant.now());
 
         warehouseRepository.save(warehouse);
         WarehouseTransaction saved = transactionRepository.save(transaction);
+
+        // Commit the accounting event with ownership; delivery can safely retry after a finance outage.
+        warehouseFinanceService.enqueue(saved);
 
         String action = transaction.getType() == WarehouseTransactionType.BUY
                 ? "BUY_WAREHOUSE" : "RENT_WAREHOUSE";

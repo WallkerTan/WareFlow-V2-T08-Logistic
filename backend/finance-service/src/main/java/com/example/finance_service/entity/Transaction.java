@@ -4,7 +4,6 @@ import com.example.finance_service.entity.enums.TransactionCategory;
 import com.example.finance_service.entity.enums.TransactionType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -46,7 +45,9 @@ public class Transaction {
     @Column(columnDefinition = "TEXT")
     private String note;
 
-    @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private Instant createdAt;
+
+    @PrePersist
+    void timestamp() { if (createdAt == null) createdAt = Instant.now(); }
 }

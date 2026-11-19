@@ -25,6 +25,7 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 wareflow:
+  finance-service-url: ${FINANCE_SERVICE_URL:http://localhost:8083}
   jwt:
     # Base64 encoded, tối thiểu 32 bytes. Override bằng biến môi trường khi deploy.
     secret: ${JWT_SECRET:Y3Vyb3VyZS1uZWVkcy1hLXNlY3JldC1rZXktbWluaW11bS0zMi1ieXRlcy1sb25nISE=}
