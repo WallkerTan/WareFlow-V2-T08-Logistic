@@ -1,9 +1,10 @@
-export type CashEntry = { type: string; amount: number; createdAt: string };
+export type CashEntry = { type: string; amount: number; createdAt: string; created_at?: string; date?: string };
 const DAY = 86_400_000;
 // Calendar boundaries are fixed to Vietnam, independent of the browser timezone.
-export function dayKey(value: string | number | Date): string {
+export function dayKey(value: string | number | Date | undefined | null): string {
+    if (!value) return new Date().toISOString().slice(0, 10);
     const time = new Date(value).getTime();
-    return Number.isFinite(time) ? new Date(time + 7 * 3_600_000).toISOString().slice(0, 10) : '';
+    return Number.isFinite(time) ? new Date(time + 7 * 3_600_000).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
 }
 export function percentage(part: number, total: number): number | null {
     return Number.isFinite(part) && Number.isFinite(total) && total > 0 ? part / total * 100 : null;
@@ -28,10 +29,15 @@ export function cashSummary(entries: CashEntry[]) {
     const expense = sumMoney(entries.filter(r => r.type === 'EXPENSE' || r.type === 'SYSTEM_FEE').map(r => r.amount));
     return { income, expense, fee, net: sumMoney([income, -expense]), margin: percentage(income - expense, income) };
 }
-export function inPeriod<T extends { createdAt: string }>(entries: T[], days: number, now = new Date(), previous = false): T[] {
+export function inPeriod<T extends { createdAt?: string; created_at?: string; date?: string }>(entries: T[], days: number, now = new Date(), previous = false): T[] {
     const end = Date.parse(dayKey(now)) + DAY - (previous ? days * DAY : 0);
     const start = end - days * DAY;
-    return entries.filter(r => { const key = dayKey(r.createdAt); const time = Date.parse(key); return time >= start && time < end; });
+    return entries.filter(r => {
+        const rawDate = r.createdAt || r.created_at || r.date || now;
+        const key = dayKey(rawDate);
+        const time = Date.parse(key);
+        return Number.isFinite(time) && time >= start && time < end;
+    });
 }
 export function cashSeries(entries: CashEntry[], days: number, now = new Date()) {
     const end = Date.parse(dayKey(now));
@@ -42,7 +48,8 @@ export function cashSeries(entries: CashEntry[], days: number, now = new Date())
         if (!buckets.has(key)) buckets.set(key, []);
     }
     for (const entry of inPeriod(entries, days, now)) {
-        const key = dayKey(entry.createdAt).slice(0, days > 60 ? 7 : 10);
+        const rawDate = entry.createdAt || entry.created_at || entry.date || now;
+        const key = dayKey(rawDate).slice(0, days > 60 ? 7 : 10);
         buckets.get(key)?.push(entry);
     }
     return [...buckets].map(([key, list]) => {

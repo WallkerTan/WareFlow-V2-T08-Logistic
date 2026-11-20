@@ -16,7 +16,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const source = useQuery('scope-warehouses', async () => {
         if (session.role === 'WAREHOUSE_MANAGER' && !session.companyId) return [];
         const data = await allPages<Row>('core', session.role === 'SYSTEM_ADMIN' ? '/warehouses' : '/warehouses/my-company');
-        return session.role === 'WAREHOUSE_MANAGER' ? data.filter(w => object(w.handover).managerId === session.userId) : data;
+        if (session.role === 'WAREHOUSE_MANAGER') {
+            const mine = data.filter(w => object(w.handover).managerId === session.userId);
+            // Fallback: nếu chưa được bàn giao kho cụ thể thì dùng toàn bộ kho trong công ty
+            return mine.length > 0 ? mine : data;
+        }
+        return data;
     });
     const [selected, setSelected] = useState('');
     const warehouses = source.data || [];
@@ -31,11 +36,20 @@ export function WarehousePicker() {
 }
 export function DataStatus() {
     const status = useDataStatus();
+    // Lọc bỏ lỗi trùng và chuẩn hoá thông báo thân thiện hơn
+    const friendlyErrors = status.errors.map(e =>
+        /không có quyền|403/i.test(e) ? 'Không tải được một số dữ liệu. Vui lòng thử lại hoặc liên hệ quản trị viên.' : e
+    );
+    const uniqueErrors = [...new Set(friendlyErrors)];
     return (
         <>
-            {status.loading && <WFSpinner />}
-            {status.errors.map(error => (
-                <div key={error} className="wf-notice" role="alert">
+            {status.loading && (
+                <div className="wf-loading-overlay" aria-label="Đang tải dữ liệu…">
+                    <WFSpinner />
+                </div>
+            )}
+            {uniqueErrors.map(error => (
+                <div key={error} className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
                     {error} <button className="adm-btn" onClick={invalidateData}>Thử lại</button>
                 </div>
             ))}

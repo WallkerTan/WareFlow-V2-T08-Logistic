@@ -1,4 +1,5 @@
 import { useAdminData } from '../../services/data';
+import { getPaginationItems } from '../../components/admin/AdminUI';
 import { useState } from "react";
 import { Modal, message } from "antd";
 import {
@@ -479,17 +480,34 @@ export default function WarehouseManagement() {
                         >
                             <ChevronLeft size={16} />
                         </button>
-                        {Array.from({ length: pages }, (_, i) => (
-                            <button
-                                className={
-                                    currentPage === i + 1 ? "current" : ""
-                                }
-                                key={i}
-                                onClick={() => setPage(i + 1)}
-                            >
-                                {i + 1}
-                            </button>
-                        ))}
+                        {getPaginationItems(currentPage, pages).map((item, index) =>
+                            item === '...' ? (
+                                <span
+                                    key={`dots-${index}`}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        minWidth: 26,
+                                        color: '#8a96a8',
+                                        fontWeight: 600,
+                                        userSelect: 'none'
+                                    }}
+                                >
+                                    …
+                                </span>
+                            ) : (
+                                <button
+                                    className={
+                                        currentPage === item ? "current" : ""
+                                    }
+                                    key={item}
+                                    onClick={() => setPage(item)}
+                                >
+                                    {item}
+                                </button>
+                            )
+                        )}
                         <button
                             aria-label="Trang sau"
                             disabled={currentPage === pages}

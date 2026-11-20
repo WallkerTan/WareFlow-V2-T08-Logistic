@@ -42,7 +42,14 @@ import { clearData, useQuery } from "../../services/query";
 import { request } from "../../services/api";
 
 function WorkspaceOutlet({ scoped }: { scoped: boolean }) {
-    const { warehouseId } = useWorkspace();
+    const { warehouseId, loading } = useWorkspace();
+    if (scoped && !loading && !warehouseId) {
+        return (
+            <div className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
+                Tài khoản chưa được bàn giao kho. Vui lòng liên hệ quản trị viên để được phân công kho làm việc.
+            </div>
+        );
+    }
     return <Outlet key={scoped ? warehouseId : "workspace"} />;
 }
 
@@ -67,6 +74,10 @@ export default function WorkspaceShell({
         if (!expiresAt) return;
         return scheduleSessionExpiry(expiresAt);
     }, [expiresAt]);
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    }, [pathname]);
 
     const userProfileQuery = useQuery<{ avatar?: string; profile?: { avatar?: string; logo?: string } }>(
         session?.userId ? `user-profile:${session.userId}` : null,
