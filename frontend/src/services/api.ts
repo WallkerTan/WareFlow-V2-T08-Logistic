@@ -20,7 +20,8 @@ export async function request<T>(service: Service, path: string, options: Reques
     if (options.body && !(options.body instanceof FormData)) headers.set('Content-Type', 'application/json');
     headers.set('Accept', 'application/json');
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 20000);
+    const timeoutMs = service === 'core' && path.startsWith('/assistant/') ? 60000 : 20000;
+    const timeout = window.setTimeout(() => controller.abort(), timeoutMs);
     const signal = options.signal ? AbortSignal.any([options.signal, controller.signal]) : controller.signal;
     try {
         const response = await fetch(endpoint(service, path), { ...options, headers, signal });

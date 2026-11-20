@@ -1,5 +1,6 @@
 import { invalidateData } from "../../services/query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { getAuthSession } from "../../services/authApi";
 import { useAdminData, saveResource } from "../../services/data";
 import { Modal } from "antd";
@@ -34,6 +35,19 @@ export default function WarehouseMarketplace() {
     const [amount, setAmount] = useState("");
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const location = useLocation();
+    const navigate = useNavigate();
+    const offerDraft = location.state?.warehouseOffer;
+    useEffect(() => {
+        if (!offerDraft || !depots.length) return;
+        const warehouse = depots.find(w => w.id === offerDraft.id && w.status === "available");
+        if (warehouse) {
+            setSelected(warehouse);
+            setOffering(true);
+            setAmount(offerDraft.price == null ? "" : String(offerDraft.price / 1e6));
+        } else setError("Kho không còn sẵn sàng giao dịch.");
+        navigate(location.pathname, { replace: true, state: null });
+    }, [offerDraft, depots, location.pathname, navigate]);
     const offers = raw.warehouseTransactions.map((r) => ({
         id: String(r.id),
         warehouseId: String(r.warehouseId),

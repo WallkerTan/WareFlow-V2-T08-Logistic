@@ -32,6 +32,8 @@ let failSupplier = false;
 let socket, send, evaluate;
 const writes = [];
 const loginRequests = [];
+let expiryRequests = 0;
+const expiryQuestion = 'lô nào hết hạn trong 7 ngày';
 const reads = [];
 const failures = [];
 const runtimeErrors = [];
@@ -47,6 +49,22 @@ function fixture(url, method, body) {
         assert.equal(body.email, 'test@example.com');
         if (body.password !== 'correct-password') return [401, { message: 'Email hoặc mật khẩu không chính xác' }];
         return [200, authSession()];
+    }
+    if (p === '/api/core/assistant/chat' && method === 'POST') {
+        if (body.message === 'Cảm ơn') {
+            assert.equal(body.history.at(-1).role,'assistant');
+            assert.equal(body.history.at(-2).content,expiryQuestion);
+            return [200,{message:'Rất vui được hỗ trợ bạn.',intent:{action:'CHAT'},matches:[]}];
+        }
+        if (body.message === expiryQuestion) {
+            expiryRequests++;
+            if (expiryRequests === 1) return [502, { message: 'Tạm mất kết nối trợ lý' }];
+            return [200, { message: 'Không có lô hết hạn trong 7 ngày.', intent: { action: 'LOTS' }, matches: [] }];
+        }
+        assert.equal(body.message,'Nhập 3 sản phẩm SKU1');
+        return [200,{message:'Tìm thấy 1 kết quả.',intent:{action:'PURCHASE',quantity:3},matches:[
+            {warehouseId:'w1',warehouseName:'Kho 1',product:products[0]}
+        ]}];
     }
     if (method !== 'GET') {
         writes.push({ p, method, body });
@@ -75,6 +93,7 @@ function fixture(url, method, body) {
     if (inventory) {
         const [, wh, collection] = inventory;
         if (collection === 'transfer-products') return list([{ id: 'p2', sku: 'SKU1', name: 'Sản phẩm A' }]);
+        if (collection === 'products/p1' && wh === 'w1') return [200,products[0]];
         if (collection === 'products') return list(products.filter(p => p.warehouseId === wh));
         if (collection.endsWith('/lots')) return [200, (role === 'COMPANY_ADMIN' ? [1, 2, 3, 4] : [1]).map(i => ({ id: 'lot' + i, productId: 'p1', lotCode: 'LOT' + i, quantity: 12, reserved: 3, available: 9, expiryDate: null, status: 'OK' }))];
         if (collection === 'purchase-orders') return list(wh === 'w1' ? [doc] : []);
@@ -189,6 +208,50 @@ try {
     assert.ok(writes.some(w => w.p === '/api/core/suppliers' && w.body.name === 'Nhà cung cấp mới'));
 
     await login('COMPANY_ADMIN');
+    await go('/company/inventory');
+    async function checkExpiryQuestion(retry) {
+        await clickText('Trợ lý AI');
+        await until('!!document.getElementById("assistant-question")');
+        await setField('Câu hỏi hoặc yêu cầu', expiryQuestion);
+        const button = 'document.getElementById("assistant-question").form.querySelector("button[type=submit]")';
+        await until(`!${button}.disabled && ${button}.innerText.trim() === "Gửi"`);
+        const visible = await evaluate(`(() => {
+            const b = ${button}, style = getComputedStyle(b);
+            return b.getBoundingClientRect().height > 0 && style.backgroundColor !== 'rgba(0, 0, 0, 0)'
+                && style.backgroundColor !== style.color;
+        })()`);
+        assert.ok(visible, 'send button has a visible background and label');
+        const before = expiryRequests;
+        await clickText('Gửi');
+        if (retry) {
+            await until('document.body.innerText.includes("Tạm mất kết nối trợ lý")');
+            assert.equal(await evaluate('document.getElementById("assistant-question").value'), expiryQuestion);
+            await clickText('Gửi');
+        }
+        await until('document.body.innerText.includes("Không có lô hết hạn trong 7 ngày.")');
+        assert.equal(expiryRequests, before + (retry ? 2 : 1));
+    }
+    await checkExpiryQuestion(true);
+    await setField('Câu hỏi hoặc yêu cầu','Cảm ơn');
+    await clickText('Gửi');
+    await until('document.body.innerText.includes("Rất vui được hỗ trợ bạn.")');
+    await go('/company/inventory');
+    const writesBeforeDraft = writes.length;
+    await clickText('Trợ lý AI');
+    await until('!!document.getElementById("assistant-question")');
+    await evaluate(`(() => {
+        const input = document.getElementById("assistant-question");
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(input,"Nhập 3 sản phẩm SKU1");
+        input.dispatchEvent(new Event("input",{bubbles:true}));
+    })()`);
+    await clickText('Gửi');
+    await until('document.body.innerText.includes("Tìm thấy 1 kết quả.")');
+    await clickText('Kho 1 · SKU1 · Sản phẩm A');
+    await until('document.querySelector(".ant-modal form section input")?.value==="3"');
+    assert.equal(await evaluate('document.querySelector(".ant-modal form section select").value'),'p1');
+    await clickText('Quay lại');
+    assert.equal(writes.length,writesBeforeDraft,'canceling assistant draft must not write');
+
     for (const route of ['/company/dashboard', '/company/warehouses', '/company/inventory', '/company/finance', '/company/marketplace', '/company/employees', '/company/transfers', '/company/approvals', '/company/profile', '/company/budget/new', '/company/employees/new', '/company/transfers/new']) {
         await go(route); assert.equal(await evaluate('document.querySelectorAll(".wf-notice[role=alert]").length'), 0, route); console.log('PASS', route);
     }
@@ -230,6 +293,7 @@ try {
     await until('document.body.innerText.includes("Đã lưu hồ sơ thành công.")');
     assert.ok(writes.some(w => w.p === '/api/core/companies/c1' && w.method === 'PUT' && w.body.name === 'Công ty cập nhật' && w.body.businessModel === 'TECH'));
     await login('WAREHOUSE_MANAGER');
+    await checkExpiryQuestion(false);
     for (const route of ['/storehouse/inventory', '/storehouse/finance', '/storehouse/budget', '/storehouse/lots', '/storehouse/inbound', '/storehouse/outbound', '/storehouse/history', '/storehouse/shipments', '/storehouse/profile', '/storehouse/inbound/new', '/storehouse/outbound/new', '/storehouse/shipments/new']) {
         await go(route); assert.equal(await evaluate('document.querySelectorAll(".wf-notice[role=alert]").length'), 0, route); console.log('PASS', route);
     }

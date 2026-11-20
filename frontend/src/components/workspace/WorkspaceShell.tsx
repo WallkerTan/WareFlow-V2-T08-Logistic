@@ -8,6 +8,7 @@ import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
 import "../../layout/main/roles.css";
 import "./workspace-frame.css";
+import WorkspaceAssistant from "./WorkspaceAssistant";
 
 export type WorkspaceConfig = {
     role: "admin" | "company" | "storehouse";
@@ -216,6 +217,7 @@ export default function WorkspaceShell({
                     </header>
                     <main className="wf-content">
                         <DataStatus />
+                        <WorkspaceAssistant role={config.role} />
                         {config.role === "storehouse" && <WarehousePicker />}
                         <WorkspaceOutlet
                             scoped={config.role === "storehouse"}

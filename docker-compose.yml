@@ -76,6 +76,10 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wareflow_core
+      WF_AI_BASE_URL: ${WF_AI_BASE_URL:-https://api.openai.com/v1}
+      WF_AI_MODEL: ${WF_AI_MODEL:-}
+      WF_AI_API_KEY: ${WF_AI_API_KEY:-}
+      INVENTORY_SERVICE_URL: http://inventory-service:8082
       SMTP_HOST: "${SMTP_HOST:-localhost}"
       SMTP_PORT: "${SMTP_PORT:-587}"
       SMTP_USERNAME: "${SMTP_USERNAME:-}"
