@@ -10,12 +10,19 @@ import { RevealOnScroll } from "../components/landing/RevealOnScroll";
 import { PhoneCall } from "lucide-react";
 import WareFlowFooter from "../components/common/WareFlowFooter";
 
+/** Smooth scroll helper – works even when html doesn't have scroll-behavior:smooth */
+const scrollTo = (id: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
+
 const LandingPage = () => {
     return (
         <div className="landing-page">
             {/* Header */}
             <header className="header">
-                <a className="brand" href="#top">
+                <a className="brand" href="#top" onClick={scrollTo("top")}>
                     <img
                         src="/logo.png"
                         alt="WareFlow"
@@ -26,15 +33,16 @@ const LandingPage = () => {
                     </span>
                 </a>
                 <nav>
-                    <a href="#product">Sản phẩm</a>
-                    <a href="#features">Tính năng</a>
-                    <a href="#workflow">Quy trình</a>
-                    <a href="#contact">Liên hệ</a>
+                    <a href="#product" onClick={scrollTo("product")}>Sản phẩm</a>
+                    <a href="#features" onClick={scrollTo("features")}>Tính năng</a>
+                    <a href="#workflow" onClick={scrollTo("workflow")}>Quy trình</a>
+                    <a href="#contact" onClick={scrollTo("contact")}>Liên hệ</a>
                 </nav>
                 <div className="header-actions">
                     <a
                         className="login"
                         href="#contact"
+                        onClick={scrollTo("contact")}
                         style={{
                             display: "flex",
                             alignItems: "center",
@@ -78,6 +86,7 @@ const LandingPage = () => {
                             <a
                                 className="button button-outline"
                                 href="#contact"
+                                onClick={scrollTo("contact")}
                             >
                                 <PhoneCall size={18} /> Liên hệ với chúng tôi
                             </a>
@@ -184,6 +193,7 @@ const LandingPage = () => {
                             <a
                                 className="button"
                                 href="#contact"
+                                onClick={scrollTo("contact")}
                                 style={{
                                     background: "rgba(255,255,255,0.15)",
                                     border: "1px solid rgba(255,255,255,0.3)",
