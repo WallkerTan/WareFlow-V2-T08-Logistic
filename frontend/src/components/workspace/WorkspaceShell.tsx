@@ -42,7 +42,14 @@ import { clearData, useQuery } from "../../services/query";
 import { request } from "../../services/api";
 
 function WorkspaceOutlet({ scoped }: { scoped: boolean }) {
-    const { warehouseId } = useWorkspace();
+    const { warehouseId, loading } = useWorkspace();
+    if (scoped && !loading && !warehouseId) {
+        return (
+            <div className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
+                Tài khoản chưa được bàn giao kho. Vui lòng liên hệ quản trị viên để được phân công kho làm việc.
+            </div>
+        );
+    }
     return <Outlet key={scoped ? warehouseId : "workspace"} />;
 }
 
