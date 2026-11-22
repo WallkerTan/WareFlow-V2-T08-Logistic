@@ -14,6 +14,8 @@ import CompanyFinancePage from "../page/company/CompanyFinancePage";
 import CompanyEmployeesPage from "../page/company/CompanyEmployeesPage";
 import CompanyTransfersPage from "../page/company/CompanyTransfersPage";
 import CompanyApprovalsPage from "../page/company/CompanyApprovalsPage";
+import CompanyBatchesPage from "../page/company/CompanyBatchesPage";
+import BatchImportPage from "../components/workspace/BatchImportPage";
 import CompanyBudgetNewPage from "../page/company/CompanyBudgetNewPage";
 import CompanyEmployeesNewPage from "../page/company/CompanyEmployeesNewPage";
 import CompanyTransfersNewPage from "../page/company/CompanyTransfersNewPage";
@@ -134,6 +136,8 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <Navigate to="dashboard" replace /> },
             { path: "dashboard", element: <CompanyDashboardPage /> },
+            { path: "batches", element: <CompanyBatchesPage /> },
+            { path: "inbound", element: <BatchImportPage /> },
             { path: "warehouses", element: <CompanyWarehouses /> },
             { path: "inventory", element: <CompanyInventoryPage /> },
             { path: "finance", element: <CompanyFinancePage /> },

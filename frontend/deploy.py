@@ -3,7 +3,7 @@ import paramiko
 
 host = "221.121.5.186"
 user = "root"
-pwd = "8BG3g4r&Jp=WQ8K1"
+pwd = "t6gkv9DSPChv"
 
 def make_dirs(sftp, remote_path):
     parts = remote_path.strip("/").split("/")

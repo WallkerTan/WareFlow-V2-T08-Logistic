@@ -8,6 +8,7 @@ import { request, mutate, money, type Row } from '../../services/api';
 import { saveResource } from '../../services/data';
 import { invalidateData } from '../../services/query';
 import OperationForm from './OperationForm';
+import { randomUUID } from '../../utils/format';
 
 type Action = 'SEARCH'|'LOTS'|'MARKET'|'EDIT'|'SALE'|'PURCHASE'|'ADJUST'|'HELP'|'CHAT';
 type Intent = {action: Action; quantity?: number; price?: number; newName?: string; newSku?: string; unit?: string; barcode?: string; minStock?: number};
@@ -70,7 +71,7 @@ function Chat({warehouseId}: {warehouseId?: string}) {
             if (lines) {
                 let message = 'Để tạo đơn mua, hãy ghi số lượng và mã SKU của từng sản phẩm. Ví dụ: ' + orderExample;
                 if (lines.length) {
-                    const id = attempt?.message === term ? attempt.id : crypto.randomUUID();
+                    const id = attempt?.message === term ? attempt.id : randomUUID();
                     setAttempt({message:term,id});
                     const order = await mutate<{code:string;total:number}>('core','/purchase-batches/from-chat','POST',{requestId:id,lines});
                     invalidateData();

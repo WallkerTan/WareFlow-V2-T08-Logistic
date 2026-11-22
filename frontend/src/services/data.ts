@@ -40,20 +40,32 @@ export function useAdminData(...wanted: DataKey[]) {
         const today = dayKey(new Date()); const year = Number(today.slice(0, 4));
         // Fetch current and previous years so charts have full timeline
         const periods = collection === 'transactions' ? [year - 1, year].map(String) : [today.slice(0, 7), `${year}`];
-        const jobs = companiesIds.flatMap(companyId => periods.map(period => ({ companyId, period })));
-        return (await mapLimit(jobs, async j => {
+        const jobs = isAdmin
+            ? [
+                ...companiesIds.flatMap(companyId => periods.map(period => ({ companyId: companyId as string | undefined, period }))),
+                ...periods.map(period => ({ companyId: undefined, period }))
+            ]
+            : companiesIds.flatMap(companyId => periods.map(period => ({ companyId: companyId as string | undefined, period })));
+        const listWithDups = (await mapLimit(jobs, async j => {
             try {
                 const list = await allPages<Row>('finance', `/${collection}${query({
-                    companyId: isAdmin ? j.companyId : undefined,
+                    companyId: j.companyId,
                     period: j.period,
                     warehouseId: isManager ? scope.warehouseId : undefined
                 })}`);
-                return list.map(r => ({ ...r, companyId: j.companyId }));
+                return list.map(r => ({ ...r, companyId: j.companyId || r.companyId } as Row));
             } catch (error) {
                 if(collection==='transactions') throw error;
                 return [];
             }
         })).flat();
+        const seen = new Set<string>();
+        return listWithDups.filter((r: Row) => {
+            const id = str(r.id);
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
     }
     function resource(key: DataKey, loader: () => Promise<Row[]>) {
         // Hooks run in a fixed order; only the requests needed by this view are enabled.
