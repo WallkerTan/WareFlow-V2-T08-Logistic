@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.*;
 
 public interface ShipmentRepository extends JpaRepository<Shipment, UUID>, JpaSpecificationExecutor<Shipment> {
+    Optional<Shipment> findByDocumentIdAndWarehouseId(UUID documentId,UUID warehouseId);
     Optional<Shipment> findByIdAndWarehouseId(UUID id, UUID warehouseId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select s from Shipment s where s.id = :id and s.warehouseId = :warehouseId")

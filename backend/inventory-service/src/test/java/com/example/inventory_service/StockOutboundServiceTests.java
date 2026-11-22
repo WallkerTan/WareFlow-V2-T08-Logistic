@@ -36,7 +36,7 @@ class StockOutboundServiceTests {
         service = new StockOutboundService(documents, lots, products, movements);
         source = Product.builder().id(UUID.randomUUID()).warehouseId(warehouse).sku("SKU-1").unit("box").build();
         lot = StockLot.builder().id(UUID.randomUUID()).product(source).lotCode("BATCH-1")
-                .quantity(new BigDecimal("10")).reserved(BigDecimal.ZERO).build();
+                .unitCost(BigDecimal.TEN).quantity(new BigDecimal("10")).reserved(BigDecimal.ZERO).build();
         Map<String, Object> line = new LinkedHashMap<>();
         line.put("lotId", lot.getId().toString()); line.put("quantity", new BigDecimal("4"));
         doc = StockDocument.builder().id(id).warehouseId(warehouse).type(StockDocumentType.EXPORT_SALE)
@@ -50,10 +50,27 @@ class StockOutboundServiceTests {
     void saveDoc() { when(documents.save(any())).thenAnswer(i -> i.getArgument(0)); }
     CreateExportRequest request(StockDocumentType type, UUID targetWarehouse, UUID targetProduct) {
         return new CreateExportRequest(type, targetWarehouse,
-                List.of(new CreateExportRequest.Line(lot.getId(), new BigDecimal("4"), targetProduct)), "test");
+                List.of(new CreateExportRequest.Line(lot.getId(), new BigDecimal("4"), targetProduct)), "test","An","0900000000","Hà Nội");
     }
     void assertConflict(Runnable action) {
         assertEquals(409, assertThrows(ResponseStatusException.class, action::run).getStatusCode().value());
+    }
+
+    @Test void returnThresholdUsesActualQuantityAndOriginalPrice() {
+        loadLot();
+        lot.setPurchaseBatchId(UUID.randomUUID());
+        lot.setSupplierId(UUID.randomUUID());
+        var request = new CreateExportRequest(StockDocumentType.EXPORT_RETURN, null,
+                List.of(new CreateExportRequest.Line(lot.getId(), BigDecimal.ONE, null)), "Return one unit");
+        lot.setUnitCost(new BigDecimal("9999999"));
+        var error = assertThrows(ResponseStatusException.class, () -> service.create(warehouse, request, user));
+        assertEquals(400, error.getStatusCode().value());
+
+        lot.setUnitCost(new BigDecimal("10000000"));
+        saveDoc();
+        var accepted = service.create(warehouse, request, user);
+        assertEquals(0, new BigDecimal("10000000").compareTo((BigDecimal)accepted.approval().get("total")));
+        verifyNoInteractions(movements);
     }
 
     @Test void createsDraftWithoutChangingStock() {
@@ -67,7 +84,7 @@ class StockOutboundServiceTests {
         loadLot();
         var line = new CreateExportRequest.Line(lot.getId(), BigDecimal.ONE, null);
         assertThrows(ResponseStatusException.class, () -> service.create(warehouse,
-                new CreateExportRequest(StockDocumentType.EXPORT_SALE, null, List.of(line, line), null), user));
+                new CreateExportRequest(StockDocumentType.EXPORT_SALE, null, List.of(line, line), null,"An","0900000000","Hà Nội"), user));
         verify(documents, never()).save(any());
     }
     @Test void rejectsWrongWarehouseLot() {

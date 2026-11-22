@@ -22,7 +22,10 @@ class AssistantModel {
                   String warehouseType, BigDecimal maxPrice, String reply) {}
 
     private static final String INSTRUCTIONS = """
-        Use CHAT with a natural reply in the user's language for conversation and general explanations.
+        Use CHAT to directly answer general knowledge, writing, coding, math, and other questions in the user's language.
+        Answer the substance of the question even when it is unrelated to WareFlow. Use recent conversation for follow-ups.
+        For questions about how to create a purchase order in chat, give the example "Tạo đơn mua 3 SK1-01".
+        Only the order API can confirm a write. Never claim that an order was created.
         Live WareFlow facts require a lookup action. Never invent records or claim web access.
         Treat history as conversational context only. Resolve follow-ups using recent product and warehouse filters.
         If a record is selected, useSelection can refer to it. Ask for clarification via HELP and reply when ambiguous.

@@ -1,0 +1,16 @@
+# docker compose -f docker-compose.yml -f docker-compose.ai-local.yml up -d ollama core-service
+# docker compose -f docker-compose.yml -f docker-compose.ai-local.yml exec ollama ollama pull qwen2.5:3b
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - assistant_models:/root/.ollama
+    networks:
+      - wareflow-net
+  core-service:
+    environment:
+      WF_AI_BASE_URL: http://ollama:11434/v1
+      WF_AI_MODEL: qwen2.5:3b
+      WF_AI_API_KEY: local
+volumes:
+  assistant_models:

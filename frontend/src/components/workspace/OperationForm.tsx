@@ -38,7 +38,7 @@ const generateBarcode = () => {
     const checksum = (10 - (sum % 10)) % 10;
     return code + checksum.toString();
 };
-const newLine=()=>({key:generateUUID(),productId:'',lotId:'',qty:'',price:'0',targetProductId:'',lotCode:'',expiryDate:'',condition:'OK'});
+const newLine=()=>({key:generateUUID(),productId:'',lotId:'',qty:'',pricePercent:'100',price:'0',targetProductId:'',lotCode:'',expiryDate:'',condition:'OK'});
 export default function OperationForm({back,mode:explicitMode,initial,onSaved,draftLine,onCancel}:{back:string;mode?:Mode;initial?:Row;onSaved?:()=>void;draftLine?:Partial<ReturnType<typeof newLine>>;onCancel?:()=>void}) {
     const {pathname}=useLocation();const navigate=useNavigate();const scope=useWorkspace();const session=getAuthSession()!;
     const mode:Mode=explicitMode || (pathname.includes('/suppliers')?'supplier':pathname.includes('/products')?'supplierProduct':pathname.includes('/employees')?'employee':pathname.includes('/budget')?'budget':pathname.includes('/inbound')?'po':pathname.includes('/outbound')||pathname.includes('/transfers')?'export':pathname.includes('/shipments')?'shipment':'warehouse');
@@ -64,7 +64,6 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
     const [pending,setPending]=useState(false);const [error,setError]=useState('');
     const [uploading,setUploading]=useState(false);
     const otherWarehouses=useQuery<Row[]>(mode==='export'?'transfer-warehouses':null,()=>allPages('core','/warehouses/my-company'));
-    const targets=useQuery<Row[]>(mode==='export'&&values.type==='EXPORT_TRANSFER'&&warehouseId&&values.targetWarehouseId?`transfer-products:${warehouseId}:${values.targetWarehouseId}`:null,()=>allPages('inventory',`/warehouses/${warehouseId}/transfer-products?targetWarehouseId=${values.targetWarehouseId}`));
     const products=raw.products.filter(r=>r.warehouseId===warehouseId);
     const availableSupplierProducts = raw.supplierProducts.filter(p => !values.supplierId || String(p.supplierId) === String(values.supplierId));
     const field=(key:string,label:string,type='text',required=true):Field=>({key,label,type,required});
@@ -72,7 +71,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
     let fields:Field[]=[];
     if(mode==='warehouse') fields=[field('name','Tên kho'),select('warehouseType','Hình thức',[{value:'RENT',label:'Cho thuê'},{value:'BUY',label:'Mua bán'}]),field('region','Khu vực'),field('address','Địa chỉ'),{...field('area','Diện tích (m²)','number'),min:0.01},{...field('price','Giá (VNĐ)','number'),min:0}];
     if(mode==='supplier') fields=[field('name','Tên nhà cung cấp'),select('businessModel','Lĩnh vực',models),field('phone','Điện thoại','tel',false),field('email','Email','email',false),field('address','Địa chỉ','text',false)];
-    if(mode==='supplierProduct') fields=[select('supplierId','Nhà cung cấp',options(raw.suppliers)),field('sku','Mã sản phẩm'),field('name','Tên sản phẩm'),field('unit','Đơn vị tính'),{...field('price','Đơn giá (VNĐ)','number'),min:0},field('barcode','Mã vạch (Tự động tạo)','text',true),field('image','Đường dẫn ảnh','url',false)];
+    if(mode==='supplierProduct') fields=[select('supplierId','Nhà cung cấp',options(raw.suppliers)),field('name','Tên sản phẩm'),field('unit','Đơn vị tính'),{...field('price','Đơn giá (VNĐ)','number'),min:0},field('image','Đường dẫn ảnh','url',false)];
     if(mode==='inventoryProduct') {
         fields = initial?.id ? [
             field('name', 'Tên sản phẩm'),
@@ -104,9 +103,9 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
         select('warehouseId','Kho xuất',options(scope.warehouses)),
         select('type','Loại phiếu',['EXPORT_SALE','EXPORT_TRANSFER','EXPORT_DESTROY','EXPORT_RETURN'].map((value,i)=>({value,label:['Xuất bán','Điều chuyển','Xuất hủy','Trả nhà cung cấp'][i]}))),
         ...(values.type==='EXPORT_TRANSFER'?[select('targetWarehouseId','Kho nhận',options((otherWarehouses.data||[]).filter(w=>w.id!==warehouseId)))]:[]),
-        field('recipientName','Tên người nhận'),
+        ...(values.type==='EXPORT_SALE'?[field('recipientName','Tên người nhận'),
         field('recipientPhone','Số điện thoại người nhận','tel'),
-        field('recipientAddress','Địa chỉ người nhận'),
+        field('recipientAddress','Địa chỉ người nhận')]:[]),
         field('note','Ghi chú thêm','textarea',false)
     ];
     function change(key:string,value:string) {
@@ -142,7 +141,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
             let service:Service='core';let path='';let body:unknown=values;
             if(mode==='warehouse'){path='/warehouses';body={...values,area:number(values.area),price:number(values.price)};}
             if(mode==='supplier'){path='/suppliers';body={...values,email:values.email||null};}
-            if(mode==='supplierProduct'){if(!values.supplierId)throw new Error('Vui lòng chọn nhà cung cấp.');path=`/suppliers/${values.supplierId}/products`;body={...values,price:number(values.price),barcode:values.barcode?.trim()||generateBarcode()};}
+            if(mode==='supplierProduct'){if(!values.supplierId)throw new Error('Vui lòng chọn nhà cung cấp.');path=`/suppliers/${values.supplierId}/products`;body={name:values.name,unit:values.unit,price:number(values.price),image:values.image||null};}
             if(mode==='inventoryProduct'){
                 if(!warehouseId) throw new Error('Vui lòng chọn kho nhận hàng.');
                 if(!values.name?.trim()) throw new Error('Vui lòng nhập tên sản phẩm.');
@@ -184,14 +183,15 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
                 }
                 if(mode==='receipt')body={poId:initial?.id,completePo:true,note:values.note,lines:lines.map(l=>({productId:l.productId,receivedQty:number(l.qty),lotCode:l.lotCode,expiryDate:l.expiryDate||null,condition:l.condition}))};
                 if(mode==='export') {
-                    if(!values.recipientName?.trim()) throw new Error('Vui lòng nhập tên người nhận hàng.');
-                    if(!values.recipientPhone?.trim()) throw new Error('Vui lòng nhập số điện thoại người nhận.');
+                    const sale=values.type==='EXPORT_SALE';
+                    if(sale && !values.recipientName?.trim()) throw new Error('Vui lòng nhập tên người nhận hàng.');
+                    if(sale && !values.recipientPhone?.trim()) throw new Error('Vui lòng nhập số điện thoại người nhận.');
                     const cleanPhone = values.recipientPhone.replace(/[\s.-]/g, '');
-                    if(!/^(0\d{9,10}|\+84\d{9,10})$/.test(cleanPhone)) throw new Error('Số điện thoại người nhận không hợp lệ (cần từ 9 - 11 chữ số).');
-                    if(!values.recipientAddress?.trim()) throw new Error('Vui lòng nhập địa chỉ người nhận hàng.');
+                    if(sale && !/^(0\d{9,10}|\+84\d{9,10})$/.test(cleanPhone)) throw new Error('Số điện thoại người nhận không hợp lệ (cần từ 9 - 11 chữ số).');
+                    if(sale && !values.recipientAddress?.trim()) throw new Error('Vui lòng nhập địa chỉ người nhận hàng.');
                     
                     const recipientInfo = `Người nhận: ${values.recipientName.trim()} · SĐT: ${cleanPhone} · Đ/C: ${values.recipientAddress.trim()}`;
-                    const combinedExportNote = values.note?.trim() ? `${recipientInfo}\n${values.note.trim()}` : recipientInfo;
+                    const combinedExportNote = !sale ? values.note : values.note?.trim() ? `${recipientInfo}\n${values.note.trim()}` : recipientInfo;
 
                     body={
                         type:values.type,
@@ -200,7 +200,7 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
                         recipientPhone:cleanPhone,
                         recipientAddress:values.recipientAddress.trim(),
                         note:combinedExportNote,
-                        lines:lines.map(l=>({lotId:l.lotId,quantity:number(l.qty),targetProductId:values.type==='EXPORT_TRANSFER'?l.targetProductId:null}))
+                        lines:lines.map(l=>({lotId:l.lotId,quantity:number(l.qty),pricePercent:values.type==='EXPORT_SALE'?number(l.pricePercent):undefined}))
                     };
                 }
             }
@@ -244,9 +244,15 @@ export default function OperationForm({back,mode:explicitMode,initial,onSaved,dr
                     })():products.map(p=><option key={String(p.id)} value={String(p.id)}>{String(p.sku)} · {String(p.name)}</option>)}
                 </select></label>
                 {mode==='export'&&<label className="wf-field"><span>Lô xuất *</span><select required value={line.lotId} onChange={e=>changeLine(i,'lotId',e.target.value)}><option value="">Chọn lô</option>{raw.lots.filter(l=>l.productId===line.productId&&l.warehouseId===warehouseId).map(l=><option key={String(l.id)} value={String(l.id)}>{String(l.lotCode)} · Khả dụng {String(l.available??Math.max(0,number(l.quantity)-number(l.reserved)))}</option>)}</select></label>}
-                {mode==='export'&&values.type==='EXPORT_TRANSFER'&&<label className="wf-field"><span>Sản phẩm tương ứng ở kho nhận *</span><select required value={line.targetProductId} onChange={e=>changeLine(i,'targetProductId',e.target.value)}><option value="">Chọn SKU kho nhận</option>{(targets.data||[]).map(p=><option key={String(p.id)} value={String(p.id)}>{String(p.sku)} · {String(p.name)}</option>)}</select></label>}
+                {mode==='export'&&values.type==='EXPORT_SALE'&&<label className="wf-field"><span>Giá bán (% giá nhập)</span><input type="number" min="0" max="500" step=".01" required value={line.pricePercent} onChange={e=>changeLine(i,'pricePercent',e.target.value)}/></label>}
+                {mode==='export' && values.type==='EXPORT_SALE' && line.lotId && (() => {
+                    const cost=raw.lots.find(l=>l.id===line.lotId)?.unitCost;
+                    if(cost==null)return <p>Lô chưa có giá nhập đã đối soát.</p>;
+                    const price=Math.round(Number(cost)*Number(line.pricePercent))/100;
+                    return <p>Giá gốc {formatCurrency(Number(cost))} · Giá bán {formatCurrency(price)} · Thành tiền {formatCurrency(price*Number(line.qty))}</p>;
+                })()}
                 <label className="wf-field"><span>Số lượng *</span><input required type="number" min="0.01" step="0.01" value={line.qty} onChange={e=>changeLine(i,'qty',e.target.value)}/></label>{mode==='po'&&<label className="wf-field"><span>Đơn giá (VNĐ) *</span><input required type="number" min="0" step="0.01" value={line.price} onChange={e=>changeLine(i,'price',e.target.value)}/></label>}
                 {mode==='receipt'&&<><label className="wf-field"><span>Mã lô nhận *</span><input required value={line.lotCode} onChange={e=>changeLine(i,'lotCode',e.target.value)}/></label><label className="wf-field"><span>Hạn sử dụng</span><input type="date" value={line.expiryDate} onChange={e=>changeLine(i,'expiryDate',e.target.value)}/></label><label className="wf-field"><span>Tình trạng</span><select value={line.condition} onChange={e=>changeLine(i,'condition',e.target.value)}><option value="OK">Bình thường</option><option value="DAMAGED">Hư hỏng</option></select></label></>}
             </div><button type="button" className="adm-btn" disabled={lines.length===1} onClick={()=>setLines(lines.filter((_,idx)=>i!==idx))}>Bỏ dòng</button></section>)}{mode!=='receipt'&&<button className="adm-btn" type="button" disabled={mode==='po'&&!values.supplierId} onClick={()=>setLines([...lines,newLine()])}>Thêm dòng hàng</button>}{mode==='po'&&<p>Tổng tiền dự kiến: <strong>{lines.every(l=>Number.isSafeInteger(Math.round(number(l.qty)*number(l.price)*100))&&number(l.qty)*number(l.price)<Number.MAX_SAFE_INTEGER/100/lines.length)?formatCurrency(sumMoney(lines.map(l=>number(l.qty)*number(l.price)))):'Số tiền vượt phạm vi tính toán'}</strong></p>}</>}
-        {targets.error&&<p role="alert">{targets.error}</p>}{error&&<div className="wf-notice" role="alert">{error}</div>}<div className="wf-form-actions">{onCancel ? <button type="button" className="adm-btn" onClick={onCancel}>Quay lại</button> : <Link className="adm-btn" to={back}>Quay lại</Link>}<button className="adm-btn adm-btn-primary" type="submit" disabled={pending||uploading||(session.role==='WAREHOUSE_MANAGER'&&!warehouseId)}>{pending?'Đang lưu…':uploading?'Đang tải ảnh…':'Lưu'}</button></div></fieldset></form></section>;
+        {error&&<div className="wf-notice" role="alert">{error}</div>}<div className="wf-form-actions">{onCancel ? <button type="button" className="adm-btn" onClick={onCancel}>Quay lại</button> : <Link className="adm-btn" to={back}>Quay lại</Link>}<button className="adm-btn adm-btn-primary" type="submit" disabled={pending||uploading||(session.role==='WAREHOUSE_MANAGER'&&!warehouseId)}>{pending?'Đang lưu…':uploading?'Đang tải ảnh…':'Lưu'}</button></div></fieldset></form></section>;
 }

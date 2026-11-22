@@ -11,6 +11,7 @@ public class Partner {
     @Column(nullable=false) private String name;
     @Enumerated(EnumType.STRING) private CompanyBusinessModel businessModel;
     private String email;
+    @Column(unique=true) private Long displayId;
     private String phone;
     private String address;
     private boolean deleted;

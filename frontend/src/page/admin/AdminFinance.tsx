@@ -1,7 +1,8 @@
+import WalletPanel from '../../components/workspace/WalletPanel';
 import { downloadCsv } from "../../utils/export";
 import {
     percentage,
-    cashSeries,
+    cashSeries, dayKey,
     cashSummary,
     inPeriod,
     growth,
@@ -49,11 +50,16 @@ import {
 const PAGE_SIZE = 6;
 
 export default function AdminFinance() {
-    const { budgets, transactions: seedTransactions } = useAdminData(
+    const { budgets,companies,warehouses,transactions: allTransactions } = useAdminData(
         "budgets",
         "transactions",
     );
     const [range, setRange] = useState("90");
+    const [company,setCompany]=useState('');
+    const [warehouse,setWarehouse]=useState('');
+    const [category,setCategory]=useState('');
+    const [bucket,setBucket]=useState('');
+    const seedTransactions=allTransactions.filter(t=>(!company||t.companyId===company)&&(!warehouse||t.warehouseId===warehouse)&&(!category||t.category===category));
     const rows = inPeriod(seedTransactions, Number(range));
     const cashflow = cashSeries(seedTransactions, Number(range));
     const sums = cashSummary(rows);
@@ -94,7 +100,7 @@ export default function AdminFinance() {
                     .includes(keyword);
             const matchesType =
                 typeFilter === "ALL" || transaction.type === typeFilter;
-            return matchesQuery && matchesType;
+            return matchesQuery && matchesType && (!bucket || dayKey(transaction.createdAt).startsWith(bucket));
         });
     })();
 
@@ -132,7 +138,7 @@ export default function AdminFinance() {
                         className="adm-select"
                         aria-label="Kỳ báo cáo"
                         value={range}
-                        onChange={(e) => setRange(e.target.value)}
+                        onChange={(e) => {setRange(e.target.value);setBucket('');}}
                     >
                         <option value="30">30 ngày</option>
                         <option value="90">90 ngày</option>
@@ -167,6 +173,13 @@ export default function AdminFinance() {
                 </div>
             </div>
 
+            <WalletPanel/>
+            <div className="admin-page-actions">
+                <select aria-label="Công ty báo cáo" value={company} onChange={e=>{setCompany(e.target.value);setWarehouse('');setBucket('');}}><option value="">Mọi công ty</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                <select aria-label="Kho báo cáo" value={warehouse} onChange={e=>setWarehouse(e.target.value)}><option value="">Mọi kho</option>{warehouses.filter(w=>!company||w.ownerCompanyId===company).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
+                <select aria-label="Nhóm nghiệp vụ" value={category} onChange={e=>setCategory(e.target.value)}><option value="">Mọi nghiệp vụ</option>{Object.entries(transactionCategoryMeta).map(([v,c])=><option key={v} value={v}>{c.label}</option>)}</select>
+                {bucket&&<button onClick={()=>setBucket('')}>Bỏ lọc kỳ {bucket}</button>}
+            </div>
             <div className="adm-stats">
                 <article className="adm-stat">
                     <div className="adm-stat-top">
@@ -241,7 +254,7 @@ export default function AdminFinance() {
                     <div className="adm-chart-box">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart
-                                data={cashflow}
+                                data={cashflow} onClick={state=>{const point=cashflow[Number(state.activeTooltipIndex)];if(point){setBucket(point.key);setPage(1);}}}
                                 margin={{
                                     top: 6,
                                     right: 6,
@@ -277,7 +290,7 @@ export default function AdminFinance() {
                                         name: string,
                                     ) => [
                                         `${value} tr`,
-                                        name === "income" ? "Thu" : "Chi",
+                                        name === "income" ? "Thu" : name === "fee" ? "Phí WareFlow" : "Chi trước phí",
                                     ]}
                                 />
                                 <Bar
@@ -287,11 +300,12 @@ export default function AdminFinance() {
                                     barSize={18}
                                 />
                                 <Bar
-                                    dataKey="expense"
+                                    dataKey="principalExpense"
                                     fill="#f0a5ae"
                                     radius={[5, 5, 0, 0]}
                                     barSize={18}
                                 />
+                                <Bar dataKey="fee" fill="#9264bd" barSize={18}/>
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -300,7 +314,7 @@ export default function AdminFinance() {
                             <i style={{ background: "#4567ed" }} /> Thu
                         </span>
                         <span>
-                            <i style={{ background: "#f0a5ae" }} /> Chi
+                            <i style={{ background: "#f0a5ae" }} /> Chi trước phí</span><span><i style={{background:"#9264bd"}}/> Phí WareFlow
                         </span>
                     </div>
                 </Card>
@@ -689,7 +703,7 @@ export default function AdminFinance() {
                             </div>
                         </div>
                         <div className="adm-field">
-                            <label>Thời điểm phát sinh</label>
+                            <p>Mã chứng từ {selectedTx.refDocumentId || selectedTx.id}</p><label>Thời điểm phát sinh</label>
                             <input
                                 className="adm-input"
                                 value={formatDateTime(selectedTx.createdAt)}

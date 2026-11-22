@@ -22,7 +22,7 @@ export default function AdminWarehouseApprovals() {
     const pending = useMemo(
         () =>
             (raw.warehouseTransactions as Row[]).filter(
-                (tx) => tx.status === 'PENDING' || tx.status === 'NEGOTIATING',
+                (tx) => tx.status === 'PENDING' || tx.status === 'NEGOTIATING' || tx.status === 'APPROVED',
             ),
         [raw.warehouseTransactions],
     );
@@ -95,7 +95,7 @@ export default function AdminWarehouseApprovals() {
                                                     <Check size={14} /> Duyệt
                                                 </button>
                                                 <button
-                                                    className="adm-btn adm-btn-danger"
+                                                    disabled={tx.status==='APPROVED'} className="adm-btn adm-btn-danger"
                                                     onClick={() => setConfirmTx({ tx, action: 'reject' })}
                                                 >
                                                     <X size={14} /> Từ chối

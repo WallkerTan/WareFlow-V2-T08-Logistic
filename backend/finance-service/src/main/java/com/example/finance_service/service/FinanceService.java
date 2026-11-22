@@ -18,7 +18,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor @Transactional
 public class FinanceService {
-    private static final BigDecimal FEE_RATE = new BigDecimal("0.05");
+    private final WalletLedger ledger;
     private final BudgetRepository budgets;
     private final TransactionRepository transactions;
     private final FinanceAccessService access;
@@ -47,16 +47,9 @@ public class FinanceService {
     public TransactionResponse createTransaction(UUID companyId, TransactionRequest request, Identity user) {
         if (request.type() == TransactionType.SYSTEM_FEE) bad("SYSTEM_FEE is generated automatically");
         access.warehouse(user, request.warehouseId(), companyId);
-        Transaction tx = transactions.save(Transaction.builder().companyId(companyId).warehouseId(request.warehouseId())
-                .type(request.type()).category(request.category()).amount(request.amount().setScale(2, RoundingMode.HALF_UP))
-                .refDocumentId(request.refDocumentId()).note(request.note()).build());
-        if (request.type() == TransactionType.INCOME && request.category() == TransactionCategory.SALE) {
-            BigDecimal fee = tx.getAmount().multiply(FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-            if (fee.signum() > 0 && (tx.getRefDocumentId() == null || !transactions.existsByCompanyIdAndRefDocumentIdAndType(companyId, tx.getRefDocumentId(), TransactionType.SYSTEM_FEE))) {
-                transactions.save(Transaction.builder().companyId(companyId).warehouseId(tx.getWarehouseId()).type(TransactionType.SYSTEM_FEE)
-                        .category(TransactionCategory.FEE).amount(fee).refDocumentId(tx.getRefDocumentId()).note("5% platform fee for transaction " + tx.getId()).build());
-            }
-        }
+        var ref=request.refDocumentId()==null?UUID.randomUUID():request.refDocumentId();
+        var tx=ledger.post("MANUAL_"+request.type()+"_"+request.category(),companyId,request.warehouseId(),user.id(),
+                ref,false,request.amount(),request.type(),request.category(),request.note());
         return TransactionResponse.from(tx);
     }
     @Transactional(readOnly=true)

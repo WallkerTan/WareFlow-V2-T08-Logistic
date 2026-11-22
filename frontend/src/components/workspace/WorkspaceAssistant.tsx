@@ -1,3 +1,4 @@
+import BatchImportPage from './BatchImportPage';
 import { getAuthSession } from '../../services/authApi';
 import { useState } from 'react';
 import { Button, Drawer, Modal } from 'antd';
@@ -5,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { useWorkspace } from '../../services/workspace';
 import { request, mutate, money, type Row } from '../../services/api';
 import { saveResource } from '../../services/data';
+import { invalidateData } from '../../services/query';
 import OperationForm from './OperationForm';
 
 type Action = 'SEARCH'|'LOTS'|'MARKET'|'EDIT'|'SALE'|'PURCHASE'|'ADJUST'|'HELP'|'CHAT';
@@ -14,6 +16,26 @@ type Answer = {message: string; intent: Intent; matches: Match[]};
 type Turn = {question: string; answer: Answer};
 const str = (v: unknown) => v == null ? '' : String(v);
 const label = (m: Match) => [m.warehouseName, m.product?.sku, m.product?.name, m.lot?.lotCode].filter(Boolean).join(' · ');
+const orderExample = 'Tạo đơn mua 3 SK1-01, 2 SK1-02';
+function purchaseCommand(message: string) {
+    const original = message.normalize('NFC').trim();
+    const fold = (s:string) => s.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd');
+    const command = /^(?:(?:hay|vui long|giup toi|toi muon|toi can)\s+)?(?:tao|lap|dat|them)\s+(?:(?:giup|cho) toi\s+)?(?:mot\s+)?don(?: hang)?(?: mua)?(?:\s*:\s*|\s+|$)/i.exec(fold(original));
+    if (!command || message.includes('?')) return;
+    const lines = [];
+    const details = original.slice(command[0].length).replace(/[.!]$/, '').trim();
+    const source = /\s+(?:tu|cua)\s+(?:nha cung cap|ncc)\s+/i.exec(fold(details));
+    const supplier = source && details.slice(source.index + source[0].length).trim();
+    const items = source ? details.slice(0,source.index) : details;
+    for (const item of items.split(/,\s+|\s+(?:và|va)\s+(?=\d)/i)) {
+        const match = /^(\d{1,10}(?:[.,]\d{1,2})?)\s+(?:(?:san pham|ma sku|sku)\s+)?/i.exec(fold(item.trim()));
+        if (!match || Number(match[1].replace(',', '.')) <= 0) return [];
+        const product = item.trim().slice(match[0].length).trim();
+        if (!product) return [];
+        lines.push({product, supplier, quantity:Number(match[1].replace(',', '.'))});
+    }
+    return lines;
+}
 
 export default function WorkspaceAssistant({role}: {role: string}) {
     const {warehouseId} = useWorkspace();
@@ -32,6 +54,8 @@ function Chat({warehouseId}: {warehouseId?: string}) {
     const [error, setError] = useState('');
     const [delta, setDelta] = useState('');
     const [pendingQuestion, setPendingQuestion] = useState('');
+    const [attempt, setAttempt] = useState<{message:string; id:string}>();
+    const [needsOrderLines, setNeedsOrderLines] = useState(false);
     const term = question.trim();
     async function ask(e: React.FormEvent) {
         e.preventDefault();
@@ -39,7 +63,23 @@ function Chat({warehouseId}: {warehouseId?: string}) {
         setPendingQuestion(term);
         setBusy(true); setError('');
         try {
-            const answer = await mutate<Answer>('core','/assistant/chat','POST',{
+            const continuation = needsOrderLines && /^\d/.test(term);
+            const lines = purchaseCommand(continuation ? 'Tạo đơn mua ' + term : term);
+            setNeedsOrderLines(lines?.length === 0 || continuation);
+            let answer: Answer;
+            if (lines) {
+                let message = 'Để tạo đơn mua, hãy ghi số lượng và mã SKU của từng sản phẩm. Ví dụ: ' + orderExample;
+                if (lines.length) {
+                    const id = attempt?.message === term ? attempt.id : crypto.randomUUID();
+                    setAttempt({message:term,id});
+                    const order = await mutate<{code:string;total:number}>('core','/purchase-batches/from-chat','POST',{requestId:id,lines});
+                    invalidateData();
+                    setNeedsOrderLines(false);
+                    message = 'Đã tạo đơn mua ' + order.code + ' · Tổng tiền ' + money(order.total) + '. Bạn có thể xem trong mục Lô hàng.';
+                    setAttempt(undefined);
+                }
+                answer = {message,intent:{action:'CHAT'},matches:[]};
+            } else answer = await mutate<Answer>('core','/assistant/chat','POST',{
                 message: term, warehouseId, history: turns.slice(-5).flatMap(turn => [
                     {role:'user',content:turn.question},
                     {role:'assistant',content:[turn.answer.message,...turn.answer.matches.map(label)].join('\n').slice(0,1500)}
@@ -84,7 +124,7 @@ function Chat({warehouseId}: {warehouseId?: string}) {
     return <>
         <button type="button" className="adm-btn" onClick={()=>setOpen(true)}>Trợ lý AI</button>
         <Drawer title="Trợ lý AI" open={open} onClose={()=>setOpen(false)} size={440}>
-            {!turns.length && <p>Bạn muốn hỏi gì? Bạn có thể trò chuyện hoặc hỏi về hàng trong kho.</p>}
+            {!turns.length && <p>Bạn có thể hỏi về kho, đặt câu hỏi kiến thức hoặc yêu cầu tạo đơn mua. Ví dụ: “{orderExample}”.</p>}
             {turns.map(({question:q,answer},index)=><section key={index} className="wf-card">
                 <strong>Bạn</strong><p>{q}</p><strong>Trợ lý</strong><p style={{whiteSpace:'pre-wrap'}}>{answer.message}</p>
                 {answer.matches.map(match=><div key={[match.warehouseId,match.product?.id,match.lot?.id].join('/')}>
@@ -108,7 +148,7 @@ function Chat({warehouseId}: {warehouseId?: string}) {
                 {error && <p role="alert">{error}</p>}
                 {m.product && <p>Tồn thực tế {str((m.lot ?? m.product).quantity)} · Khả dụng {str((m.lot ?? m.product).available)} {str(m.product.unit)}</p>}
                 {m.lot && <p>Hạn dùng {str(m.lot.expiryDate) || 'chưa ghi nhận'} · Tình trạng {str(m.lot.status)}</p>}
-                {mode && <OperationForm mode={mode} back="." onCancel={close} onSaved={close}
+                {mode==='po' ? <BatchImportPage/> : mode && <OperationForm mode={mode} back="." onCancel={close} onSaved={close}
                     initial={mode==='inventoryProduct' ? {...m.product, warehouseId:m.warehouseId,
                         name:i.newName ?? m.product?.name, sku:i.newSku ?? m.product?.sku, unit:i.unit ?? m.product?.unit,
                         minStock:i.minStock ?? m.product?.minStock, barcode:i.barcode ?? m.product?.barcode} : {warehouseId:m.warehouseId, ...(mode==='export' ? {type:'EXPORT_SALE'} : {})}}

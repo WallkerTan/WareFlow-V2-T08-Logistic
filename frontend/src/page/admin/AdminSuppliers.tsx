@@ -257,7 +257,7 @@ export default function AdminSuppliers() {
                         <table className="adm-table">
                             <thead>
                                 <tr>
-                                    <th>Nhà cung cấp</th>
+                                    <th>ID</th><th>Nhà cung cấp</th>
                                     <th>Ngành hàng</th>
                                     <th>Công ty liên kết</th>
                                     <th>Người liên hệ</th>
@@ -275,7 +275,7 @@ export default function AdminSuppliers() {
                                         }
                                         title="Nhấp để xem chi tiết & chỉnh sửa"
                                     >
-                                        <td className="adm-cell-main">
+                                        <td>{supplier.displayId ?? supplier.id}</td><td className="adm-cell-main">
                                             {supplier.name}
                                         </td>
                                         <td>{supplier.category}</td>

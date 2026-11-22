@@ -14,6 +14,7 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor @Transactional
 public class AccountService {
+    private final WarehouseRepository warehouses;
     private final UserRepository users;
     private final CompanyRepository companies;
     private final PasswordEncoder encoder;
@@ -27,7 +28,7 @@ public class AccountService {
     }
     public View me() { return View.of(current()); }
     public List<View> employees() {
-        UUID company=company(); return users.findByCompany_IdAndRole(company,UserRole.WAREHOUSE_MANAGER).stream().map(View::of).toList();
+        UUID company=company(); return users.findByCompany_IdAndRole(company,UserRole.WAREHOUSE_MANAGER).stream().filter(u -> u.getRemovedAt()==null).map(View::of).toList();
     }
     public View create(EmployeeRequest r) {
         UUID company=company(); String email=r.email().trim().toLowerCase(Locale.ROOT);
@@ -35,6 +36,27 @@ public class AccountService {
         return View.of(users.save(User.builder().company(companies.findById(company).orElseThrow(()->ApiException.notFound("Không tìm thấy công ty")))
                 .email(email).fullName(r.fullName().trim()).passwordHash(encoder.encode(r.password()))
                 .role(UserRole.WAREHOUSE_MANAGER).status(UserStatus.ACTIVE).build()));
+    }
+    public record EmployeeUpdate(@NotBlank @Size(max=255) String fullName, @NotNull UserStatus status,
+                                 @Size(min=8,max=128) String password) {}
+    private User managedEmployee(UUID id) {
+        UUID owner=company();
+        return users.findById(id).filter(u -> u.getRole()==UserRole.WAREHOUSE_MANAGER && u.getRemovedAt()==null
+                && u.getCompany()!=null && owner.equals(u.getCompany().getId()))
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy nhân viên"));
+    }
+    public View update(UUID id,EmployeeUpdate request) {
+        User user=managedEmployee(id);
+        user.setFullName(request.fullName().trim());
+        user.setStatus(request.status());
+        if(request.password()!=null) user.setPasswordHash(encoder.encode(request.password()));
+        return View.of(users.save(user));
+    }
+    public void remove(UUID id) {
+        User user=managedEmployee(id);
+        if(warehouses.hasAssignedManager(id.toString())) throw ApiException.conflict("Hãy bàn giao kho trước khi xóa nhân viên.");
+        user.setStatus(UserStatus.LOCKED);
+        user.setRemovedAt(java.time.Instant.now());
     }
     private User current() { return users.findById(SecurityUtils.getCurrentUserId()).orElseThrow(()->ApiException.notFound("Không tìm thấy tài khoản")); }
     private UUID company() {

@@ -99,9 +99,21 @@ public class WarehouseTransactionController {
      * - Đổi status giao dịch → COMPLETED
      * - Ghi log + tạo notifications
      */
+    @org.springframework.beans.factory.annotation.Value("${FINANCE_SERVICE_URL:http://localhost:8083}") private String financeUrl;
+    @GetMapping("/{id}/payment") @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','COMPANY_ADMIN')")
+    public WarehouseTransactionResponse payment(@PathVariable UUID id){return transactionService.paymentDetails(id);}
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'COMPANY_ADMIN')")
-    public WarehouseTransactionResponse approve(@PathVariable UUID id) {
+    public WarehouseTransactionResponse approve(@PathVariable UUID id,@RequestHeader("Authorization") String auth) {
+        var tx=transactionService.reserveApproval(id);
+        if(tx.status()==WarehouseTransactionStatus.COMPLETED)return tx;
+        try {
+            org.springframework.web.client.RestClient.create(financeUrl).post().uri("/wallets/marketplace/{id}",id)
+                .header("Authorization",auth).retrieve().toBodilessEntity();
+        } catch(org.springframework.web.client.RestClientResponseException ex){
+            throw new com.example.core_service.exception.ApiException(org.springframework.http.HttpStatus.valueOf(ex.getStatusCode().value()),
+                ex.getStatusCode().value()==409?"Số dư công ty chưa đủ để thanh toán và trả phí 5%.":"Không thể ghi nhận thanh toán kho.");
+        }
         return transactionService.approve(id);
     }
 

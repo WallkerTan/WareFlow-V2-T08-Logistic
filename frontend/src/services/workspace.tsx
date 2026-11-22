@@ -18,8 +18,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const data = await allPages<Row>('core', session.role === 'SYSTEM_ADMIN' ? '/warehouses' : '/warehouses/my-company');
         if (session.role === 'WAREHOUSE_MANAGER') {
             const mine = data.filter(w => object(w.handover).managerId === session.userId);
-            // Fallback: nếu chưa được bàn giao kho cụ thể thì dùng toàn bộ kho trong công ty
-            return mine.length > 0 ? mine : data;
+            return mine;
         }
         return data;
     });

@@ -14,6 +14,10 @@ public class AccountController {
     private final AccountService accounts;
     @GetMapping("/users/me") public View me(){return accounts.me();}
     @GetMapping("/employees") public List<View> employees(){return accounts.employees();}
+    @PatchMapping("/employees/{id}") @AuditLog(action="UPDATE_EMPLOYEE",targetType="User")
+    public View update(@PathVariable UUID id,@Valid @RequestBody EmployeeUpdate request){return accounts.update(id,request);}
+    @DeleteMapping("/employees/{id}") @ResponseStatus(HttpStatus.NO_CONTENT) @AuditLog(action="REMOVE_EMPLOYEE",targetType="User")
+    public void remove(@PathVariable UUID id){accounts.remove(id);}
     @PostMapping("/employees") @ResponseStatus(HttpStatus.CREATED) @AuditLog(action="CREATE_EMPLOYEE",targetType="User")
     public View create(@Valid @RequestBody EmployeeRequest request){return accounts.create(request);}
 }

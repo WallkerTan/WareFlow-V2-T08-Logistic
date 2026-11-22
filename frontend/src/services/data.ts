@@ -49,7 +49,8 @@ export function useAdminData(...wanted: DataKey[]) {
                     warehouseId: isManager ? scope.warehouseId : undefined
                 })}`);
                 return list.map(r => ({ ...r, companyId: j.companyId }));
-            } catch {
+            } catch (error) {
+                if(collection==='transactions') throw error;
                 return [];
             }
         })).flat();
@@ -100,7 +101,7 @@ export function useAdminData(...wanted: DataKey[]) {
         createdAt: str(r.createdAt || (r as Record<string, unknown>).created_at || new Date().toISOString())
     }));
     const warehouseTx: Transaction[] = raw.warehouseTransactions
-        .filter(w => w.status === 'COMPLETED' && (!myCompanyId || String(w.companyId) === myCompanyId))
+        .filter(w => w.status === 'COMPLETED' && w.type!=='RETURN' && !raw.transactions.some(t=>t.refDocumentId===w.id) && (!myCompanyId || String(w.companyId) === myCompanyId))
         .map(w => ({
             id: `WT-${w.id}`,
             type: 'EXPENSE' as const,

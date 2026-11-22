@@ -55,10 +55,6 @@ class AssistantController {
     @PostMapping("/chat")
     public Answer chat(@Valid @RequestBody Question question, @RequestHeader("Authorization") String auth) {
         var manager = SecurityUtils.getCurrentUserRole() == UserRole.WAREHOUSE_MANAGER;
-        var scope = question.warehouseId() != null || manager ? inventoryScope(manager) : null;
-        if ((manager && question.warehouseId() == null) || (scope != null &&
-                scope.stream().noneMatch(w -> w.id().equals(question.warehouseId()))))
-            throw ApiException.forbidden("Kho nằm ngoài phạm vi truy cập.");
         var history = question.history() == null ? List.<ChatMessage>of() : question.history();
         var intent = Boolean.TRUE.equals(question.keywordOnly()) ? InventoryLookup.product(question.message().trim()) :
                 history.isEmpty() && question.selected() == null
@@ -69,6 +65,10 @@ class AssistantController {
                                 .orElseGet(() -> model.interpret(question.message(), history, question.selected() != null));
         if (intent.action() == CHAT || intent.action() == HELP && intent.reply() != null)
             return new Answer(intent.reply(), intent, List.of());
+        var scope = question.warehouseId() != null || manager ? inventoryScope(manager) : null;
+        if ((manager && question.warehouseId() == null) || (scope != null &&
+                scope.stream().noneMatch(w -> w.id().equals(question.warehouseId()))))
+            throw ApiException.forbidden("Kho nằm ngoài phạm vi truy cập.");
         var selected = Boolean.TRUE.equals(intent.useSelection()) ? question.selected() : null;
         if (Boolean.TRUE.equals(intent.useSelection()) && selected == null)
             return new Answer("Hãy chọn sản phẩm, lô hoặc kho trong kết quả trước.", intent, List.of());

@@ -59,6 +59,14 @@ public class FinanceAccessService {
         catch (RestClientResponseException ex) { throw new ResponseStatusException(ex.getStatusCode(), "Cannot verify warehouse access"); }
         catch (Exception ex) { throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Cannot verify warehouse access"); }
     }
+    public void verifyWalletOwner(Identity actor, UUID company, UUID warehouse) {
+        if(warehouse==null) {
+            core.get().uri("/companies/{id}",company).header(HttpHeaders.AUTHORIZATION,actor.authorization()).retrieve().toBodilessEntity();
+            return;
+        }
+        var scope=core.get().uri("/warehouses/{id}",warehouse).header(HttpHeaders.AUTHORIZATION,actor.authorization()).retrieve().body(WarehouseScope.class);
+        if(scope==null || !company.equals(scope.ownerCompanyId())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Kho không thuộc công ty");
+    }
     public record Identity(UUID id, UUID companyId, String role, String authorization) { }
     public record WarehouseScope(UUID id, UUID ownerCompanyId, Handover handover) { }
     public record Handover(UUID managerId) { }

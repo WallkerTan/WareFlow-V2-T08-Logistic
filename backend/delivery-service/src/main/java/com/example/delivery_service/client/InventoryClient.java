@@ -11,7 +11,7 @@ import java.util.UUID;
 public class InventoryClient {
     private final RestClient client;
     public InventoryClient(@Qualifier("inventoryRestClient") RestClient client) { this.client = client; }
-    public void requireCompletedSale(String token, UUID warehouseId, UUID documentId) {
+    public java.math.BigDecimal requireCompletedSale(String token, UUID warehouseId, UUID documentId) {
         try {
             var document = client.get().uri("/warehouses/{warehouseId}/exports/{id}", warehouseId, documentId)
                 .header(HttpHeaders.AUTHORIZATION, token).retrieve().body(ExportDocument.class);
@@ -19,6 +19,7 @@ public class InventoryClient {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy phiếu xuất trong kho");
             if (!"EXPORT_SALE".equals(document.type()) || !"DONE".equals(document.status()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Chỉ tạo vận đơn cho phiếu xuất bán đã hoàn tất");
+            return document.approval()==null || document.approval().get("total")==null?null:new java.math.BigDecimal(document.approval().get("total").toString());
         } catch (RestClientResponseException ex) {
             int code = ex.getStatusCode().value();
             throw new ResponseStatusException(code == 401 || code == 403 || code == 404 ?
@@ -27,5 +28,5 @@ public class InventoryClient {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Không thể kết nối inventory-service");
         }
     }
-    public record ExportDocument(UUID id, UUID warehouseId, String type, String status) {}
+    public record ExportDocument(UUID id, UUID warehouseId, String type, String status,java.util.Map<String,Object> approval) {}
 }

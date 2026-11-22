@@ -71,6 +71,7 @@ export default function AdminProducts() {
                 !keyword ||
                 product.name.toLowerCase().includes(keyword) ||
                 product.sku.toLowerCase().includes(keyword) ||
+                product.legacySku?.toLowerCase().includes(keyword) ||
                 product.barcode.includes(keyword);
             const matchesStock = stockFilter === 'ALL' || product.warehouseName === stockFilter;
             return matchesQuery && matchesStock;

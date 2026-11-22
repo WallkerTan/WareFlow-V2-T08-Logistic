@@ -55,6 +55,6 @@ export function cashSeries(entries: CashEntry[], days: number, now = new Date())
     return [...buckets].map(([key, list]) => {
         const sums = cashSummary(list);
         const label = days > 60 ? `${key.slice(5)}/${key.slice(0, 4)}` : `${key.slice(8)}/${key.slice(5, 7)}`;
-        return { key, month: label, name: label, income: sums.income / 1e6, revenue: sums.income / 1e6, expense: sums.expense / 1e6, thu: sums.income / 1e6, chi: sums.expense / 1e6 };
+        return { key, fee:sums.fee / 1e6, principalExpense:(sums.expense-sums.fee)/1e6, month: label, name: label, income: sums.income / 1e6, revenue: sums.income / 1e6, expense: sums.expense / 1e6, thu: sums.income / 1e6, chi: sums.expense / 1e6 };
     });
 }

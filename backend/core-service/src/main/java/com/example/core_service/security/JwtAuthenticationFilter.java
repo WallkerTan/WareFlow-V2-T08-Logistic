@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final com.example.core_service.repository.UserRepository users;
     private final CompanyRepository companyRepository;
 
     @Override
@@ -37,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             boolean authenticated = authenticate(header.substring(BEARER_PREFIX.length()), request, response);
-            if (!authenticated && response.isCommitted()) {
+            if (!authenticated && response.getStatus() >= 400) {
                 return;
             }
         }
@@ -50,6 +51,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtTokenProvider.parse(token);
 
             UUID userId = UUID.fromString(claims.getSubject());
+            if (users.findById(userId).filter(user -> user.getStatus()==com.example.core_service.entity.enums.UserStatus.ACTIVE).isEmpty()) {
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Tài khoản không hoạt động");
+                return false;
+            }
             String email = claims.get(JwtTokenProvider.CLAIM_EMAIL, String.class);
             String roleStr = claims.get(JwtTokenProvider.CLAIM_ROLE, String.class);
             String companyIdStr = claims.get(JwtTokenProvider.CLAIM_COMPANY_ID, String.class);

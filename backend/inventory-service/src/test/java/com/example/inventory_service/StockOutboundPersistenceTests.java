@@ -43,14 +43,14 @@ class StockOutboundPersistenceTests {
             UUID warehouse = UUID.randomUUID(), targetWarehouse = UUID.randomUUID();
             Product source = products.save(Product.builder().warehouseId(warehouse).sku("SKU").name("Product").unit("box").build());
             Product target = products.save(Product.builder().warehouseId(targetWarehouse).sku("SKU").name("Product").unit("box").build());
-            StockLot lot = lots.save(StockLot.builder().product(source).lotCode("BATCH").quantity(new BigDecimal("10")).build());
+            StockLot lot = lots.save(StockLot.builder().product(source).lotCode("BATCH").unitCost(BigDecimal.TEN).quantity(new BigDecimal("10")).build());
             return new Fixture(warehouse, targetWarehouse, lot.getId(), target.getId());
         });
     }
     UUID pending(Fixture f, boolean transfer) {
         var request = new CreateExportRequest(transfer ? StockDocumentType.EXPORT_TRANSFER : StockDocumentType.EXPORT_SALE,
                 transfer ? f.targetWarehouse() : null,
-                List.of(new CreateExportRequest.Line(f.lot(), new BigDecimal("6"), transfer ? f.targetProduct() : null)), null);
+                List.of(new CreateExportRequest.Line(f.lot(), new BigDecimal("6"), transfer ? f.targetProduct() : null)), null,"An","0900000000","Hà Nội");
         UUID id = service.create(f.warehouse(), request, user).id();
         service.transition(f.warehouse(), id, "submit", null, user);
         return id;

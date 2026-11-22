@@ -622,7 +622,7 @@ export default function WarehouseManagement() {
                         {selected.status === "pending" && (
                             <>
                                 <div className="wm-info">
-                                    <label className="wf-field"><span>Đề nghị cần xử lý</span><select value={proposalId} onChange={e=>setProposalId(e.target.value)}><option value="">Chọn đề nghị</option>{raw.warehouseTransactions.filter(t=>t.warehouseId===selected.id&&['PENDING','NEGOTIATING'].includes(String(t.status))).map(t=><option key={String(t.id)} value={String(t.id)}>{String(t.companyName)} · {Number(t.offeredPrice).toLocaleString('vi-VN')} ₫</option>)}</select></label>
+                                    <label className="wf-field"><span>Đề nghị cần xử lý</span><select value={proposalId} onChange={e=>setProposalId(e.target.value)}><option value="">Chọn đề nghị</option>{raw.warehouseTransactions.filter(t=>t.warehouseId===selected.id&&['PENDING','NEGOTIATING','APPROVED'].includes(String(t.status))).map(t=><option key={String(t.id)} value={String(t.id)}>{String(t.companyName)} · {Number(t.offeredPrice).toLocaleString('vi-VN')} ₫</option>)}</select></label>
                                     Kiểm tra công ty và giá đề nghị trước khi duyệt.
                                     Phí được ghi nhận theo giao dịch đã duyệt.
                                 </div>
