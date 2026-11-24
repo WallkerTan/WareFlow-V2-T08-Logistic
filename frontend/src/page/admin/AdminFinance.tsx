@@ -1,4 +1,5 @@
 import { downloadCsv } from '../../utils/export';
+import WalletPanel from '../../components/workspace/WalletPanel';
 import { percentage, cashSeries, cashSummary, inPeriod, growth, percentLabel } from '../../utils/analytics';
 import { useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, Check, Download, Info, Receipt, Search, ShieldCheck, Wallet } from 'lucide-react';
@@ -14,9 +15,9 @@ export default function AdminFinance() {
     const { budgets, transactions: seedTransactions } = useAdminData('budgets', 'transactions');
     const [range, setRange] = useState('90');
     const rows = inPeriod(seedTransactions, Number(range));
-    const cashflow = cashSeries(seedTransactions, Number(range));
-    const sums = cashSummary(rows);
-    const previous = cashSummary(inPeriod(seedTransactions, Number(range), new Date(), true));
+    const cashflow = cashSeries(seedTransactions, Number(range), undefined, true);
+    const sums = cashSummary(rows, true);
+    const previous = cashSummary(inPeriod(seedTransactions, Number(range), new Date(), true), true);
     const [query, setQuery] = useState('');
     const [typeFilter, setTypeFilter] = useState<'ALL' | TransactionType>('ALL');
     const [page, setPage] = useState(1);
@@ -66,6 +67,7 @@ export default function AdminFinance() {
 
     return (
         <>
+            <WalletPanel />
             <div className="admin-page-head">
                 <div>
                     <h2>Tài chính</h2>

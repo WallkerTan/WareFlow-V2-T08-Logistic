@@ -49,8 +49,8 @@ export default function AdminDashboard() {
     const [selectedShipment, setSelectedShipment] = useState<Shipment | null>(null);
 
     const current = inPeriod(transactions, Number(range));
-    const sums = cashSummary(current);
-    const revenueTrend = cashSeries(transactions, Number(range));
+    const sums = cashSummary(current, true);
+    const revenueTrend = cashSeries(transactions, Number(range), undefined, true);
     const companyDistribution = [{name:'Hoạt động', status:'ACTIVE', color:'#4567ed'}, {name:'Chờ duyệt', status:'PENDING', color:'#d99220'}, {name:'Đã khoá', status:'LOCKED', color:'#d34b58'}].map(item => ({...item, value: companies.filter(c => c.status === item.status).length}));
     const donutColors = companyDistribution.map(d => d.color);
     const warehouseLoad = warehouses.map(w => ({name:w.id, label:w.name, value:raw.products.filter(p => p.warehouseId === w.id).reduce((sum,p) => sum+Number(p.quantity||0),0)})).sort((a,b)=>b.value-a.value).slice(0,5);

@@ -22,6 +22,7 @@ export default function StorehouseLayout() {
                 topbarLabel: "Không gian kho",
                 icon: Warehouse,
                 links: [
+                    { to: "/storehouse/batches", label: "Lô hàng", icon: Boxes },
                     {
                         to: "/storehouse/lots",
                         label: "Quản lí hàng hóa của kho",

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 
 public interface BudgetRepository extends JpaRepository<Budget, UUID> {
+    Optional<Budget> findByCompanyIdAndWarehouseIdAndPeriod(UUID companyId,UUID warehouseId,String period);
     List<Budget> findByCompanyIdAndPeriod(UUID companyId, String period);
     List<Budget> findAllByCompanyId(UUID companyId);
     Optional<Budget> findByIdAndCompanyId(UUID id, UUID companyId);

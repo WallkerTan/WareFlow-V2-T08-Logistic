@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 public interface ProductRepository extends JpaRepository<Product, UUID>, JpaSpecificationExecutor<Product> {
+    Optional<Product> findByWarehouseIdAndSkuIgnoreCaseAndDeletedAtIsNull(UUID warehouseId, String sku);
     boolean existsByWarehouseIdAndSkuIgnoreCaseAndDeletedAtIsNull(UUID warehouseId, String sku);
     boolean existsByWarehouseIdAndSkuIgnoreCaseAndIdNotAndDeletedAtIsNull(UUID warehouseId, String sku, UUID id);
     Optional<Product> findByIdAndWarehouseIdAndDeletedAtIsNull(UUID id, UUID warehouseId);

@@ -23,6 +23,7 @@ import java.util.*;
 public class SupplierService {
     private final SupplierRepository suppliers;
     private final CompanyRepository companies;
+    private final com.example.core_service.repository.SupplierNumberRepository numbers;
 
     @Transactional(readOnly = true)
     public Page<Map<String, Object>> list(Pageable pageable) {
@@ -52,7 +53,11 @@ public class SupplierService {
         contact.put("contactPerson", clean(request.contactPerson())); contact.put("phone", clean(request.phone()));
         contact.put("email", clean(request.email())); contact.put("address", clean(request.address()));
         supplier.setContact(contact);
-        return response(suppliers.save(supplier));
+        supplier=suppliers.save(supplier);
+        if(numbers.findBySupplierId(supplier.getId()).isEmpty()) {
+            var number=new com.example.core_service.entity.SupplierNumber();number.setSupplierId(supplier.getId());numbers.saveAndFlush(number);
+        }
+        return response(supplier);
     }
 
     public void delete(UUID id) { accessible(id, true).setDeletedAt(Instant.now()); }
@@ -63,14 +68,24 @@ public class SupplierService {
     public Map<String, Object> saveProduct(UUID id, UUID productId, SupplierProductRequest request) {
         Supplier supplier = accessible(id, true);
         var products = catalog(supplier);
-        String sku = request.sku().trim();
-        if (products.stream().anyMatch(p -> sku.equalsIgnoreCase(String.valueOf(p.get("sku"))) && !Objects.equals(String.valueOf(productId), p.get("id"))))
-            throw ApiException.conflict("Mã sản phẩm đã tồn tại ở nhà cung cấp này");
         Map<String, Object> product = productId == null ? new LinkedHashMap<>() : products.stream()
                 .filter(p -> productId.toString().equals(p.get("id"))).findFirst().orElseThrow(() -> ApiException.notFound("Không tìm thấy sản phẩm của nhà cung cấp"));
-        if (productId == null) { product.put("id", UUID.randomUUID().toString()); products.add(product); }
+        if (productId == null) {
+            var numbering = numbers.findBySupplierId(id).orElseGet(() -> {
+                var value = new com.example.core_service.entity.SupplierNumber();
+                value.setSupplierId(id);
+                return numbers.saveAndFlush(value);
+            });
+            numbering.setProductSequence(numbering.getProductSequence() + 1);
+            String generated = "SK" + numbering.getId() + "-" + String.format(java.util.Locale.ROOT, "%02d", numbering.getProductSequence());
+            product.put("id", UUID.randomUUID().toString());
+            product.put("sku", generated);
+            product.put("barcode", generated);
+            products.add(product);
+        }
+        String sku = String.valueOf(product.get("sku"));
         product.put("sku", sku); product.put("name", request.name().trim()); product.put("unit", request.unit().trim());
-        product.put("price", request.price()); product.put("barcode", clean(request.barcode())); product.put("image", clean(request.image()));
+        product.put("price", request.price()); product.putIfAbsent("barcode", sku); product.put("image", clean(request.image()));
         product.put("updatedAt", Instant.now().toString());
         supplier.setProducts(products);
         return product;
@@ -97,6 +112,7 @@ public class SupplierService {
     private Map<String, Object> response(Supplier supplier) {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("id", supplier.getId()); result.put("name", supplier.getName()); result.put("businessModel", supplier.getCategory());
+        result.put("supplierNumber",numbers.findBySupplierId(supplier.getId()).map(com.example.core_service.entity.SupplierNumber::getId).orElse(null));
         result.put("companyId", supplier.getCompany() == null ? null : supplier.getCompany().getId());
         result.put("kind", supplier.getCompany() == null ? "SYSTEM" : "COMPANY");
         if (supplier.getContact() != null) result.putAll(supplier.getContact());

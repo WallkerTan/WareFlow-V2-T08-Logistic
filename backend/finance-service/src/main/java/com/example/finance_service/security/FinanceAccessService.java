@@ -34,10 +34,24 @@ public class FinanceAccessService {
         catch (Exception ex) { throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid or expired token"); }
     }
     public void authenticateCoreService(String authorization) {
+        authenticateService(authorization,"core-service");
+    }
+    public void verifyActive(Identity user) {
+        try {
+            var account=core.get().uri("/users/me").header(HttpHeaders.AUTHORIZATION,user.authorization()).retrieve().body(com.fasterxml.jackson.databind.JsonNode.class);
+            if(account==null || !user.id().toString().equals(account.path("id").asText()) || !"ACTIVE".equals(account.path("status").asText()))
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,"Tài khoản không còn hoạt động");
+        } catch(RestClientResponseException e){throw new ResponseStatusException(e.getStatusCode(),"Không xác minh được tài khoản");}
+        catch(RestClientException e){throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,"Không kết nối được dịch vụ tài khoản");}
+    }
+    public void authenticateInventoryService(String authorization) {
+        authenticateService(authorization,"inventory-service");
+    }
+    private void authenticateService(String authorization, String service) {
         if (authorization == null || !authorization.startsWith("Bearer "))
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Service token required");
         try {
-            Claims claims = Jwts.parser().verifyWith(key).requireIssuer(issuer).requireSubject("core-service")
+            Claims claims = Jwts.parser().verifyWith(key).requireIssuer(issuer).requireSubject(service)
                     .require("role", "SERVICE").build().parseSignedClaims(authorization.substring(7)).getPayload();
             if (claims.getExpiration() == null || claims.getAudience() == null || !claims.getAudience().contains("finance-service"))
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid service token");

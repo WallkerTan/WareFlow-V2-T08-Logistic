@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface StockLotRepository extends JpaRepository<StockLot, UUID> {
+    List<StockLot> findByTradeBatchIdAndProduct_WarehouseIdAndDeletedAtIsNull(UUID batchId, UUID warehouseId);
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select l from StockLot l join fetch l.product p where l.id = :id and p.warehouseId = :warehouseId and l.deletedAt is null and p.deletedAt is null")
     Optional<StockLot> findForUpdate(@Param("id") UUID id, @Param("warehouseId") UUID warehouseId);

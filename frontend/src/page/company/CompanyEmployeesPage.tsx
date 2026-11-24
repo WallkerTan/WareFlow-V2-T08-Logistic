@@ -1,2 +1,12 @@
-import RecordsPage from '../../components/workspace/RecordsPage';
-export default function CompanyEmployeesPage(){ return <RecordsPage mode="employees"/>; }
+import { useState } from 'react';
+import { Heading } from '../../components/workspace/WorkspacePages';
+import { useAdminData, saveResource, attempt } from '../../services/data';
+import { object } from '../../services/api';
+import type { Row } from '../../services/api';
+import { Modal } from '../../components/admin/AdminUI';
+export default function CompanyEmployeesPage() {
+    const { raw } = useAdminData('users');
+    const [editing,setEditing] = useState<Row|null>(null); const [busy,setBusy] = useState(false);
+    async function act(id:string,method:string,path='',body?:unknown) { if(busy)return;setBusy(true);const ok=await attempt(()=>saveResource('core',`/employees/${id}${path}`,method,body));setBusy(false);if(ok)setEditing(null); }
+    return <><Heading title="Quản lý nhân viên" action={{to:'/company/employees/new',label:'Thêm nhân viên'}}/><section className="wf-card"><div className="workspace-table"><table><thead><tr>{['ID','Tên','Email','Kho đang quản lý','Trạng thái','Hành động'].map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{raw.users.map(user=><tr key={String(user.id)}><td>{String(user.id)}</td><td>{String(user.fullName)}</td><td>{String(user.email)}</td><td>{raw.warehouses.filter(w=>object(w.handover).managerId===user.id).map(w=>String(w.name)).join(', ')||'Chưa phân công'}</td><td>{user.status==='LOCKED'?'Đã khóa':'Hoạt động'}</td><td><button className="adm-btn" disabled={busy} onClick={()=>setEditing({...user})}>Chỉnh sửa</button><button className="adm-btn" disabled={busy} onClick={()=>void act(String(user.id),'PATCH','/status',{status:user.status==='LOCKED'?'ACTIVE':'LOCKED'})}>{user.status==='LOCKED'?'Mở khóa':'Khóa'}</button><button className="adm-btn" disabled={busy} onClick={()=>{if(window.confirm(`Xóa nhân viên ${user.fullName}?`))void act(String(user.id),'DELETE');}}>Xóa</button></td></tr>)}</tbody></table></div></section>{editing&&<Modal title="Chỉnh sửa nhân viên" onClose={()=>setEditing(null)}><form onSubmit={e=>{e.preventDefault();void act(String(editing.id),'PUT','',{fullName:editing.fullName,email:editing.email});}}>{['fullName','email'].map((key,i)=><label className="wf-field" key={key}><span>{['Họ tên','Email'][i]}</span><input required type={key==='email'?'email':'text'} value={String(editing[key])} onChange={e=>setEditing({...editing,[key]:e.target.value})}/></label>)}<button className="adm-btn adm-btn-primary" disabled={busy}>Lưu</button></form></Modal>}</>;
+}

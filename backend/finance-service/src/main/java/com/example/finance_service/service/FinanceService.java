@@ -18,22 +18,37 @@ import java.util.*;
 
 @Service @RequiredArgsConstructor @Transactional
 public class FinanceService {
-    private static final BigDecimal FEE_RATE = new BigDecimal("0.05");
     private final BudgetRepository budgets;
     private final TransactionRepository transactions;
     private final FinanceAccessService access;
     private final FinancePeriods periods;
     private final FinanceReportRepository reports;
+    private final WalletService wallets;
 
     public BudgetResponse createBudget(UUID companyId, BudgetRequest request) {
+        wallets.serialize(companyId);
         period(request.period());
         if (budgets.existsByCompanyIdAndWarehouseIdAndPeriod(companyId, request.warehouseId(), request.period())) conflict("Budget already exists for this scope and period");
+        if(request.warehouseId()!=null) {
+            currentAllocationPeriod(request.period());
+            wallets.settle(new WalletService.Payment(UUID.randomUUID(),companyId,request.warehouseId(),"ALLOCATION",request.allocated(),"Cấp ngân sách "+request.period()));
+            return budgetResponse(budgets.findByCompanyIdAndWarehouseIdAndPeriod(companyId,request.warehouseId(),request.period()).orElseThrow());
+        }
         Budget b = budgets.save(Budget.builder().companyId(companyId).warehouseId(request.warehouseId()).allocated(request.allocated()).period(request.period()).build());
         return budgetResponse(b);
     }
     public BudgetResponse updateBudget(UUID companyId, UUID id, BudgetRequest request) {
+        wallets.serialize(companyId);
         period(request.period());
         Budget b = budgets.findByIdAndCompanyId(id, companyId).orElseThrow(() -> notFound("Budget not found"));
+        if(b.getWarehouseId()!=null) {
+            currentAllocationPeriod(request.period());
+            if(!Objects.equals(b.getWarehouseId(),request.warehouseId())||!b.getPeriod().equals(request.period()))bad("Không thay đổi kho hoặc kỳ của ngân sách đã cấp");
+            BigDecimal additional=request.allocated().subtract(b.getAllocated());
+            if(additional.signum()<0)bad("Không thể giảm ngân sách đã chuyển vào tài khoản kho");
+            if(additional.signum()>0)wallets.settle(new WalletService.Payment(UUID.randomUUID(),companyId,b.getWarehouseId(),"ALLOCATION",additional,"Bổ sung ngân sách"));
+            return budgetResponse(b);
+        }
         if (budgets.existsByCompanyIdAndWarehouseIdAndPeriodAndIdNot(companyId, request.warehouseId(), request.period(), id)) conflict("Budget already exists for this scope and period");
         b.setAllocated(request.allocated()); b.setWarehouseId(request.warehouseId()); b.setPeriod(request.period());
         return budgetResponse(budgets.save(b));
@@ -47,16 +62,12 @@ public class FinanceService {
     public TransactionResponse createTransaction(UUID companyId, TransactionRequest request, Identity user) {
         if (request.type() == TransactionType.SYSTEM_FEE) bad("SYSTEM_FEE is generated automatically");
         access.warehouse(user, request.warehouseId(), companyId);
-        Transaction tx = transactions.save(Transaction.builder().companyId(companyId).warehouseId(request.warehouseId())
-                .type(request.type()).category(request.category()).amount(request.amount().setScale(2, RoundingMode.HALF_UP))
-                .refDocumentId(request.refDocumentId()).note(request.note()).build());
-        if (request.type() == TransactionType.INCOME && request.category() == TransactionCategory.SALE) {
-            BigDecimal fee = tx.getAmount().multiply(FEE_RATE).setScale(2, RoundingMode.HALF_UP);
-            if (fee.signum() > 0 && (tx.getRefDocumentId() == null || !transactions.existsByCompanyIdAndRefDocumentIdAndType(companyId, tx.getRefDocumentId(), TransactionType.SYSTEM_FEE))) {
-                transactions.save(Transaction.builder().companyId(companyId).warehouseId(tx.getWarehouseId()).type(TransactionType.SYSTEM_FEE)
-                        .category(TransactionCategory.FEE).amount(fee).refDocumentId(tx.getRefDocumentId()).note("5% platform fee for transaction " + tx.getId()).build());
-            }
-        }
+        access.verifyActive(user);
+        UUID reference=request.refDocumentId()==null?UUID.randomUUID():request.refDocumentId();
+        String kind=request.type()==TransactionType.INCOME?"INCOME":"EXPENSE";
+        wallets.settle(new WalletService.Payment(reference,companyId,request.warehouseId(),kind,request.amount(),request.note()));
+        var tx=transactions.findFirstByCompanyIdAndRefDocumentIdAndType(companyId,reference,request.type()).orElseThrow();
+        tx.setCategory(request.category());
         return TransactionResponse.from(tx);
     }
     @Transactional(readOnly=true)
@@ -87,6 +98,7 @@ public class FinanceService {
         return new Instant[]{range.from(), range.to()};
     }
     private void bad(String message) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
+    private void currentAllocationPeriod(String period) { if(!YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString().equals(period))bad("Chỉ cấp tiền vào kỳ ngân sách hiện tại"); }
     private void conflict(String message) { throw new ResponseStatusException(HttpStatus.CONFLICT, message); }
     private ResponseStatusException notFound(String message) { return new ResponseStatusException(HttpStatus.NOT_FOUND, message); }
 }

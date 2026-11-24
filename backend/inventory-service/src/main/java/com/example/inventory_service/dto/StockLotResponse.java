@@ -8,9 +8,10 @@ import java.util.UUID;
 
 public record StockLotResponse(UUID id, UUID productId, String lotCode, LocalDate expiryDate,
                                BigDecimal quantity, BigDecimal reserved, BigDecimal available,
-                               StockLotStatus status) {
+                               StockLotStatus status, UUID tradeBatchId, UUID supplierId, BigDecimal unitPrice) {
     public static StockLotResponse from(StockLot lot, StockLotStatus effectiveStatus) {
         return new StockLotResponse(lot.getId(), lot.getProduct().getId(), lot.getLotCode(), lot.getExpiryDate(),
-                lot.getQuantity(), lot.getReserved(), lot.getQuantity().subtract(lot.getReserved()), effectiveStatus);
+                lot.getQuantity(), lot.getReserved(), lot.getQuantity().subtract(lot.getReserved()), effectiveStatus,
+                lot.getTradeBatchId(), lot.getSupplierId(), lot.getUnitPrice());
     }
 }

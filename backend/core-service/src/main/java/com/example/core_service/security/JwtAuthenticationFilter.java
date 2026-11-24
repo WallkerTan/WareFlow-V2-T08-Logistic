@@ -27,6 +27,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CompanyRepository companyRepository;
+    private final com.example.core_service.repository.UserRepository users;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -60,6 +61,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             UserRole role = UserRole.valueOf(roleStr);
             UUID companyId = (companyIdStr != null && !companyIdStr.isBlank()) ? UUID.fromString(companyIdStr) : null;
+
+            var account = users.findById(userId).orElse(null);
+            if (account == null || account.getStatus() != com.example.core_service.entity.enums.UserStatus.ACTIVE
+                    || account.getRole() != role || !java.util.Objects.equals(companyId, account.getCompany()==null?null:account.getCompany().getId())) {
+                SecurityContextHolder.clearContext();
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json;charset=UTF-8");
+                response.getWriter().write("{\"message\":\"Tài khoản không còn hoạt động. Vui lòng đăng nhập lại.\"}");
+                response.flushBuffer();
+                return false;
+            }
 
             // Kiểm tra trạng thái khóa của công ty theo thời gian thực (trừ SYSTEM_ADMIN)
             if (companyId != null && role != UserRole.SYSTEM_ADMIN) {

@@ -43,7 +43,7 @@ export function useAdminData(...wanted: DataKey[]) {
     function resource(key: DataKey, loader: () => Promise<Row[]>) {
         // Hooks run in a fixed order; only the requests needed by this view are enabled.
         // eslint-disable-next-line react-hooks/rules-of-hooks
-        return useQuery<Row[]>(ready && wanted.includes(key) && (!isManager || !!scope.warehouseId || ['users','notifications'].includes(key)) ? `data:${key}:${scopeKey}` : null, loader);
+        return useQuery<Row[]>(ready && wanted.includes(key) && (!isManager || !!scope.warehouseId || ['users','notifications','suppliers','supplierProducts'].includes(key)) ? `data:${key}:${scopeKey}` : null, loader);
     }
     const usersQuery = resource('users', () => isAdmin ? allPages('core', '/users') : isManager ? request<Row>('core', '/users/me').then(r => [r]) : allPages('core', '/employees'));
     const suppliersQuery = resource('suppliers', () => allPages('core', '/suppliers'));
@@ -56,7 +56,10 @@ export function useAdminData(...wanted: DataKey[]) {
     const budgetsQuery = resource('budgets', () => finance('budgets'));
     const notificationsQuery = resource('notifications', () => allPages('core', '/notifications'));
     const logsQuery = resource('systemLogs', () => allPages('core', isAdmin ? '/system-logs' : '/system-logs/my-company'));
-    const shipmentsQuery = resource('shipments', () => acrossWarehouses('delivery', 'shipments'));
+    const shipmentsQuery = resource('shipments', async () => {
+        const [legacy,operations] = await Promise.all([acrossWarehouses('delivery','shipments'),acrossWarehouses('inventory','trade/operations')]);
+        return [...legacy,...operations.filter(op=>op.kind==='SALE').map(op=>({...op,tradeOperation:true,trackingCode:op.id,carrier:'WareFlow',codAmount:op.amount,customerName:object(op.details).recipientName,destination:object(op.details).recipientAddress,status:op.status==='DONE'?'DELIVERED':op.status==='READY'?'CREATED':'IN_TRANSIT',codStatus:op.status==='DONE'?'COLLECTED':'PENDING'}))];
+    });
     const documentsQuery = resource('stockDocuments', async () => (await Promise.all(['purchase-orders', 'receipts', 'exports'].map(c => acrossWarehouses('inventory', c)))).flat());
     const expensesQuery = resource('expenses', () => finance('expense-requests'));
     const lotsQuery = resource('lots', async () => {

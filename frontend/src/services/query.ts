@@ -56,10 +56,18 @@ function invalidateLocalData() {
         if (entry.listeners.size) fetchEntry(entry);
     }
 }
+let _channel: BroadcastChannel | null = null;
+function getChannel() {
+    if (!_channel) {
+        try { _channel = new BroadcastChannel('wareflow_sync'); } catch { /* not supported */ }
+    }
+    return _channel;
+}
 export function invalidateData() {
     invalidateLocalData();
-    // Only a change notification is shared; every tab reloads with its own credentials.
+    // Share change notification with other tabs and same-tab layouts.
     try { localStorage.setItem(CHANGE_KEY, crypto.randomUUID()); } catch { /* Polling still works if storage is unavailable. */ }
+    try { getChannel()?.postMessage({ type: 'invalidate' }); } catch { /* ignore */ }
 }
 export function clearData() { for (const entry of cache.values()) { entry.generation++; entry.updatedAt = 0; entry.state = { data: undefined, loading: false, error: '', version: 0 }; emit(entry); } }
 export function useDataSync() {
@@ -69,6 +77,9 @@ export function useDataSync() {
             for (const entry of cache.values()) if (entry.listeners.size && Date.now() - entry.updatedAt >= 3000) fetchEntry(entry);
         };
         const changed = (event: StorageEvent) => { if (event.key === CHANGE_KEY) invalidateLocalData(); };
+        const channelMsg = (event: MessageEvent) => { if (event.data?.type === 'invalidate') invalidateLocalData(); };
+        const channel = getChannel();
+        if (channel) channel.addEventListener('message', channelMsg);
         const timer = window.setInterval(refresh, REFRESH_MS);
         window.addEventListener('storage', changed);
         window.addEventListener('focus', refresh);
@@ -80,6 +91,7 @@ export function useDataSync() {
             window.removeEventListener('focus', refresh);
             window.removeEventListener('online', refresh);
             document.removeEventListener('visibilitychange', refresh);
+            if (channel) channel.removeEventListener('message', channelMsg);
         };
     }, []);
 }

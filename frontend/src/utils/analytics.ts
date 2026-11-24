@@ -22,10 +22,10 @@ export function sumMoney(values: number[]) {
     if (minorUnits > BigInt(Number.MAX_SAFE_INTEGER) || minorUnits < BigInt(Number.MIN_SAFE_INTEGER)) throw new Error('Tổng tiền vượt phạm vi tính toán chính xác.');
     return Number(minorUnits) / 100;
 }
-export function cashSummary(entries: CashEntry[]) {
-    const income = sumMoney(entries.filter(r => r.type === 'INCOME').map(r => r.amount));
+export function cashSummary(entries: CashEntry[], isAdmin = false) {
+    const income = sumMoney(entries.filter(r => r.type === 'INCOME' || (isAdmin && r.type === 'SYSTEM_FEE')).map(r => r.amount));
     const fee = sumMoney(entries.filter(r => r.type === 'SYSTEM_FEE').map(r => r.amount));
-    const expense = sumMoney(entries.filter(r => r.type === 'EXPENSE' || r.type === 'SYSTEM_FEE').map(r => r.amount));
+    const expense = sumMoney(entries.filter(r => r.type === 'EXPENSE' || (!isAdmin && r.type === 'SYSTEM_FEE')).map(r => r.amount));
     return { income, expense, fee, net: sumMoney([income, -expense]), margin: percentage(income - expense, income) };
 }
 export function inPeriod<T extends { createdAt: string }>(entries: T[], days: number, now = new Date(), previous = false): T[] {
@@ -33,7 +33,7 @@ export function inPeriod<T extends { createdAt: string }>(entries: T[], days: nu
     const start = end - days * DAY;
     return entries.filter(r => { const key = dayKey(r.createdAt); const time = Date.parse(key); return time >= start && time < end; });
 }
-export function cashSeries(entries: CashEntry[], days: number, now = new Date()) {
+export function cashSeries(entries: CashEntry[], days: number, now = new Date(), isAdmin = false) {
     const end = Date.parse(dayKey(now));
     const buckets = new Map<string, CashEntry[]>();
     for (let i = days - 1; i >= 0; i--) {
@@ -46,7 +46,7 @@ export function cashSeries(entries: CashEntry[], days: number, now = new Date())
         buckets.get(key)?.push(entry);
     }
     return [...buckets].map(([key, list]) => {
-        const sums = cashSummary(list);
+        const sums = cashSummary(list, isAdmin);
         const label = days > 60 ? `${key.slice(5)}/${key.slice(0, 4)}` : `${key.slice(8)}/${key.slice(5, 7)}`;
         return { key, month: label, name: label, income: sums.income / 1e6, revenue: sums.income / 1e6, expense: sums.expense / 1e6, thu: sums.income / 1e6, chi: sums.expense / 1e6 };
     });

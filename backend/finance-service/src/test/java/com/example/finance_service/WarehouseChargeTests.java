@@ -26,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest @Transactional
 class WarehouseChargeTests {
+    @Autowired WalletService wallets;
+    @org.junit.jupiter.api.BeforeEach void fundCompany() { wallets.settle(new WalletService.Payment(UUID.randomUUID(),company,null,"INCOME",new BigDecimal("100000000"),"Opening funding")); }
     @Autowired WarehouseChargeService charges;
     @Autowired WarehouseChargeRepository processed;
     @Autowired TransactionRepository transactions;
@@ -42,7 +44,7 @@ class WarehouseChargeTests {
         assertEquals(0, new BigDecimal("26250000").compareTo(rows.stream().map(t -> t.getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add)));
         assertEquals(1, rows.stream().filter(t -> t.getType() == TransactionType.SYSTEM_FEE).count());
         assertTrue(rows.stream().allMatch(t -> event.equals(t.getRefDocumentId()) && warehouse.equals(t.getWarehouseId())));
-        assertTrue(transactions.findByCompanyIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(company, Instant.now().minusSeconds(10), Instant.now().plusSeconds(10), PageRequest.of(0, 20)).isEmpty());
+        assertTrue(transactions.findByCompanyIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(company, Instant.now().minusSeconds(10), Instant.now().plusSeconds(10), PageRequest.of(0, 20)).stream().noneMatch(t->event.equals(t.getRefDocumentId())));
         assertThrows(ResponseStatusException.class, () -> charges.record(request("999")));
     }
 

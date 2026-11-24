@@ -34,6 +34,11 @@ public class StockLot {
     @Column(name = "lot_code", nullable = false)
     private String lotCode;
 
+    private UUID tradeBatchId;
+    private UUID supplierId;
+    @Column(precision = 18, scale = 2)
+    private BigDecimal unitPrice;
+
     @Column(name = "expiry_date")
     private LocalDate expiryDate;
 

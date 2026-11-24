@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.*;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+    Optional<Transaction> findFirstByCompanyIdAndRefDocumentIdAndType(UUID companyId,UUID refDocumentId,TransactionType type);
     Page<Transaction> findByCompanyIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID companyId, Instant from, Instant to, Pageable pageable);
     Page<Transaction> findByCompanyIdAndWarehouseIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID companyId, UUID warehouseId, Instant from, Instant to, Pageable pageable);
     Page<Transaction> findByCompanyIdAndTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID companyId, TransactionType type, Instant from, Instant to, Pageable pageable);

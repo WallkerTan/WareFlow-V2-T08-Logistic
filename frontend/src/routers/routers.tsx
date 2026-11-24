@@ -1,6 +1,5 @@
+import TradePage from '../components/workspace/TradePage';
 import RecordsPage from '../components/workspace/RecordsPage';
-import StorehouseInboundPage from "../page/storehouse/StorehouseInboundPage";
-import StorehouseOutboundPage from "../page/storehouse/StorehouseOutboundPage";
 import StorehouseHistoryPage from "../page/storehouse/StorehouseHistoryPage";
 import AdminWarehousesNewPage from "../page/admin/AdminWarehousesNewPage";
 import AdminCompanyDetailPage from "../page/admin/AdminCompanyDetailPage";
@@ -10,18 +9,11 @@ import CompanyDashboardPage from "../page/company/CompanyDashboardPage";
 import CompanyInventoryPage from "../page/company/CompanyInventoryPage";
 import CompanyFinancePage from "../page/company/CompanyFinancePage";
 import CompanyEmployeesPage from "../page/company/CompanyEmployeesPage";
-import CompanyTransfersPage from "../page/company/CompanyTransfersPage";
-import CompanyApprovalsPage from "../page/company/CompanyApprovalsPage";
 import CompanyBudgetNewPage from "../page/company/CompanyBudgetNewPage";
 import CompanyEmployeesNewPage from "../page/company/CompanyEmployeesNewPage";
-import CompanyTransfersNewPage from "../page/company/CompanyTransfersNewPage";
 import StorehouseInventoryPage from "../page/storehouse/StorehouseInventoryPage";
 import StorehouseFinancePage from "../page/storehouse/StorehouseFinancePage";
 import StorehouseBudgetPage from "../page/storehouse/StorehouseBudgetPage";
-import StorehouseInboundNewPage from "../page/storehouse/StorehouseInboundNewPage";
-import StorehouseOutboundNewPage from "../page/storehouse/StorehouseOutboundNewPage";
-import StorehouseShipmentsPage from "../page/storehouse/StorehouseShipmentsPage";
-import StorehouseShipmentsNewPage from "../page/storehouse/StorehouseShipmentsNewPage";
 import { createBrowserRouter, Navigate, Link } from "react-router-dom";
 import LandingPage from "../page/LandingPage";
 import NotFound from "../page/NotFound";
@@ -131,15 +123,19 @@ const router = createBrowserRouter([
             { path: "dashboard", element: <CompanyDashboardPage /> },
             { path: "warehouses", element: <CompanyWarehouses /> },
             { path: "inventory", element: <CompanyInventoryPage /> },
+            { path: "batches", element: <TradePage mode="batches" /> },
+            { path: "inbound", element: <TradePage mode="inbound" /> },
+            { path: "outbound", element: <TradePage mode="outbound" /> },
+            { path: "shipments", element: <TradePage mode="shipments" /> },
             { path: "finance", element: <CompanyFinancePage /> },
             { path: "marketplace", element: <WarehouseMarketplace /> },
             { path: "profile", element: <CompanyProfile /> },
             { path: "employees", element: <CompanyEmployeesPage /> },
-            { path: "transfers", element: <CompanyTransfersPage /> },
-            { path: "approvals", element: <CompanyApprovalsPage /> },
+            { path: "transfers", element: <TradePage mode="transfers" /> },
+            { path: "approvals", element: <TradePage mode="approvals" /> },
             { path: "budget/new", element: <CompanyBudgetNewPage /> },
             { path: "employees/new", element: <CompanyEmployeesNewPage /> },
-            { path: "transfers/new", element: <CompanyTransfersNewPage /> },
+            { path: "transfers/new", element: <TradePage mode="transfers" /> },
         ],
     },
     {
@@ -148,17 +144,18 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <Navigate to="inventory" replace /> },
             { path: "lots", element: <StockLots /> },
+            { path: "batches", element: <TradePage mode="batches" /> },
             { path: "inventory", element: <StorehouseInventoryPage /> },
             { path: "finance", element: <StorehouseFinancePage /> },
             { path: "budget", element: <StorehouseBudgetPage /> },
             { path: "profile", element: <StorehouseProfile /> },
-            { path: "inbound", element: <StorehouseInboundPage /> },
-            { path: "outbound", element: <StorehouseOutboundPage /> },
+            { path: "inbound", element: <TradePage mode="inbound" /> },
+            { path: "outbound", element: <TradePage mode="outbound" /> },
             { path: "history", element: <StorehouseHistoryPage /> },
-            { path: "inbound/new", element: <StorehouseInboundNewPage /> },
-            { path: "outbound/new", element: <StorehouseOutboundNewPage /> },
-            { path: "shipments", element: <StorehouseShipmentsPage /> },
-            { path: "shipments/new", element: <StorehouseShipmentsNewPage /> },
+            { path: "inbound/new", element: <TradePage mode="inbound" /> },
+            { path: "outbound/new", element: <TradePage mode="outbound" /> },
+            { path: "shipments", element: <TradePage mode="shipments" /> },
+            { path: "shipments/new", element: <TradePage mode="shipments" /> },
         ],
     },
     {

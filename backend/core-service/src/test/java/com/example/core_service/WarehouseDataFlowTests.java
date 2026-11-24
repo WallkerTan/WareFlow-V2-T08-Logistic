@@ -65,18 +65,24 @@ class WarehouseDataFlowTests {
         User manager = user(UserRole.WAREHOUSE_MANAGER, company);
         mvc.perform(get("/suppliers/{id}/products", id).header("Authorization", "Bearer " + tokens.generateToken(manager)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].id").value(product.get("id")))
-                .andExpect(jsonPath("$[0].price").value(12500)).andExpect(jsonPath("$[0].sku").value("SKU-1"));
+                .andExpect(jsonPath("$[0].price").value(12500)).andExpect(jsonPath("$[0].sku").value(product.get("sku")));
+        assertTrue(product.get("sku").toString().matches("SK[0-9]+-01"));
+        assertEquals(product.get("sku"),product.get("barcode"));
         authenticate(manager);
         assertTrue(suppliers.list(PageRequest.of(0, 100)).getContent().stream().anyMatch(s -> id.equals(s.get("id"))));
         assertThrows(ApiException.class, () -> suppliers.saveProduct(id, null, new SupplierProductRequest("BAD", "Forbidden", "cái", BigDecimal.ONE, null, null)));
     }
 
-    @Test void privateCatalogCannotLeakAcrossCompaniesAndDuplicateSkuIsRejected() {
+    @Test void privateCatalogCannotLeakAcrossCompaniesAndSkuIsGeneratedWithoutReuse() {
         authenticate(user(UserRole.COMPANY_ADMIN, company));
         UUID id = supplier("Private supplier");
         var request = new SupplierProductRequest("SKU-1", "Private product", "cái", BigDecimal.TEN, null, null);
-        suppliers.saveProduct(id, null, request);
-        assertThrows(ApiException.class, () -> suppliers.saveProduct(id, null, new SupplierProductRequest("sku-1", "Duplicate", "cái", BigDecimal.ONE, null, null)));
+        var first=suppliers.saveProduct(id, null, request);
+        var second=suppliers.saveProduct(id, null, request);
+        assertNotEquals(first.get("sku"),second.get("sku"));
+        assertTrue(second.get("sku").toString().endsWith("-02"));
+        suppliers.deleteProduct(id,UUID.fromString(second.get("id").toString()));
+        assertTrue(suppliers.saveProduct(id,null,request).get("sku").toString().endsWith("-03"));
         Company other = companies.save(Company.builder().name("Other " + UUID.randomUUID()).build());
         authenticate(user(UserRole.COMPANY_ADMIN, other));
         assertThrows(ApiException.class, () -> suppliers.products(id));
