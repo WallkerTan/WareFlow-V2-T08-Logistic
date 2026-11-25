@@ -98,27 +98,6 @@ html:has(.landing-page) {
 .landing-page .login {
     font-weight: 700;
 }
-.landing-page .login-btn-header {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 11px 22px;
-    border-radius: 10px;
-    background: #4169e8;
-    color: #ffffff !important;
-    font-weight: 700;
-    font-size: 14px;
-    text-decoration: none;
-    box-shadow: 0 4px 14px rgba(65, 105, 232, 0.25);
-    transition:
-        background 0.2s,
-        transform 0.15s;
-}
-.landing-page .login-btn-header:hover {
-    background: #2b52d4;
-    color: #ffffff !important;
-    transform: translateY(-1px);
-}
 .landing-page .button {
     display: inline-flex;
     align-items: center;
@@ -1573,4 +1552,46 @@ html:has(.landing-page) {
     .landing-page footer > div {
         flex-wrap: wrap;
     }
+}
+.landing-page .landing-access {
+    width: min(1180px, calc(100% - 32px));
+    margin: 24px auto 56px;
+}
+
+.landing-access-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: center;
+    gap: clamp(22px, 5vw, 68px);
+    padding: clamp(24px, 5vw, 64px);
+    border-radius: 24px;
+    color: #fff;
+    background: linear-gradient(125deg, #122f66, #283a89 60%, #50318a);
+}
+
+.landing-access-panel .landing-access-copy h2 {
+    margin: 0;
+    color: #fff;
+    font-size: clamp(28px, 4vw, 48px);
+    line-height: 1.15;
+    letter-spacing: -.035em;
+}
+
+.landing-access-copy h2 em { color: #bfd5ff; font-style: normal; }
+.landing-access-copy p { margin: 16px 0 24px; color: #e1eaff; line-height: 1.65; }
+.landing-access-features { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.landing-access-features li {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 16px;
+    border: 1px solid #ffffff35;
+    border-radius: 12px;
+    background: #ffffff10;
+    font-weight: 600;
+}
+.landing-access-features svg { flex: 0 0 22px; color: #bfd5ff; }
+
+@media (max-width: 720px) {
+    .landing-access-panel { grid-template-columns: minmax(0, 1fr); }
 }

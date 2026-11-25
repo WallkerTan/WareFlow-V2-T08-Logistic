@@ -13,6 +13,12 @@ import java.util.*;
 public class AccountController {
     private final AccountService accounts;
     @GetMapping("/users/me") public View me(){return accounts.me();}
+    @PutMapping("/users/me")
+    @AuditLog(action = "UPDATE_OWN_PROFILE", targetType = "User")
+    public View updateMe(@Valid @RequestBody ProfileUpdate request) {
+        return accounts.updateMe(request);
+    }
+
     @GetMapping("/employees") public List<View> employees(){return accounts.employees();}
     @PatchMapping("/employees/{id}") @AuditLog(action="UPDATE_EMPLOYEE",targetType="User")
     public View update(@PathVariable UUID id,@Valid @RequestBody EmployeeUpdate request){return accounts.update(id,request);}

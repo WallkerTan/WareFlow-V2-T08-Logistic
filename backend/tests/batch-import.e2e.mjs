@@ -62,10 +62,12 @@ try {
             await delay(1000);
         }
     }
-    const auth = await api('core', '/auth/register-company', { companyName: 'Import Test', fullName: 'Tester',
-        address: 'Test', businessModel: 'TECH', email: 'test@example.org', password: randomUUID() }, 201);
-    token = auth.accessToken;
-    const company = auth.companyId, warehouse = randomUUID(), supplier = randomUUID(), product = randomUUID();
+    const credentials = { email: 'test@example.org', password: randomUUID() };
+    const registration = await api('core', '/auth/register-company', { companyName: 'Import Test', fullName: 'Tester',
+        address: 'Test', businessModel: 'TECH', ...credentials }, 201);
+    const company = registration.companyId, warehouse = randomUUID(), supplier = randomUUID(), product = randomUUID();
+    sql('core', `update companies set status='ACTIVE' where id='${company}'`);
+    token = (await api('core', '/auth/login', credentials, 200)).accessToken;
     sql('core', `insert into warehouses(id,owner_company_id,name,warehouse_type,status,region,address,area,price,handover,created_at)
         values('${warehouse}','${company}','Test','RENT','ACTIVE','Test','Test',100,1,'{}',now());
         insert into partners(id,kind,name,deleted,version,display_id,business_model)
@@ -84,7 +86,9 @@ try {
     const order = path + '/' + requestId;
     const balance = async () => (await api('finance', '/wallets')).balance;
     const stock = () => sql('inventory', `select count(*) || ':' || coalesce(sum(quantity),0)::int from stock_lots where purchase_batch_id='${batch.id}'`);
-    await api('inventory', path, request, 409);
+    await api('inventory', path, { ...request, batchIds: [batch.id, batch.id] }, 400);
+    const rejected = await api('inventory', path, request, 409);
+    assert.match(rejected.detail, /210\.00 VND/);
     assert.equal((await api('inventory', order)).status, 'PENDING');
     assert.equal(await balance(), 0);
     assert.equal(stock(), '0:0');

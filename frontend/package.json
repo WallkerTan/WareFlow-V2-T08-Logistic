@@ -13,6 +13,7 @@
     "test": "node --test tests/api-analytics.test.mjs"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.3.4",
     "@hookform/resolvers": "^5.9.2",
     "@reduxjs/toolkit": "^2.13.0",
     "@tailwindcss/vite": "^4.3.3",

@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import { useReduxFormState } from '../../store/useReduxFormState';
 import { Plus, Boxes, Calendar, FileText, Search, Trash2 } from 'lucide-react';
 import { useQuery, invalidateData } from '../../services/query';
 import { request, mutate } from '../../services/api';
 import { useAdminData } from '../../services/data';
+import { usePurchaseBatchCatalog } from '../../services/purchaseBatchCatalog';
 import { Modal } from '../../components/admin/AdminUI';
+import { useWorkspace } from '../../services/workspace';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 import toast from 'react-hot-toast';
 
@@ -40,12 +43,15 @@ export default function CompanyBatchesPage() {
     const batchesQuery = useQuery<PurchaseBatch[]>('purchase-batches', () =>
         request<PurchaseBatch[]>('core', '/purchase-batches')
     );
-    const { raw } = useAdminData('suppliers', 'supplierProducts');
+    const { raw } = useAdminData('products');
+    const catalog = usePurchaseBatchCatalog();
+    const { warehouseId, warehouse } = useWorkspace();
     const [search, setSearch] = useState('');
     const [isCreating, setIsCreating] = useState(false);
     const [busy, setBusy] = useState(false);
-    const [selectedSupplierId, setSelectedSupplierId] = useState('');
-    const [draftLines, setDraftLines] = useState<DraftLine[]>([
+    const [error, setError] = useState('');
+    const [selectedSupplierId, setSelectedSupplierId] = useReduxFormState('');
+    const [draftLines, setDraftLines] = useReduxFormState<DraftLine[]>([
         { key: 'init-1', supplierId: '', productId: '', quantity: '1' }
     ]);
 
@@ -65,13 +71,13 @@ export default function CompanyBatchesPage() {
 
     const totalBatchValue = batches.reduce((sum, b) => sum + Number(b.total || 0), 0);
 
-    const suppliers = raw.suppliers || [];
-    const supplierProducts = raw.supplierProducts || [];
+    const suppliers = catalog.data?.suppliers ?? [];
+    const supplierProducts = catalog.data?.products ?? [];
 
     const addDraftLine = () => {
         setDraftLines(prev => [
             ...prev,
-            { key: 'line-' + Date.now() + Math.random(), supplierId: selectedSupplierId, productId: '', quantity: '1' }
+            { key: 'line-' + Date.now() + Math.random(), supplierId: '', productId: '', quantity: '1' }
         ]);
     };
 
@@ -91,11 +97,11 @@ export default function CompanyBatchesPage() {
     };
 
     const handleOpenCreate = () => {
-        const defaultSupplier = suppliers[0]?.id ? String(suppliers[0].id) : '';
-        setSelectedSupplierId(defaultSupplier);
+        setSelectedSupplierId('');
         setDraftLines([
-            { key: 'init-' + Date.now(), supplierId: defaultSupplier, productId: '', quantity: '1' }
+            { key: 'init-' + Date.now(), supplierId: '', productId: '', quantity: '1' }
         ]);
+        setError('');
         setIsCreating(true);
     };
 
@@ -114,7 +120,8 @@ export default function CompanyBatchesPage() {
                 toast.error(`Dòng ${i + 1}: Vui lòng chọn nhà cung cấp`);
                 return;
             }
-            if (!line.productId) {
+            if (!supplierProducts.some(product => String(product.id) === line.productId
+                && String(product.supplierId) === supId)) {
                 toast.error(`Dòng ${i + 1}: Vui lòng chọn sản phẩm`);
                 return;
             }
@@ -124,6 +131,7 @@ export default function CompanyBatchesPage() {
             }
         }
 
+        setError('');
         setBusy(true);
         try {
             const payload = {
@@ -139,7 +147,7 @@ export default function CompanyBatchesPage() {
             batchesQuery.reload();
             setIsCreating(false);
         } catch (err) {
-            toast.error(err instanceof Error ? err.message : 'Không tạo được lô hàng');
+            setError(err instanceof Error ? err.message : 'Không tạo được lô hàng');
         } finally {
             setBusy(false);
         }
@@ -196,6 +204,13 @@ export default function CompanyBatchesPage() {
             {batchesQuery.loading ? (
                 <div style={{ textAlign: 'center', padding: '40px 0', color: '#64748b' }}>
                     Đang tải dữ liệu lô hàng…
+                </div>
+            ) : batchesQuery.error ? (
+                <div className="wf-card wf-operation-stack" role="alert">
+                    <p>{batchesQuery.error}</p>
+                    <div className="wf-operation-actions">
+                        <button type="button" className="adm-btn" onClick={batchesQuery.reload}>Thử lại</button>
+                    </div>
                 </div>
             ) : filteredBatches.length === 0 ? (
                 <div className="wf-card" style={{ textAlign: 'center', padding: '50px 20px', color: '#64748b' }}>
@@ -307,10 +322,14 @@ export default function CompanyBatchesPage() {
             {/* Modal: Tạo lô hàng mới */}
             {isCreating && (
                 <Modal
-                    title="Tạo lô hàng mới (Mã LH... tự động)"
+                    title="Tạo lô hàng mới"
+                    wide
                     onClose={() => { if (!busy) setIsCreating(false); }}
                 >
                     <form onSubmit={handleCreateBatch}>
+                        {catalog.loading && <p role="status">Đang tải danh mục nhà cung cấp…</p>}
+                        {catalog.error && <p role="alert">{catalog.error} <button type="button" className="adm-btn" onClick={catalog.reload}>Thử lại</button></p>}
+                        <fieldset className="wf-form-stack" disabled={busy}>
                         <div style={{ marginBottom: 16 }}>
                             <label className="wf-field">
                                 <span>Nhà cung cấp chính</span>
@@ -319,7 +338,11 @@ export default function CompanyBatchesPage() {
                                     onChange={e => {
                                         const newSup = e.target.value;
                                         setSelectedSupplierId(newSup);
-                                        setDraftLines(lines => lines.map(l => ({ ...l, supplierId: newSup, productId: '' })));
+                                        if (newSup !== selectedSupplierId) {
+                                            setDraftLines(lines => lines.map(line => line.supplierId
+                                                ? line
+                                                : { ...line, productId: '' }));
+                                        }
                                     }}
                                 >
                                     <option value="">-- Chọn nhà cung cấp --</option>
@@ -334,7 +357,7 @@ export default function CompanyBatchesPage() {
                         <div style={{ marginBottom: 16 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                 <strong style={{ fontSize: 14 }}>Các dòng hàng trong lô:</strong>
-                                <button type="button" className="adm-btn" onClick={addDraftLine}>
+                                <button type="button" className="adm-btn" disabled={draftLines.length >= 100} onClick={addDraftLine}>
                                     <Plus size={14} /> Thêm dòng hàng
                                 </button>
                             </div>
@@ -346,6 +369,9 @@ export default function CompanyBatchesPage() {
                                 const linePrice = Number(chosenProduct?.price || 0);
                                 const lineQty = Number(line.quantity || 0);
                                 const lineTotal = linePrice * lineQty;
+                                const stock = chosenProduct && raw.products.find(item => item.warehouseId === warehouseId
+                                    && (item.sku === chosenProduct.sku || item.sku === chosenProduct.legacySku));
+                                const lowStock = stock && Number(stock.available ?? stock.quantity) < Number(stock.minStock);
 
                                 return (
                                     <div key={line.key} style={{
@@ -369,15 +395,15 @@ export default function CompanyBatchesPage() {
                                             )}
                                         </div>
 
-                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(170px, 100%), 1fr))', gap: 16 }}>
                                             <label className="wf-field" style={{ margin: 0 }}>
                                                 <span>Nhà cung cấp *</span>
                                                 <select
-                                                    value={currentSupId}
-                                                    required
+                                                    value={line.supplierId}
+                                                    required={!selectedSupplierId}
                                                     onChange={e => updateDraftLine(idx, 'supplierId', e.target.value)}
                                                 >
-                                                    <option value="">Chọn NCC</option>
+                                                    <option value="">{selectedSupplierId ? 'Dùng nhà cung cấp chính' : 'Chọn NCC'}</option>
                                                     {suppliers.map(s => (
                                                         <option key={String(s.id)} value={String(s.id)}>{String(s.name)}</option>
                                                     ))}
@@ -392,7 +418,9 @@ export default function CompanyBatchesPage() {
                                                     disabled={!currentSupId}
                                                     onChange={e => updateDraftLine(idx, 'productId', e.target.value)}
                                                 >
-                                                    <option value="">-- Chọn sản phẩm --</option>
+                                                    <option value="">{currentSupId && filteredProducts.length === 0
+                                                        ? 'Không có sản phẩm khả dụng'
+                                                        : '-- Chọn sản phẩm --'}</option>
                                                     {filteredProducts.map(p => (
                                                         <option key={String(p.id)} value={String(p.id)}>
                                                             {String(p.sku)} · {String(p.name)} ({formatCurrency(Number(p.price || 0))})
@@ -421,6 +449,8 @@ export default function CompanyBatchesPage() {
                                                 borderTop: '1px dashed #cbd5e1',
                                                 display: 'flex',
                                                 justifyContent: 'space-between',
+                                                flexWrap: 'wrap',
+                                                gap: 8,
                                                 fontSize: 12,
                                                 color: '#475569'
                                             }}>
@@ -428,6 +458,9 @@ export default function CompanyBatchesPage() {
                                                 <span style={{ color: '#0f766e', fontWeight: 700 }}>Thành tiền: {formatCurrency(lineTotal)}</span>
                                             </div>
                                         )}
+                                        {lowStock && <p className="wf-notice" style={{ marginTop: 12 }}>
+                                            Tồn khả dụng tại {String(warehouse?.name || 'kho đang chọn')} thấp hơn mức tối thiểu.
+                                        </p>}
                                     </div>
                                 );
                             })}
@@ -457,7 +490,8 @@ export default function CompanyBatchesPage() {
                             );
                         })()}
 
-                        <div className="wf-form-actions">
+                        {error && <p className="wf-notice" role="alert">{error}</p>}
+                        <div className="wf-operation-actions">
                             <button type="button" className="adm-btn" onClick={() => setIsCreating(false)} disabled={busy}>
                                 Đóng
                             </button>
@@ -465,6 +499,7 @@ export default function CompanyBatchesPage() {
                                 {busy ? 'Đang tạo lô…' : 'Xác nhận tạo lô hàng'}
                             </button>
                         </div>
+                        </fieldset>
                     </form>
                 </Modal>
             )}

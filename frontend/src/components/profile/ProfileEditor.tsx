@@ -4,6 +4,7 @@ import { useQuery } from '../../services/query';
 import { useWorkspace } from '../../services/workspace';
 import { saveResource } from '../../services/data';
 import { uploadImage } from '../../data/warehouses';
+import { ImageCropInput, imageSizes } from '../common/ImageCropInput';
 import { useRef, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -17,6 +18,7 @@ import {
     LockKeyhole,
 } from "lucide-react";
 import Button from "../ui/Button";
+import { Modal } from "../admin/AdminUI";
 
 export type ProfileField = {
     name: string;
@@ -47,6 +49,7 @@ export default function ProfileEditor({
     sections,
 }: Props) {
     const [notice, setNotice] = useState("");
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const form = useRef<HTMLFormElement>(null);
     const Icon =
         kind === "company"
@@ -61,16 +64,45 @@ export default function ProfileEditor({
     const [busy,setBusy]=useState(false);
     function initialValues(row:Row|undefined) {const data=row||{};const aliases:Record<string,string>={'full_name':'fullName','business_model':'businessModel','warehouse_type':'warehouseType','owner_company_id':'ownerCompanyId','created_at':'createdAt','profile.tax_code':'profile.taxCode','handover.employee':'handover.managerName','handover.time':object(data.handover).handoverTime ? 'handover.handoverTime' : 'handover.handedOverAt'};return Object.fromEntries(sections.flatMap(s=>s.fields).map(field=>{const path=(aliases[field.name]||field.name).split('.');const value=path.reduce<unknown>((v,k)=>object(v)[k],data);return [field.name,field.name==='business_model'?String(value||'').toLowerCase():String(value||'')];}));}
     const values = {...initialValues(source), ...(draft?.id===source?.id?draft?.values:{})};
+    const avatarUrl = values.avatar || values['profile.logo'];
     function update(name:string,value:string){setDraft(previous=>({id:source?.id,values:{...(previous?.id===source?.id?previous?.values:{}),[name]:value}}));}
     async function submit(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();if(!source||busy)return;setBusy(true);setNotice('');
         try {
-            const body=kind==='company'?{name:values.name,businessModel:values.business_model.toUpperCase(),taxCode:values['profile.tax_code'],logo:values['profile.logo'],address:values['profile.address'],description:values['profile.description'],phone:object(source.profile).phone}:kind==='storehouse'?{...object(source.profile),name:values.name,address:values.address}:{fullName:values.full_name,avatar:values.avatar||null,profile:{...object(source.profile),phone:values['profile.phone'],address:values['profile.address']}};
-            await saveResource('core',kind==='company'?'/companies/'+source.id:kind==='storehouse'?'/warehouses/'+source.id+'/profile':'/users/me','PUT',body);
+            const body = kind === 'company'
+                ? { name: values.name, businessModel: values.business_model.toUpperCase(),
+                    taxCode: values['profile.tax_code'], logo: values['profile.logo'],
+                    address: values['profile.address'], description: values['profile.description'] }
+                : kind === 'storehouse'
+                    ? { name: values.name, address: values.address, avatar: values.avatar.trim() }
+                    : { fullName: values.full_name, avatar: values.avatar?.trim() || null,
+                        profile: { phone: values['profile.phone'], address: values['profile.address'] } };
+            const saved = await saveResource('core',kind==='company'?'/companies/'+source.id:kind==='storehouse'?'/warehouses/'+source.id+'/profile':'/users/me','PUT',body);
+            if (kind === 'storehouse') {
+                const warehouse = object(saved);
+                if (warehouse.id !== source.id || !('avatar' in warehouse)
+                    || (warehouse.avatar ?? '') !== values.avatar.trim()) {
+                    throw new Error('Máy chủ chưa xác nhận lưu ảnh đại diện của kho.');
+                }
+                setDraft(null);
+            }
             setNotice('Đã lưu hồ sơ thành công.');
         }catch(e){setNotice(e instanceof Error?e.message:'Không lưu được hồ sơ.');}finally{setBusy(false);}
     }
     function reset(){setDraft(null);setNotice('');}
+    async function uploadAvatar(file: File) {
+        setBusy(true);
+        try {
+            const folder = kind === 'company' ? 'companies' : kind === 'storehouse' ? 'warehouses' : 'avatars';
+            const image = await uploadImage(file, folder);
+            update(kind === 'company' ? 'profile.logo' : 'avatar', image.secureUrl);
+            setNotice('Ảnh đã tải lên. Bấm Lưu thay đổi để cập nhật hồ sơ.');
+        } catch (error) {
+            setNotice(error instanceof Error ? error.message : 'Không tải được ảnh.');
+        } finally {
+            setBusy(false);
+        }
+    }
     return (
         <>
             <div className="wf-page-heading">
@@ -114,15 +146,29 @@ export default function ProfileEditor({
                                 .
                             </p>
                         </div>
-                        <div className="wf-image-placeholder">{(values.avatar||values['profile.logo'])&&<img src={values.avatar||values['profile.logo']} alt="Ảnh đại diện" width={64} height={64}/>}
-                            <ImagePlus size={25} />
+                        <div className="wf-image-placeholder">
+                            {avatarUrl ? (
+                                <button
+                                    type="button"
+                                    className="wf-profile-avatar-button"
+                                    aria-label="Xem ảnh đại diện"
+                                    aria-haspopup="dialog"
+                                    onClick={() => setPreviewImage(avatarUrl)}
+                                >
+                                    <img className="wf-profile-avatar" src={avatarUrl} alt="" width={64} height={64} />
+                                </button>
+                            ) : <ImagePlus size={25} />}
                             <div>
-                                <strong>{values.avatar||values['profile.logo']?'Ảnh đại diện':'Chưa có hình ảnh'}</strong>
-                                <p>
-                                    Nhập đường dẫn hoặc tải ảnh lên.
-                                </p>
+                                <strong>{avatarUrl ? 'Ảnh đại diện' : 'Chưa có hình ảnh'}</strong>
+                                <p>Nhập đường dẫn hoặc tải ảnh lên.</p>
                             </div>
-                        </div>{kind!=='storehouse'&&<label className="wf-field"><span>Tải ảnh lên Cloudinary</span><input type="file" accept="image/*" disabled={busy} onChange={async e=>{const file=e.target.files?.[0];if(!file)return;setBusy(true);try{const image=await uploadImage(file,kind==='company'?'companies':'avatars');update(kind==='company'?'profile.logo':'avatar',image.secureUrl);setNotice('Ảnh đã tải lên. Bấm Lưu thay đổi để cập nhật hồ sơ.');}catch(error){setNotice(error instanceof Error?error.message:'Không tải được ảnh.');}finally{setBusy(false);}}}/></label>}
+                        </div>
+                        <ImageCropInput
+                            label="Tải ảnh đại diện"
+                            size={kind === 'storehouse' ? imageSizes.warehouse : imageSizes.avatar}
+                            disabled={busy}
+                            onCrop={uploadAvatar}
+                        />
                     </section>
                     {sections.map((section, index) => (
                         <section className="wf-card" key={section.title}>
@@ -197,7 +243,7 @@ export default function ProfileEditor({
                                                         ? "any"
                                                         : undefined
                                                 }
-                                                maxLength={255}
+                                                maxLength={kind === 'storehouse' && field.name === 'avatar' ? 2000 : 255}
                                                 pattern={
                                                     field.required &&
                                                     (!field.type ||
@@ -267,6 +313,11 @@ export default function ProfileEditor({
                     </section>
                 </aside>
             </div>
+            {previewImage && (
+                <Modal title="Ảnh đại diện" wide onClose={() => setPreviewImage(null)}>
+                    <img className="wf-profile-avatar-preview" src={previewImage} alt="Ảnh đại diện" />
+                </Modal>
+            )}
         </>
     );
 }

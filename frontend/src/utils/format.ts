@@ -168,6 +168,7 @@ export const shipmentStatusMeta: Record<
     DELIVERED: { label: "Đã giao", tone: "success" },
     FAILED: { label: "Thất bại", tone: "danger" },
     RETURNED: { label: "Hoàn trả", tone: "warning" },
+    CANCELLED: { label: "Đã hủy", tone: "danger" },
 };
 
 export const transactionTypeMeta: Record<

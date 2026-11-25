@@ -72,10 +72,10 @@ public class ShipmentService {
         var s = locked(warehouse, id);
         if (s.getStatus() == request.status()) return ShipmentResponse.from(s);
         Set<ShipmentStatus> allowed = switch (s.getStatus()) {
-            case CREATED -> Set.of(ShipmentStatus.IN_TRANSIT);
-            case IN_TRANSIT -> Set.of(ShipmentStatus.DELIVERED, ShipmentStatus.FAILED);
-            case FAILED -> Set.of(ShipmentStatus.IN_TRANSIT, ShipmentStatus.RETURNED);
-            case DELIVERED, RETURNED -> Set.of();
+            case CREATED -> Set.of(ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED, ShipmentStatus.CANCELLED);
+            case IN_TRANSIT -> Set.of(ShipmentStatus.DELIVERED, ShipmentStatus.FAILED, ShipmentStatus.CANCELLED);
+            case FAILED -> Set.of(ShipmentStatus.IN_TRANSIT, ShipmentStatus.RETURNED, ShipmentStatus.DELIVERED, ShipmentStatus.CANCELLED);
+            case DELIVERED, RETURNED, CANCELLED -> Set.of();
         };
         if (!allowed.contains(request.status())) conflict("Không thể chuyển từ " + s.getStatus() + " sang " + request.status());
         var previous = s.getStatus();

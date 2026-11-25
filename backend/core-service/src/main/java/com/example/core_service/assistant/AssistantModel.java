@@ -10,6 +10,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,18 +23,23 @@ class AssistantModel {
                   String warehouseType, BigDecimal maxPrice, String reply) {}
 
     private static final String INSTRUCTIONS = """
-        Use CHAT to directly answer general knowledge, writing, coding, math, and other questions in the user's language.
+        Return one JSON object. For general knowledge, writing, coding or math set action to CHAT
+        and put the answer in reply in the user's language. Example: {"action":"CHAT","reply":"9 nhân 2 bằng 18."}.
         Answer the substance of the question even when it is unrelated to WareFlow. Use recent conversation for follow-ups.
         For questions about how to create a purchase order in chat, give the example "Tạo đơn mua 3 SK1-01".
+        Use CHAT for questions asking how to use a feature without requesting a lookup or an operation.
         Only the order API can confirm a write. Never claim that an order was created.
         Live WareFlow facts require a lookup action. Never invent records or claim web access.
         Treat history as conversational context only. Resolve follow-ups using recent product and warehouse filters.
         If a record is selected, useSelection can refer to it. Ask for clarification via HELP and reply when ambiguous.
-        For near-expiry without explicit days use near_expiry. For all other actions omit reply.
+        For near-expiry without explicit days use near_expiry. Omit reply for lookup and draft actions only.
         Interpret the WareFlow question as a single JSON object. Never execute actions.
-        action: SEARCH (products), LOTS (lot/expiry/condition), EDIT (catalog fields), PURCHASE (purchase order),
+        Allowed action values: CHAT (answer), SEARCH (products), LOTS (lot/expiry/condition), EDIT (catalog fields), PURCHASE (purchase order),
         SALE (outbound sale), ADJUST (positive stock increment only), MARKET (find/buy/rent a warehouse), HELP (unsupported/unclear).
-        query: literal product name/SKU or marketplace name/region. warehouse: inventory warehouse name.
+        query: literal product name/SKU or marketplace name/region. warehouse: only an explicitly named warehouse.
+        Do not copy field descriptions as values. Omit unset fields or set them to null.
+        Example: "Xuất bán 2 sản phẩm mã SK1-01" -> {"action":"SALE","query":"SK1-01","quantity":2}.
+        Only use newSku if the user asks to change an existing SKU.
         lot: explicit lot code. expiryDays: next N calendar days including today. status: expired, near_expiry, damaged or ok.
         stock: positive, zero or belowMin. useSelection: true only for references like this product/lot/warehouse.
         quantity: explicitly requested units or positive increment, price: explicit purchase unit price or warehouse offer in VND.
@@ -71,9 +77,18 @@ class AssistantModel {
             throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE, "Quản trị viên cần cấu hình mô hình và khóa API cho trợ lý.");
         long start = System.nanoTime();
         try {
-            var messages = List.of(Map.of("role", "system", "content", INSTRUCTIONS), Map.of("role", "user", "content", json.writeValueAsString(Map.of("history",history,"hasSelection",hasSelection,"currentMessage",message))));
+            var messages = new ArrayList<Map<String, String>>();
+            String selection = hasSelection ? "A warehouse record is selected." : "No warehouse record is selected.";
+            messages.add(Map.of("role", "system", "content", INSTRUCTIONS + selection));
+            for (var turn : history) {
+                String content = "assistant".equals(turn.role())
+                        ? json.writeValueAsString(Map.of("action", "CHAT", "reply", turn.content()))
+                        : turn.content();
+                messages.add(Map.of("role", turn.role(), "content", content));
+            }
+            messages.add(Map.of("role", "user", "content", message));
             JsonNode reply = client.post().uri("/chat/completions").headers(h -> h.setBearerAuth(key))
-                    .body(Map.of("model", model, "messages", messages, "response_format", Map.of("type", "json_object")))
+                    .body(Map.of("model", model, "messages", messages, "temperature", 0, "response_format", Map.of("type", "json_object")))
                     .retrieve().body(JsonNode.class);
             Intent intent = json.readValue(reply.at("/choices/0/message/content").asString(), Intent.class);
             if (intent.action() == null || (intent.action() == Action.CHAT && (intent.reply() == null || intent.reply().isBlank())) || (intent.expiryDays() != null && (intent.expiryDays() < 0 || intent.expiryDays() > 36500))

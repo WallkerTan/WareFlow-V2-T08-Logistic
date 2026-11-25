@@ -23,7 +23,8 @@ export type ShipmentStatus =
     | "IN_TRANSIT"
     | "DELIVERED"
     | "FAILED"
-    | "RETURNED";
+    | "RETURNED"
+    | "CANCELLED";
 
 export type TransactionType = "INCOME" | "EXPENSE" | "SYSTEM_FEE";
 export type TransactionCategory =

@@ -58,7 +58,7 @@ public class DocumentSettlementController {
                 doc.approval()==null || doc.approval().get("total")==null)throw invalid();
         var amount=new BigDecimal(doc.approval().get("total").toString());
         if(operation.equals("RETURN") && amount.compareTo(new BigDecimal("10000000"))<0)throw invalid();
-        ledger.post(operation,company,warehouse,actor.id(),exportId,true,amount,TransactionType.INCOME,
+        ledger.post(operation,company,warehouse,actor.id(),exportId,operation.equals("RETURN"),amount,TransactionType.INCOME,
                 operation.equals("SALE")?TransactionCategory.SALE:TransactionCategory.OTHER,operation+" · "+exportId);
     }
     private static ResponseStatusException invalid(){return new ResponseStatusException(HttpStatus.CONFLICT,"Chứng từ chưa đủ điều kiện quyết toán.");}

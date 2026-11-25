@@ -9,6 +9,7 @@ import {
     Users,
     History,
     Bell,
+    MessagesSquare,
     ClipboardCheck,
     Building,
 } from "lucide-react";
@@ -82,6 +83,11 @@ export default function AdminLayout() {
                         to: "/admin/notifications",
                         label: "Thông báo hệ thống",
                         icon: Bell,
+                    },
+                    {
+                        to: "/admin/support-requests",
+                        label: "Yêu cầu hỗ trợ",
+                        icon: MessagesSquare,
                     },
                 ],
             }}

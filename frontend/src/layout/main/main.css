@@ -33,3 +33,55 @@
 .company-warehouse-details { line-height:1.9; }
 .company-warehouse-details h2 { font-size:22px; letter-spacing:normal; line-height:1.5; margin:16px 0 8px; }
 .company-warehouse-details h3 { font-size:15px; letter-spacing:normal; line-height:1.5; margin:20px 0 8px; }
+
+.wf-operation-stack, .wf-form-stack {
+    display: grid;
+    gap: 18px;
+    min-width: 0;
+}
+.wf-form-stack {
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+.wf-operation-stack > :is(h3, h4, p), .wf-form-stack > p,
+.wf-line-card > :is(h4, p) {
+    margin: 0;
+}
+.wf-line-card {
+    padding: 16px;
+    border: 1px solid #e5eaf1;
+    border-radius: 10px;
+    background: #fafbfd;
+}
+.wf-operation-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: flex-end;
+}
+.wf-form-actions,
+.wf-form-actions > div,
+.wf-modal-actions,
+.wm-modal-actions,
+.market-modal-actions {
+    flex-wrap: wrap;
+}
+.wf-operation .wf-form-actions {
+    justify-content: flex-end;
+    padding: 0;
+}
+.wf-operation-stack .workspace-table {
+    max-width: 100%;
+    overflow-x: auto;
+}
+.wf-operation-stack .workspace-table table {
+    width: 100%;
+}
+.wf-operation-stack .workspace-table :is(th, td) {
+    padding: 10px 12px;
+}
+.wf-operation-stack .workspace-table td:last-child .adm-btn {
+    white-space: nowrap;
+}

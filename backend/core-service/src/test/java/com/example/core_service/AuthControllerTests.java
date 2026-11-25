@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "EMAIL_ENABLED=false")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class AuthControllerTests {
@@ -42,7 +42,20 @@ class AuthControllerTests {
     }
 
     @Test
-    void registerCompany_thenLogin_thenGetMe() throws Exception {
+    void emailDisabled_rejectsRequestsForEmailCodes() throws Exception {
+        mockMvc.perform(get("/auth/email-config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailEnabled").value(false));
+        for (String path : new String[]{"registration-code", "forgot-password", "reset-password"}) {
+            mockMvc.perform(post("/auth/" + path).contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "email", email, "otp", "123456", "newPassword", "newPassword"))))
+                    .andExpect(status().isServiceUnavailable());
+        }
+    }
+
+    @Test
+    void registerCompany_requiresApprovalBeforeLogin() throws Exception {
         // 1. Đăng ký công ty
         String body = objectMapper.writeValueAsString(Map.of(
                 "companyName", "Công ty " + UUID.randomUUID(),
@@ -57,22 +70,32 @@ class AuthControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
                 .andExpect(jsonPath("$.role").value(UserRole.COMPANY_ADMIN.name()))
                 .andExpect(jsonPath("$.email").value(email))
                 .andExpect(jsonPath("$.companyId").isNotEmpty())
                 .andReturn();
 
-        String registerToken = objectMapper.readValue(registerResult.getResponse().getContentAsString(), AuthResponse.class)
-                .accessToken();
-        assertThat(registerToken).isNotBlank();
+        var registration = objectMapper.readValue(registerResult.getResponse().getContentAsString(), AuthResponse.class);
 
         // 2. Đăng nhập
         String loginBody = objectMapper.writeValueAsString(Map.of(
                 "email", email,
                 "password", "12345678"
         ));
+
+        mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON).content(loginBody))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Công ty đang chờ quản trị viên duyệt."));
+
+        var adminLogin = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"admin@wareflow.com\",\"password\":\"admin123\"}"))
+                .andExpect(status().isOk()).andReturn();
+        var admin = objectMapper.readValue(adminLogin.getResponse().getContentAsString(), AuthResponse.class);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/companies/{id}/status", registration.companyId())
+                        .header("Authorization", "Bearer " + admin.accessToken())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isOk());
 
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

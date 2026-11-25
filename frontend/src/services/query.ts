@@ -1,57 +1,93 @@
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
+import { createSelector, nanoid } from '@reduxjs/toolkit';
+import { Store, useAppSelector, type RootState } from '../store/Store';
+import { emptyQuery, querySlice } from '../store/slice/querySlice';
+import { workspaceSlice } from '../store/slice/workspaceSlice';
 import { getAuthSession } from './authApi';
 
-type State<T> = { data: T | undefined; loading: boolean; error: string; version: number };
-type Entry = { state: State<unknown>; listeners: Set<() => void>; load?: () => Promise<unknown>; generation: number };
-const cache = new Map<string, Entry>();
-const listeners = new Set<() => void>();
-let statusSnapshot = { loading: false, errors: [] as string[] };
-function emitStatus() {
-    const active = [...cache.entries()].filter(([key, entry]) => !key.endsWith(':disabled') && entry.listeners.size);
-    statusSnapshot = { loading: active.some(([, e]) => e.state.loading), errors: [...new Set(active.map(([, e]) => e.state.error).filter(Boolean))] };
-    listeners.forEach(fn => fn());
-}
-function emit(entry: Entry) { entry.listeners.forEach(fn => fn()); emitStatus(); }
-function entryFor(key: string): Entry {
-    if (!cache.has(key)) cache.set(key, { state: { data: undefined, loading: false, error: '', version: 0 }, listeners: new Set(), generation: 0 });
-    return cache.get(key)!;
-}
-function fetchEntry(entry: Entry) {
-    if (!entry.load || entry.state.loading) return;
-    const generation = ++entry.generation;
-    entry.state = { ...entry.state, loading: true, error: '' }; emit(entry);
-    entry.load().then(data => {
-        if (generation !== entry.generation) return;
-        entry.state = { data, loading: false, error: '', version: entry.state.version + 1 }; emit(entry);
-    }, error => {
-        if (generation !== entry.generation) return;
-        entry.state = { ...entry.state, loading: false, error: error instanceof Error ? error.message : 'Không tải được dữ liệu.', version: entry.state.version + 1 }; emit(entry);
-    });
-}
-export function useQuery<T>(key: string | null, loader: () => Promise<T>) {
+type Loader = () => Promise<unknown>;
+// Keep callbacks outside Redux. Query results and their lifecycle live in the store.
+const loaders = new Map<string, Set<Loader>>();
+
+export function sessionScope() {
     const session = getAuthSession();
-    // Session identity prevents cached data from being shared between accounts.
-    const entry = entryFor(`${session?.userId || 'guest'}:${session?.expiresAt || ''}:${key || 'disabled'}`);
-    entry.load = key && session ? loader : undefined;
-    const subscribe = useCallback((fn: () => void) => {
-        entry.listeners.add(fn);
-        emitStatus();
-        return () => { entry.listeners.delete(fn); emitStatus(); };
-    }, [entry]);
-    const state = useSyncExternalStore(subscribe, () => entry.state) as State<T>;
-    const enabled = Boolean(key && session);
-    useEffect(() => { if (enabled && state.version === 0 && !state.loading) fetchEntry(entry); }, [enabled, entry, state.version, state.loading]);
-    return { ...state, loading: !!key && (state.loading || state.version === 0), reload: () => fetchEntry(entry) };
+    return session ? JSON.stringify([session.userId, session.expiresAt]) : '';
 }
+
+function fetchQuery(key: string, loader: Loader | undefined) {
+    if (!loader || JSON.parse(key)[0] !== sessionScope() || Store.getState().queries.entries[key]?.requestId) return;
+    const requestId = nanoid();
+    Store.dispatch(querySlice.actions.start({ key, requestId }));
+    Promise.resolve().then(loader).then(
+        data => Store.dispatch(querySlice.actions.finish({ key, requestId, data })),
+        error => Store.dispatch(querySlice.actions.finish({
+            key,
+            requestId,
+            error: error instanceof Error ? error.message : 'Không tải được dữ liệu.',
+        })),
+    );
+}
+
+export function useQuery<T>(key: string | null, loader: () => Promise<T>) {
+    const scope = sessionScope();
+    const cacheKey = key && scope ? JSON.stringify([scope, key]) : null;
+    const loaderRef = useRef(loader);
+    useEffect(() => { loaderRef.current = loader; }, [loader]);
+    const invoke = useCallback(() => loaderRef.current(), []);
+    const state = useAppSelector(root => (cacheKey && root.queries.entries[cacheKey]) || emptyQuery);
+
+    useEffect(() => {
+        if (!cacheKey) return;
+        const current = loaders.get(cacheKey) ?? new Set();
+        current.add(invoke);
+        loaders.set(cacheKey, current);
+        Store.dispatch(querySlice.actions.subscribe(cacheKey));
+        if ((Store.getState().queries.entries[cacheKey] ?? emptyQuery).stale) fetchQuery(cacheKey, invoke);
+        return () => {
+            current.delete(invoke);
+            if (!current.size) loaders.delete(cacheKey);
+            Store.dispatch(querySlice.actions.unsubscribe(cacheKey));
+        };
+    }, [cacheKey, invoke]);
+
+    const reload = useCallback(() => {
+        if (cacheKey) fetchQuery(cacheKey, invoke);
+    }, [cacheKey, invoke]);
+
+    const fetching = Boolean(state.requestId || state.stale);
+    return {
+        data: state.data as T | undefined,
+        error: state.error,
+        version: state.version,
+        loading: Boolean(cacheKey && fetching && state.data === undefined),
+        refreshing: Boolean(cacheKey && state.requestId && state.data !== undefined),
+        reload,
+    };
+}
+
 export function invalidateData() {
-    for (const entry of cache.values()) {
-        entry.generation++;
-        entry.state = { ...entry.state, loading: false, error: '', version: 0 };
-        emit(entry);
-        if (entry.listeners.size) fetchEntry(entry);
-    }
+    Store.dispatch(querySlice.actions.invalidate());
+    for (const [key, active] of loaders) fetchQuery(key, active.values().next().value);
 }
-export function clearData() { for (const entry of cache.values()) { entry.generation++; entry.state = { data: undefined, loading: false, error: '', version: 0 }; emit(entry); } }
+
+export function clearData() {
+    Store.dispatch(querySlice.actions.clear());
+    Store.dispatch(workspaceSlice.actions.clear());
+}
+
+if (typeof window !== 'undefined') window.addEventListener('wareflow.auth', clearData);
+
+const selectDataStatus = createSelector(
+    [(state: RootState) => state.queries.entries, (state: RootState) => state.queries.subscribers],
+    (entries, subscribers) => {
+        const active = Object.keys(subscribers).map(key => entries[key]).filter(entry => entry != null);
+        return {
+            loading: active.some(entry => entry.requestId && entry.data === undefined),
+            errors: [...new Set(active.map(entry => entry.error).filter(Boolean))],
+        };
+    },
+);
+
 export function useDataStatus() {
-    return useSyncExternalStore(fn => { listeners.add(fn); return () => { listeners.delete(fn); }; }, () => statusSnapshot);
+    return useAppSelector(selectDataStatus);
 }

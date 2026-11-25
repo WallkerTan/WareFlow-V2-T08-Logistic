@@ -58,6 +58,26 @@ public class PartnerService {
         p.setName(r.name().trim());p.setEmail(r.email());p.setPhone(r.phone());p.setAddress(r.address());p.setBusinessModel(r.businessModel());return partners.save(p);
     }
     public void delete(String kind,UUID id){Partner p=get(kind,id,true);p.setDeleted(true);partners.save(p);}
+    public record BatchSupplier(UUID id, String name) {}
+    public record BatchProduct(UUID id, UUID supplierId, String sku, String legacySku, String name, String unit, BigDecimal price) {}
+    public record BatchCatalog(List<BatchSupplier> suppliers, List<BatchProduct> products) {}
+
+    @Transactional(readOnly = true)
+    public BatchCatalog purchaseBatchCatalog() {
+        var suppliers = partners.findByKindAndCompanyIdIsNullAndDeletedFalseOrderByNameAsc("SUPPLIER")
+                .stream().map(p -> new BatchSupplier(p.getId(), p.getName())).toList();
+        var ids = suppliers.stream().map(BatchSupplier::id).toList();
+        var items = ids.isEmpty() ? List.<BatchProduct>of()
+                : products.findBySupplierIdInOrderByNameAsc(ids).stream()
+                    .map(p -> new BatchProduct(p.getId(), p.getSupplierId(), p.getSku(), p.getLegacySku(), p.getName(), p.getUnit(), p.getPrice()))
+                    .toList();
+        return new BatchCatalog(suppliers, items);
+    }
+
+    public Partner purchaseBatchSupplier(UUID id) {
+        return partners.findByIdAndKindAndCompanyIdIsNullAndDeletedFalse(id, "SUPPLIER")
+                .orElseThrow(() -> ApiException.notFound("Không tìm thấy nhà cung cấp đang hoạt động."));
+    }
     public List<SupplierProduct> products(UUID supplier){get("SUPPLIER",supplier,false);return products.findBySupplierId(supplier);}
     public SupplierProduct product(UUID supplier,UUID id,ProductRequest r) {
         Partner owner=get("SUPPLIER",supplier,true);

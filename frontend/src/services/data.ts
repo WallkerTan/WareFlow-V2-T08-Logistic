@@ -40,12 +40,8 @@ export function useAdminData(...wanted: DataKey[]) {
         const today = dayKey(new Date()); const year = Number(today.slice(0, 4));
         // Fetch current and previous years so charts have full timeline
         const periods = collection === 'transactions' ? [year - 1, year].map(String) : [today.slice(0, 7), `${year}`];
-        const jobs = isAdmin
-            ? [
-                ...companiesIds.flatMap(companyId => periods.map(period => ({ companyId: companyId as string | undefined, period }))),
-                ...periods.map(period => ({ companyId: undefined, period }))
-            ]
-            : companiesIds.flatMap(companyId => periods.map(period => ({ companyId: companyId as string | undefined, period })));
+        const scopes = isAdmin && collection === 'transactions' ? [undefined] : companiesIds;
+        const jobs = scopes.flatMap(companyId => periods.map(period => ({ companyId, period })));
         const listWithDups = (await mapLimit(jobs, async j => {
             try {
                 const list = await allPages<Row>('finance', `/${collection}${query({
@@ -79,7 +75,10 @@ export function useAdminData(...wanted: DataKey[]) {
         return (await mapLimit(suppliers, async s => (await allPages<Row>('core', `/suppliers/${s.id}/products`)).map(p => ({ ...p, supplierId: s.id, supplierName: s.name })))).flat();
     });
     const productsQuery = resource('products', () => acrossWarehouses('inventory', 'products'));
-    const transactionsQuery = resource('transactions', () => finance('transactions'));
+    const transactionsKey = wanted.includes('transactions') && (isAdmin || (ready && (!isManager || !!scope.warehouseId)))
+        ? isAdmin ? 'data:transactions:system' : `data:transactions:${scopeKey}`
+        : null;
+    const transactionsQuery = useQuery(transactionsKey, () => finance('transactions'));
     const budgetsQuery = resource('budgets', () => finance('budgets'));
     const notificationsQuery = resource('notifications', () => allPages('core', '/notifications'));
     const logsQuery = resource('systemLogs', () => allPages('core', isAdmin ? '/system-logs' : '/system-logs/my-company'));
@@ -93,7 +92,7 @@ export function useAdminData(...wanted: DataKey[]) {
     const movementsQuery = resource('movements', () => acrossWarehouses('inventory', 'movements'));
     const proposalsQuery = resource('warehouseTransactions', () => allPages('core', '/warehouse-transactions'));
     const raw = useMemo(() => ({ users: usersQuery.data || EMPTY, suppliers: suppliersQuery.data || EMPTY, supplierProducts: supplierProductsQuery.data || EMPTY, products: productsQuery.data || EMPTY, transactions: transactionsQuery.data || EMPTY, budgets: budgetsQuery.data || EMPTY, notifications: notificationsQuery.data || EMPTY, systemLogs: logsQuery.data || EMPTY, shipments: shipmentsQuery.data || EMPTY, stockDocuments: documentsQuery.data || EMPTY, expenses: expensesQuery.data || EMPTY, lots: lotsQuery.data || EMPTY, movements: movementsQuery.data || EMPTY, warehouseTransactions: proposalsQuery.data || EMPTY, companies: companyRows, warehouses: warehouseRows }), [usersQuery.data, suppliersQuery.data, supplierProductsQuery.data, productsQuery.data, transactionsQuery.data, budgetsQuery.data, notificationsQuery.data, logsQuery.data, shipmentsQuery.data, documentsQuery.data, expensesQuery.data, lotsQuery.data, movementsQuery.data, proposalsQuery.data, companyRows, warehouseRows]);
-    return useMemo(() => {
+    const data = useMemo(() => {
     const companyName = (id: unknown) => str(companyRows.find(c => c.id === id)?.name);
     const warehouseName = (id: unknown) => str(warehouseRows.find(w => w.id === id)?.name);
     const companies: Company[] = companyRows.filter(r => r.status !== 'DELETED').map(r => ({ ...r, id: str(r.id), name: str(r.name), businessModel: r.businessModel as Company['businessModel'], status: r.status as Company['status'], taxCode: str(object(r.profile).taxCode), email: str(object(r.profile).email), phone: str(object(r.profile).phone), address: str(object(r.profile).address), memberCount: number(r.memberCount), warehouseCount: warehouseRows.filter(w => w.ownerCompanyId === r.id).length, createdAt: str(r.createdAt) }));
@@ -132,6 +131,12 @@ export function useAdminData(...wanted: DataKey[]) {
     const stockDocuments: StockDocument[] = raw.stockDocuments.map(r => ({ ...r, id: str(r.id), code: str(r.code || r.id), type: r.type as StockDocument['type'], status: r.status as StockDocument['status'], warehouseName: warehouseName(r.warehouseId), partner: str(object(r.approval).supplierName), itemCount: Array.isArray(r.lines) ? r.lines.length : 0, createdAt: str(r.createdAt) }));
     return { companies, warehouses, users, suppliers, products, supplierProducts, transactions, budgets, notifications, systemLogs, shipments, stockDocuments, raw };
     }, [raw, companyRows, warehouseRows]);
+    return {
+        ...data,
+        transactionsError: transactionsQuery.error,
+        transactionsLoading: transactionsQuery.loading,
+        reloadTransactions: transactionsQuery.reload,
+    };
 }
 export async function saveResource(service: Service, path: string, method: string, body?: unknown) {
     const result = await mutate(service, path, method, body); invalidateData(); return result;

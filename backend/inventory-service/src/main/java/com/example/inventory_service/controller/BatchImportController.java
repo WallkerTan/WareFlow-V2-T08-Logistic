@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
@@ -41,6 +42,11 @@ public class BatchImportController {
         if("PENDING".equals(o.getStatus()))throw new ResponseStatusException(HttpStatus.CONFLICT,o.getPaymentError()==null?"Số dư chưa đủ tiền hàng và phí 5%.":o.getPaymentError());
         return o;
     }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail requestError(ResponseStatusException ex) {
+        return ex.getBody();
+    }
+
     @PostMapping("/{id}/cancel") public BatchImport cancel(@RequestHeader("Authorization") String auth,@PathVariable UUID warehouse,@PathVariable UUID id) {
         var actor=access.authorizeRoles(auth,warehouse,"COMPANY_ADMIN","WAREHOUSE_MANAGER");return service.cancel(warehouse,id,actor);
     }

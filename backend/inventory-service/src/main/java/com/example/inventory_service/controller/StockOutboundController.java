@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
@@ -30,6 +32,13 @@ public class StockOutboundController {
         var user = access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
         if (request.targetWarehouseId() != null) access.verifyDestination(authorization,warehouseId, request.targetWarehouseId());
         return outbound.create(warehouseId, request, user);
+    }
+
+    @PutMapping("/{id}")
+    public StockDocumentResponse updateSaleDraft(@RequestHeader("Authorization") String authorization,
+            @PathVariable UUID warehouseId, @PathVariable UUID id, @Valid @RequestBody CreateExportRequest request) {
+        access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
+        return outbound.updateSaleDraft(warehouseId, id, request);
     }
 
     @GetMapping
@@ -71,6 +80,10 @@ public class StockOutboundController {
             }
         }
         return result;
+    }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail requestError(ResponseStatusException error) {
+        return error.getBody();
     }
 
 }

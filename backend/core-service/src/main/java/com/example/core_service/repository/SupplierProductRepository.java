@@ -8,9 +8,10 @@ public interface SupplierProductRepository extends JpaRepository<SupplierProduct
         where c.id = :company and s.id = p.supplierId and s.kind = 'SUPPLIER' and s.deleted = false
           and s.businessModel = c.businessModel
           and (lower(p.sku) = lower(:term) or lower(p.name) = lower(:term))
-          and (:supplier is null or lower(s.name) = lower(:supplier))
+          and lower(s.name) = coalesce(lower(cast(:supplier as string)), lower(s.name))
         """)
     List<SupplierProduct> chatMatches(UUID company, String term, String supplier);
     List<SupplierProduct> findBySupplierId(UUID id);
+    List<SupplierProduct> findBySupplierIdInOrderByNameAsc(Collection<UUID> ids);
     boolean existsBySupplierIdAndSkuIgnoreCaseAndIdNot(UUID supplierId,String sku,UUID id);
 }

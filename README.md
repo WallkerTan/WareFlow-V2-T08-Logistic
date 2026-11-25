@@ -2,6 +2,12 @@
 
 Tài liệu này ghi lại **các lệnh đã chạy thử thành công** cho `core-service` (API đăng ký công ty + đăng nhập JWT) ở cả 2 chế độ: **chạy local (IntelliJ / Gradle)** và **chạy Docker**.
 
+## Bật hoặc tắt xác minh email
+
+Đặt `EMAIL_ENABLED=true` trong `.env` để yêu cầu mã 6 số khi tự đăng ký và cho phép khôi phục mật khẩu qua email. Với `EMAIL_ENABLED=false` (mặc định), người dùng có thể đăng ký trực tiếp và mục quên mật khẩu qua email được ẩn. Frontend đọc trạng thái từ Core Service nên dùng chung một cờ với backend.
+
+Khi bật, cấu hình `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_AUTH` và `SMTP_STARTTLS` theo dịch vụ gửi thư. Với Docker Compose, áp dụng cấu hình bằng `docker compose up -d --force-recreate core-service` sau khi triển khai bản Core Service có tính năng này. Khi chạy từ IntelliJ hoặc dòng lệnh, đặt các biến trong môi trường chạy của Core Service rồi khởi động lại.
+
 ---
 
 ## 1. Yêu cầu môi trường

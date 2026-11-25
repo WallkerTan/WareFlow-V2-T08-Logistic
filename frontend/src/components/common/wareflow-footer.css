@@ -13,6 +13,7 @@
 .wareflow-footer .wareflow-footer-social { display:flex; flex-shrink:0; gap:12px; }
 .wareflow-footer-social a { display:grid; place-items:center; width:42px; height:42px; border-radius:50%; background:#fff; color:#5262a7; transition:transform .15s,background .15s; }
 .wareflow-footer-social a:hover { transform:translateY(-2px); background:#edf3ff; }
+.wareflow-footer .wareflow-footer-social a > .anticon { color:#3e4c8a; font-size:21px; }
 .wareflow-footer .wareflow-footer-info { display:grid; grid-template-columns:1.35fr 1.1fr 1fr; gap:32px; padding:28px clamp(22px,3vw,48px) 32px; }
 .wareflow-footer-info section { min-width:0; }
 .wareflow-footer .wareflow-footer-info h2 { display:flex; align-items:center; gap:8px; margin:0 0 10px; color:#fff; font-size:15px; font-weight:600; letter-spacing:normal; line-height:1.6; }

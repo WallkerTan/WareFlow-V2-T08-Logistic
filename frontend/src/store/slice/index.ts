@@ -1,3 +1,8 @@
-const rootReducer = (state: Record<string, never> = {}) => state;
+import { combineReducers } from '@reduxjs/toolkit';
+import { querySlice } from './querySlice';
+import { workspaceSlice } from './workspaceSlice';
 
-export default rootReducer;
+export default combineReducers({
+    queries: querySlice.reducer,
+    workspace: workspaceSlice.reducer,
+});

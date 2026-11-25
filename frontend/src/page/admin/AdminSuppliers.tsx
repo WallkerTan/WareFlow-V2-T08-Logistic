@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import OperationModal from '../../components/workspace/OperationModal';
 import { downloadCsv } from "../../utils/export";
 import { useMemo, useState } from "react";
 import {
@@ -31,6 +31,7 @@ export default function AdminSuppliers() {
         "supplierProducts",
     );
     const rows = seedSuppliers;
+    const [creating, setCreating] = useState(false);
     const [query, setQuery] = useState("");
     const [page, setPage] = useState(1);
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
@@ -167,12 +168,7 @@ export default function AdminSuppliers() {
                     >
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <Link
-                        className="adm-btn adm-btn-primary"
-                        to="/admin/suppliers/new"
-                    >
-                        <Plus size={16} /> Thêm nhà cung cấp
-                    </Link>
+                    <button type="button" className="adm-btn adm-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Thêm nhà cung cấp</button>
                 </div>
             </div>
 
@@ -571,6 +567,7 @@ export default function AdminSuppliers() {
                     </div>
                 </Modal>
             )}
+            {creating && <OperationModal title="Thêm nhà cung cấp" mode="supplier" back="/admin/suppliers" onClose={() => setCreating(false)} />}
         </>
     );
 }

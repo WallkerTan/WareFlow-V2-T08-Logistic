@@ -60,7 +60,7 @@ class ShipmentServiceTests {
     @Test void rejectInvalidTransitionsAndAllowRetryOrReturn() {
         var s = create(BigDecimal.ZERO);
         assertEquals(CodStatus.NOT_REQUIRED,s.codStatus());
-        assertThrows(ResponseStatusException.class, () -> move(s.id(),ShipmentStatus.DELIVERED));
+        assertThrows(ResponseStatusException.class, () -> move(s.id(),ShipmentStatus.FAILED));
         move(s.id(),ShipmentStatus.IN_TRANSIT);
         assertThrows(ResponseStatusException.class, () -> service.update(warehouse,s.id(),new ShipmentRequests.Update(null,null,BigDecimal.TEN),actor));
         move(s.id(),ShipmentStatus.FAILED);
@@ -76,6 +76,17 @@ class ShipmentServiceTests {
             new ShipmentRequests.Create(s.documentId(),"OTHER","new",BigDecimal.ZERO),actor,"token"));
         assertThrows(DataIntegrityViolationException.class, () -> service.create(warehouse,
             new ShipmentRequests.Create(UUID.randomUUID(),s.carrier(),s.trackingCode(),BigDecimal.ZERO),actor,"token"));
+    }
+    @Test void manualDeliveryAndCancellationAreTerminal() {
+        var delivered = create(BigDecimal.TEN);
+        move(delivered.id(), ShipmentStatus.DELIVERED);
+        assertThrows(ResponseStatusException.class, () -> move(delivered.id(), ShipmentStatus.CANCELLED));
+
+        var cancelled = create(BigDecimal.TEN);
+        move(cancelled.id(), ShipmentStatus.CANCELLED);
+        assertEquals(ShipmentStatus.CANCELLED, service.get(warehouse, cancelled.id()).status());
+        assertThrows(ResponseStatusException.class, () -> move(cancelled.id(), ShipmentStatus.DELIVERED));
+        assertThrows(ResponseStatusException.class, () -> service.collect(warehouse, cancelled.id(), actor));
     }
     @Test void zeroCodCannotBeCollectedAndAmountCanChangeBeforeDispatch() {
         var s=create(null);

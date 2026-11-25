@@ -75,8 +75,8 @@ export default function AdminUsers() {
         if (
             !(await attempt(() =>
                 saveResource("core", "/users/me", "PUT", {
-                    ...original,
                     fullName: editForm.fullName,
+                    avatar: original?.avatar ?? null,
                 }),
             ))
         )

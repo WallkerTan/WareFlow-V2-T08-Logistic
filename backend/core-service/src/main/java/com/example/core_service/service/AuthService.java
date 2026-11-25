@@ -36,7 +36,7 @@ public class AuthService {
 
     /**
      * Đăng ký công ty mới + tài khoản COMPANY_ADMIN quản lý.
-     * Công ty được tạo ở trạng thái ACTIVE nên đăng nhập được ngay.
+     * Công ty mới cần được quản trị hệ thống duyệt trước khi đăng nhập.
      */
     @Transactional
     public AuthResponse registerCompany(RegisterCompanyRequest request) {
@@ -61,7 +61,7 @@ public class AuthService {
         Company company = companyRepository.save(Company.builder()
                 .name(companyName)
                 .businessModel(request.getBusinessModel())
-                .status(CompanyStatus.ACTIVE)
+                .status(CompanyStatus.PENDING)
                 .profile(profile.isEmpty() ? null : profile)
                 .build());
 
@@ -74,7 +74,8 @@ public class AuthService {
                 .status(UserStatus.ACTIVE)
                 .build());
 
-        return toResponse(user);
+        return new AuthResponse(null, null, null, user.getId(), user.getEmail(),
+                user.getFullName(), user.getRole(), company.getId(), company.getName());
     }
 
     /**
@@ -220,6 +221,9 @@ public class AuthService {
         }
         if (user.getCompany() != null && user.getCompany().getStatus() == CompanyStatus.LOCKED) {
             throw ApiException.forbidden("Công ty đang bị khoá");
+        }
+        if (user.getCompany() != null && user.getCompany().getStatus() == CompanyStatus.PENDING) {
+            throw ApiException.forbidden("Công ty đang chờ quản trị viên duyệt.");
         }
 
         return toResponse(user);

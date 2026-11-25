@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class FinanceReportsPostgresTests {
     @Autowired FinanceService finance;
     @Autowired FinanceReportService charts;
+    @Autowired WalletLedger ledger;
     @Autowired JdbcTemplate jdbc;
     final UUID company=UUID.randomUUID(), warehouse=UUID.randomUUID();
     final Identity admin=new Identity(UUID.randomUUID(),null,"SYSTEM_ADMIN","unused");
@@ -42,6 +43,34 @@ class FinanceReportsPostgresTests {
         tx(UUID.randomUUID(),warehouse,"INCOME","SALE","999","2026-11-01T17:00:00Z");
     }
     void money(String expected,BigDecimal actual) { assertEquals(0,new BigDecimal(expected).compareTo(actual)); }
+    @Test void warehouseSaleCreditsOnlyWarehouseAndAppearsInBothReports() {
+        UUID ref = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("100");
+        BigDecimal platformBefore = ledger.balance(WalletLedger.PLATFORM);
+        var sale = ledger.post("SALE", company, warehouse, admin.id(), ref, false,
+                amount, TransactionType.INCOME, TransactionCategory.SALE, "sale");
+        var retry = ledger.post("SALE", company, warehouse, admin.id(), ref, false,
+                amount, TransactionType.INCOME, TransactionCategory.SALE, "sale");
+        assertEquals(sale.getId(), retry.getId());
+        money("95", ledger.balance(WalletLedger.account(company, warehouse)));
+        money("0", ledger.balance(WalletLedger.account(company, null)));
+        money("5", ledger.balance(WalletLedger.PLATFORM).subtract(platformBefore));
+        String month = YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh")).toString();
+        money("100", finance.summary(company, null, month, admin).income());
+        money("100", finance.summary(company, warehouse, month, admin).income());
+    }
+
+    @Test void saleRetryKeepsPreviousSettlementWithoutCreditingAgain() {
+        UUID ref = UUID.randomUUID();
+        BigDecimal amount = new BigDecimal("100");
+        var previous = ledger.post("SALE", company, warehouse, admin.id(), ref, true,
+                amount, TransactionType.INCOME, TransactionCategory.SALE, "sale");
+        var retry = ledger.post("SALE", company, warehouse, admin.id(), ref, false,
+                amount, TransactionType.INCOME, TransactionCategory.SALE, "sale");
+        assertEquals(previous.getId(), retry.getId());
+        money("95", ledger.balance(WalletLedger.account(company, null)));
+        money("0", ledger.balance(WalletLedger.account(company, warehouse)));
+    }
     @Test void allReportsReconcileAndRespectVietnamBoundaries() {
         seed();
         var total=finance.summary(company,null,"2026-11",admin);

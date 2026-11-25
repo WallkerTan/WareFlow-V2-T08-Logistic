@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -80,6 +81,70 @@ class StockOutboundServiceTests {
         assertEquals(BigDecimal.ZERO, lot.getReserved());
         verify(lots, never()).save(any()); verifyNoInteractions(movements);
     }
+    @Test void emptySaleCanBeSavedButMustBeFilledBeforeSubmission() {
+        saveDoc();
+        var empty = new CreateExportRequest(StockDocumentType.EXPORT_SALE, null, List.of(), null);
+        var draft = service.create(warehouse, empty, user);
+        assertEquals(StockDocumentStatus.DRAFT, draft.status());
+        assertTrue(draft.lines().isEmpty());
+        verifyNoInteractions(lots, movements);
+
+        doc.setStatus(StockDocumentStatus.DRAFT);
+        doc.setLines(List.of());
+        loadDoc();
+        assertEquals(400, assertThrows(ResponseStatusException.class,
+                () -> service.transition(warehouse, id, "submit", null, user)).getStatusCode().value());
+        assertEquals(StockDocumentStatus.DRAFT, doc.getStatus());
+
+        loadLot();
+        var filled = service.updateSaleDraft(warehouse, id, request(StockDocumentType.EXPORT_SALE, null, null));
+        assertEquals(id, filled.id());
+        assertEquals(1, filled.lines().size());
+        assertEquals(StockDocumentStatus.PENDING_APPROVAL, service.transition(warehouse, id, "submit", null, user).status());
+        assertConflict(() -> service.updateSaleDraft(warehouse, id, empty));
+        verify(lots, never()).save(any());
+        verifyNoInteractions(movements);
+    }
+
+    @Test void otherExportTypesRequireLines() {
+        var empty = new CreateExportRequest(StockDocumentType.EXPORT_DESTROY, null, List.of(), null);
+        assertEquals(400, assertThrows(ResponseStatusException.class,
+                () -> service.create(warehouse, empty, user)).getStatusCode().value());
+        verifyNoInteractions(documents, lots, movements);
+    }
+
+    @Test void oneSkuUsesAvailableStockAcrossLotsInReceiptOrder() {
+        lot.setCreatedAt(Instant.parse("2026-01-01T00:00:00Z"));
+        lot.setReserved(new BigDecimal("8"));
+        var newer = StockLot.builder().id(UUID.randomUUID()).product(source).lotCode("BATCH-2")
+                .unitCost(new BigDecimal("20")).quantity(new BigDecimal("10"))
+                .createdAt(Instant.parse("2026-02-01T00:00:00Z")).build();
+        var damaged = StockLot.builder().id(UUID.randomUUID()).product(source).lotCode("DAMAGED")
+                .unitCost(BigDecimal.ONE).quantity(new BigDecimal("100")).status(StockLotStatus.DAMAGED).build();
+        when(products.findByIdAndWarehouseIdAndDeletedAtIsNull(source.getId(), warehouse)).thenReturn(Optional.of(source));
+        when(lots.findByProduct_IdAndDeletedAtIsNull(source.getId())).thenReturn(List.of(newer, damaged, lot));
+        loadLot();
+        when(lots.findForUpdate(newer.getId(), warehouse)).thenReturn(Optional.of(newer));
+        saveDoc();
+
+        var line = new CreateExportRequest.Line(null, new BigDecimal("5"), null, new BigDecimal("150"), source.getId());
+        var result = service.create(warehouse, new CreateExportRequest(StockDocumentType.EXPORT_SALE, null,
+                List.of(line), null, "An", "0900000000", "Ha Noi"), user);
+        assertEquals(2, result.lines().size());
+        assertTrue(result.lines().stream().allMatch(part -> part.get("saleLine").equals(0)));
+        var byLot = new HashMap<String, Object>();
+        for (var part : result.lines()) byLot.put(part.get("lotId").toString(), part.get("quantity"));
+        assertEquals(new BigDecimal("2"), byLot.get(lot.getId().toString()));
+        assertEquals(new BigDecimal("3"), byLot.get(newer.getId().toString()));
+        assertEquals(new BigDecimal("120.00"), result.approval().get("total"));
+        verify(lots, never()).save(any());
+        verifyNoInteractions(movements);
+
+        var insufficient = new CreateExportRequest.Line(null, new BigDecimal("13"), null, null, source.getId());
+        assertConflict(() -> service.create(warehouse, new CreateExportRequest(StockDocumentType.EXPORT_SALE, null,
+                List.of(insufficient), null, "An", "0900000000", "Ha Noi"), user));
+    }
+
     @Test void rejectsDuplicateLots() {
         loadLot();
         var line = new CreateExportRequest.Line(lot.getId(), BigDecimal.ONE, null);

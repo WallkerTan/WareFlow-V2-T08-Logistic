@@ -7,8 +7,9 @@ import { ComparisonSection } from "../components/landing/ComparisonSection";
 import { ContactSection } from "../components/landing/ContactSection";
 import { FloatingContactButton } from "../components/landing/FloatingContactButton";
 import { RevealOnScroll } from "../components/landing/RevealOnScroll";
-import { PhoneCall } from "lucide-react";
+import { ArrowRight, Boxes, ChartNoAxesCombined, PhoneCall, Truck } from "lucide-react";
 import WareFlowFooter from "../components/common/WareFlowFooter";
+import { FrameButtonLink } from "../components/ui/Button";
 
 /** Smooth scroll helper – works even when html doesn't have scroll-behavior:smooth */
 const scrollTo = (id: string) => (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -51,16 +52,10 @@ const LandingPage = () => {
                     >
                         <PhoneCall size={16} /> Liên hệ tư vấn
                     </a>
-                    <Link
-                        className="login-btn-header"
-                        to="/auth/login"
-                        style={{ color: "#ffffff" }}
-                    >
-                        Đăng nhập
-                    </Link>
-                    <Link className="button button-small" to="/auth/register">
+                    <FrameButtonLink className="wf-button-frame-auth" to="/auth/login">Đăng nhập</FrameButtonLink>
+                    <FrameButtonLink className="wf-button-frame-auth" to="/auth/register">
                         Dùng thử miễn phí <span>→</span>
-                    </Link>
+                    </FrameButtonLink>
                 </div>
             </header>
 
@@ -157,6 +152,27 @@ const LandingPage = () => {
 
                 {/* 2. Tính năng cốt lõi (Features Section) */}
                 <FeaturesSection />
+
+                <section className="landing-access" aria-labelledby="landing-access-title">
+                    <RevealOnScroll>
+                        <div className="landing-access-panel">
+                            <div className="landing-access-copy">
+                                <h2 id="landing-access-title">Đầy đủ tính năng. <em>Không cần gói VIP.</em></h2>
+                                <p>
+                                    Từ lúc hàng vào kho đến khi đơn được giao, đội ngũ của bạn có sẵn công cụ để làm việc theo từng vai trò. WareFlow không thu phí mở khóa các tính năng có sẵn trên hệ thống.
+                                </p>
+                                <Link className="button light" to="/auth/register">
+                                    Bắt đầu với WareFlow <ArrowRight size={18} aria-hidden="true" />
+                                </Link>
+                            </div>
+                            <ul className="landing-access-features">
+                                <li><Boxes aria-hidden="true" /><span>Quản lý nhập, xuất và tồn theo lô</span></li>
+                                <li><Truck aria-hidden="true" /><span>Theo dõi vận đơn và xác nhận thu hộ</span></li>
+                                <li><ChartNoAxesCombined aria-hidden="true" /><span>Theo dõi ngân sách và báo cáo thu chi</span></li>
+                            </ul>
+                        </div>
+                    </RevealOnScroll>
+                </section>
 
                 {/* 3. Quy trình vận hành chuẩn hóa (Workflow Section) */}
                 <WorkflowSection />

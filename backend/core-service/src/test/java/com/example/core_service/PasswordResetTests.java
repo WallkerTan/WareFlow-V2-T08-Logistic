@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -26,10 +27,12 @@ import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
-@SpringBootTest
+@SpringBootTest(properties = "EMAIL_ENABLED=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class PasswordResetTests {
@@ -48,6 +51,36 @@ class PasswordResetTests {
     private void postAuth(String path, Map<String, String> body, int statusCode) throws Exception {
         mvc.perform(post("/auth/" + path).contentType("application/json").content(json.writeValueAsString(body)))
                 .andExpect(status().is(statusCode));
+    }
+
+    @Test
+    void registrationRequiresCodeForTheSameEmailAndUsesItOnce() throws Exception {
+        mvc.perform(get("/auth/email-config"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.emailEnabled").value(true));
+        String email = UUID.randomUUID() + "@example.test";
+        var payload = new HashMap<>(Map.of("email", email, "password", "validPassword",
+                "companyName", "OTP Test " + UUID.randomUUID(), "businessModel", "FOOD",
+                "fullName", "Test Owner"));
+        postAuth("register-company", payload, 400);
+        postAuth("register-warehouse-manager", Map.of("email", email, "password", "validPassword",
+                "fullName", "Test Manager"), 400);
+        postAuth("registration-code", Map.of("email", email), 202);
+        postAuth("registration-code", Map.of("email", email), 202);
+        var message = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mail, times(1)).send(message.capture());
+        assertThat(message.getValue().getTo()).containsExactly(email);
+        var match = Pattern.compile("\\b[0-9]{6}\\b").matcher(message.getValue().getText());
+        assertThat(match.find()).isTrue();
+        String otp = match.group();
+        payload.put("otp", otp.equals("000000") ? "111111" : "000000");
+        postAuth("register-company", payload, 400);
+        payload.put("otp", otp);
+        payload.put("email", UUID.randomUUID() + "@example.test");
+        postAuth("register-company", payload, 400);
+        payload.put("email", email);
+        postAuth("register-company", payload, 201);
+        postAuth("login", Map.of("email", email, "password", "validPassword"), 403);
+        postAuth("register-company", payload, 400);
     }
 
     @Test

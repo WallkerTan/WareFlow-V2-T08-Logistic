@@ -108,7 +108,7 @@ class AssistantTests {
             security.when(SecurityUtils::getCurrentUserId).thenReturn(user);
             var offlineModel = mock(AssistantModel.class);
             when(offlineModel.interpret(anyString())).thenThrow(new ApiException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,"503"));
-            var controller = new AssistantController(warehouses,offlineModel,base);
+            var controller = new AssistantController(warehouses,offlineModel,mock(AssistantQuota.class),base);
             var ok = controller.chat(new AssistantController.Question("tìm dau do",allowed.id(),null),"Bearer warehouse-token");
             assertEquals(1,ok.matches().size());
             assertEquals(product.toString(),ok.matches().getFirst().product().path("id").asString());
@@ -121,6 +121,6 @@ class AssistantTests {
 
     private WarehouseResponse warehouse(UUID manager) {
         return new WarehouseResponse(UUID.randomUUID(),null,null,"Kho",null,null,null,null,null,null,
-                Map.of("managerId",manager.toString()),null);
+                Map.of("managerId",manager.toString()),null,null);
     }
 }

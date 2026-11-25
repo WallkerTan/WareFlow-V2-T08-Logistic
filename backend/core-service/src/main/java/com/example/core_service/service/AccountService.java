@@ -5,6 +5,7 @@ import com.example.core_service.entity.enums.*;
 import com.example.core_service.exception.ApiException;
 import com.example.core_service.repository.*;
 import com.example.core_service.security.SecurityUtils;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,25 @@ public class AccountService {
                 u.getEmail(),u.getFullName(),u.getAvatar(),u.getRole(),u.getStatus(),u.getProfile()); }
     }
     public View me() { return View.of(current()); }
+
+    public record ContactUpdate(@Size(max = 50) String phone, @Size(max = 2000) String address) {}
+    public record ProfileUpdate(
+            @NotBlank @Size(max = 255) String fullName,
+            @Size(max = 255) @Pattern(regexp = "^$|^https?://[^\\s]+$", message = "Ảnh đại diện cần đường dẫn HTTP hoặc HTTPS") String avatar,
+            @Valid ContactUpdate profile) {}
+
+    public View updateMe(ProfileUpdate request) {
+        User user = current();
+        user.setFullName(request.fullName().trim());
+        user.setAvatar(request.avatar() == null || request.avatar().isBlank() ? null : request.avatar().trim());
+        if (request.profile() != null) {
+            Map<String, Object> profile = user.getProfile() == null ? new LinkedHashMap<>() : new LinkedHashMap<>(user.getProfile());
+            if (request.profile().phone() != null) profile.put("phone", request.profile().phone().trim());
+            if (request.profile().address() != null) profile.put("address", request.profile().address().trim());
+            user.setProfile(profile);
+        }
+        return View.of(user);
+    }
     public List<View> employees() {
         UUID company=company(); return users.findByCompany_IdAndRole(company,UserRole.WAREHOUSE_MANAGER).stream().filter(u -> u.getRemovedAt()==null).map(View::of).toList();
     }

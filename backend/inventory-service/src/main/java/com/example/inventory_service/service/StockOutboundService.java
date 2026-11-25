@@ -30,20 +30,41 @@ public class StockOutboundService {
 
     public StockDocumentResponse create(UUID warehouseId, CreateExportRequest request, UserIdentity user) {
         if (request.type() == null || !TYPES.contains(request.type())) bad("Invalid export type");
+        var document = StockDocument.builder().warehouseId(warehouseId).type(request.type())
+                .status(StockDocumentStatus.DRAFT).createdBy(user.id()).build();
+        fillDraft(document, request);
+        return StockDocumentResponse.from(documents.save(document));
+    }
+
+    public StockDocumentResponse updateSaleDraft(UUID warehouseId, UUID id, CreateExportRequest request) {
+        var document = lockedExport(warehouseId, id);
+        requireStatus(document.getStatus(), StockDocumentStatus.DRAFT);
+        if (document.getType() != StockDocumentType.EXPORT_SALE || request.type() != document.getType()) {
+            bad("Chỉ chỉnh sửa được phiếu xuất bán đang ở trạng thái nháp.");
+        }
+        fillDraft(document, request);
+        return StockDocumentResponse.from(documents.save(document));
+    }
+
+    private void fillDraft(StockDocument document, CreateExportRequest request) {
+        UUID warehouseId = document.getWarehouseId();
         boolean transfer = request.type() == StockDocumentType.EXPORT_TRANSFER;
         if (transfer && (request.targetWarehouseId() == null || warehouseId.equals(request.targetWarehouseId())))
             bad("Transfer requires a different destination warehouse");
         if (!transfer && request.targetWarehouseId() != null) bad("Only transfers can specify a destination warehouse");
-        if (request.lines() == null || request.lines().isEmpty()) bad("At least one line is required");
         boolean sale=request.type()==StockDocumentType.EXPORT_SALE;
+        if (request.lines() == null || (!sale && request.lines().isEmpty())) bad("Phiếu cần ít nhất một dòng hàng.");
         boolean returning=request.type()==StockDocumentType.EXPORT_RETURN;
         BigDecimal total=BigDecimal.ZERO;
         UUID supplier=null, batch=null;
-        if(sale && (blank(request.recipientName())||blank(request.recipientAddress())||blank(request.recipientPhone())
-            || !request.recipientPhone().matches("(?:0|[+]84)[0-9]{8,10}"))) bad("Thông tin người nhận chưa hợp lệ.");
+        if (sale && !request.lines().isEmpty()) {
+            validateRecipient(request.recipientName(), request.recipientPhone(), request.recipientAddress());
+        }
         Set<UUID> seen = new HashSet<>();
         List<Map<String, Object>> lines = new ArrayList<>();
-        for (var line : request.lines().stream().sorted(Comparator.comparing(l -> l.lotId().toString())).toList()) {
+        var allocated = allocateLines(warehouseId, request.lines(), sale);
+        for (var allocation : allocated.stream().sorted(Comparator.comparing(item -> item.line().lotId())).toList()) {
+            var line = allocation.line();
             if (!seen.add(line.lotId())) bad("Duplicate lot in export");
             if (line.quantity() == null || line.quantity().signum() <= 0) bad("Quantity must be positive");
             StockLot lot = lot(warehouseId, line.lotId());
@@ -55,6 +76,8 @@ public class StockOutboundService {
             data.put("lotId", lot.getId().toString());
             data.put("productId", lot.getProduct().getId().toString());
             data.put("sku", lot.getProduct().getSku());
+            if (sale) data.put("productName", lot.getProduct().getName());
+            if (allocation.saleLine() != null) data.put("saleLine", allocation.saleLine());
             data.put("lotCode", lot.getLotCode());
             data.put("quantity", line.quantity());
             if(sale || returning) {
@@ -76,21 +99,69 @@ public class StockOutboundService {
         Map<String, Object> audit = new LinkedHashMap<>();
         if(returning && total.compareTo(new BigDecimal("10000000"))<0) bad("Giá trị thực hoàn phải từ 10 triệu đồng.");
         if(sale || returning) audit.put("total",total);
-        if(sale){audit.put("recipientName",request.recipientName());audit.put("recipientPhone",request.recipientPhone());audit.put("recipientAddress",request.recipientAddress());}
+        if (sale) {
+            audit.put("recipientName", request.recipientName());
+            audit.put("recipientPhone", request.recipientPhone());
+            audit.put("recipientAddress", request.recipientAddress());
+        }
         if (request.note() != null) audit.put("note", request.note());
-        return StockDocumentResponse.from(documents.save(StockDocument.builder().warehouseId(warehouseId)
-                .targetWarehouseId(request.targetWarehouseId()).type(request.type()).status(StockDocumentStatus.DRAFT)
-                .createdBy(user.id()).lines(lines).approval(audit).build()));
+        document.setTargetWarehouseId(request.targetWarehouseId());
+        document.setLines(lines);
+        document.setApproval(audit);
+    }
+
+    private record Allocation(CreateExportRequest.Line line, Integer saleLine) {}
+
+    private List<Allocation> allocateLines(UUID warehouse, List<CreateExportRequest.Line> requested, boolean sale) {
+        var allocations = new ArrayList<Allocation>();
+        var productsSelected = new HashSet<UUID>();
+        for (int index = 0; index < requested.size(); index++) {
+            var line = requested.get(index);
+            if (line.productId() == null) {
+                if (line.lotId() == null) bad("Chọn lô xuất cho dòng hàng.");
+                allocations.add(new Allocation(line, null));
+                continue;
+            }
+            if (!sale || line.lotId() != null || line.targetProductId() != null) {
+                bad("Chỉ phiếu xuất bán hỗ trợ chọn sản phẩm theo SKU.");
+            }
+            if (line.quantity() == null || line.quantity().signum() <= 0) bad("Số lượng phải lớn hơn 0.");
+            if (!productsSelected.add(line.productId())) bad("Mỗi SKU chỉ xuất hiện một lần trên phiếu.");
+            var product = products.findByIdAndWarehouseIdAndDeletedAtIsNull(line.productId(), warehouse)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sản phẩm không có trong kho xuất."));
+            BigDecimal remaining = line.quantity();
+            LocalDate today = LocalDate.now();
+            var eligible = lots.findByProduct_IdAndDeletedAtIsNull(product.getId()).stream()
+                    .filter(lot -> lot.getUnitCost() != null && lot.getStatus() != StockLotStatus.DAMAGED
+                            && lot.getStatus() != StockLotStatus.EXPIRED
+                            && (lot.getExpiryDate() == null || !lot.getExpiryDate().isBefore(today)))
+                    .sorted(Comparator.comparing(StockLot::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                            .thenComparing(StockLot::getId))
+                    .toList();
+            for (var lot : eligible) {
+                BigDecimal quantity = remaining.min(lot.getQuantity().subtract(lot.getReserved()));
+                if (quantity.signum() <= 0) continue;
+                allocations.add(new Allocation(new CreateExportRequest.Line(lot.getId(), quantity, null, line.pricePercent()), index));
+                remaining = remaining.subtract(quantity);
+                if (remaining.signum() == 0) break;
+            }
+            if (remaining.signum() > 0) conflict("SKU " + product.getSku() + " thiếu tồn khả dụng có giá nhập.");
+        }
+        return allocations;
     }
 
     public StockDocumentResponse transition(UUID warehouseId, UUID id, String action, String note, UserIdentity user) {
-        StockDocument doc = documents.findByIdAndWarehouseIdForUpdate(id, warehouseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Export not found"));
-        requireExport(doc);
+        StockDocument doc = lockedExport(warehouseId, id);
         StockDocumentStatus status = doc.getStatus();
         switch (action) {
             case "submit" -> {
                 requireStatus(status, StockDocumentStatus.DRAFT);
+                if (doc.getLines().isEmpty()) bad("Thêm ít nhất một dòng hàng trước khi gửi duyệt.");
+                if (doc.getType() == StockDocumentType.EXPORT_SALE) {
+                    var details = doc.getApproval();
+                    validateRecipient((String) details.get("recipientName"), (String) details.get("recipientPhone"),
+                            (String) details.get("recipientAddress"));
+                }
                 doc.setStatus(StockDocumentStatus.PENDING_APPROVAL);
             }
             case "approve" -> {
@@ -201,6 +272,19 @@ public class StockOutboundService {
             if (status != null) predicates.add(cb.equal(root.get("status"), status));
             return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
         }, pageable).map(StockDocumentResponse::from);
+    }
+
+    private StockDocument lockedExport(UUID warehouseId, UUID id) {
+        var document = documents.findByIdAndWarehouseIdForUpdate(id, warehouseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Export not found"));
+        requireExport(document);
+        return document;
+    }
+
+    private void validateRecipient(String name, String phone, String address) {
+        if (blank(name) || blank(address) || blank(phone) || !phone.matches("(?:0|[+]84)[0-9]{8,10}")) {
+            bad("Thông tin người nhận chưa hợp lệ.");
+        }
     }
 
     private void requireExport(StockDocument doc) {

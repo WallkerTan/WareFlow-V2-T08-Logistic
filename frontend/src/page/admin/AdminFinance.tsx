@@ -50,7 +50,7 @@ import {
 const PAGE_SIZE = 6;
 
 export default function AdminFinance() {
-    const { budgets,companies,warehouses,transactions: allTransactions } = useAdminData(
+    const { budgets,companies,warehouses,transactions: allTransactions, transactionsError, transactionsLoading, reloadTransactions } = useAdminData(
         "budgets",
         "transactions",
     );
@@ -146,6 +146,7 @@ export default function AdminFinance() {
                     </select>
                     <button
                         className="adm-btn"
+                        disabled={transactionsLoading || !!transactionsError}
                         onClick={() =>
                             downloadCsv(
                                 "thu-chi.csv",
@@ -173,12 +174,44 @@ export default function AdminFinance() {
                 </div>
             </div>
 
-            <WalletPanel/>
-            <div className="admin-page-actions">
-                <select aria-label="Công ty báo cáo" value={company} onChange={e=>{setCompany(e.target.value);setWarehouse('');setBucket('');}}><option value="">Mọi công ty</option>{companies.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
-                <select aria-label="Kho báo cáo" value={warehouse} onChange={e=>setWarehouse(e.target.value)}><option value="">Mọi kho</option>{warehouses.filter(w=>!company||w.ownerCompanyId===company).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select>
-                <select aria-label="Nhóm nghiệp vụ" value={category} onChange={e=>setCategory(e.target.value)}><option value="">Mọi nghiệp vụ</option>{Object.entries(transactionCategoryMeta).map(([v,c])=><option key={v} value={v}>{c.label}</option>)}</select>
-                {bucket&&<button onClick={()=>setBucket('')}>Bỏ lọc kỳ {bucket}</button>}
+            <WalletPanel />
+            {transactionsLoading ? <p role="status">Đang tải dữ liệu thu chi…</p> : transactionsError ? (
+                <div role="alert">
+                    <p>Không tải được dữ liệu thu chi. {transactionsError}</p>
+                    <button type="button" className="adm-btn" onClick={reloadTransactions}>Thử lại</button>
+                </div>
+            ) : <>
+            <div className="adm-finance-filters" role="group" aria-label="Bộ lọc báo cáo tài chính">
+                <label>
+                    <span>Công ty</span>
+                    <select className="adm-select" aria-label="Công ty báo cáo" value={company} onChange={e=>{
+                        setCompany(e.target.value);
+                        setWarehouse('');
+                        setBucket('');
+                    }}>
+                        <option value="">Mọi công ty</option>
+                        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                </label>
+                <label>
+                    <span>Kho</span>
+                    <select className="adm-select" aria-label="Kho báo cáo" value={warehouse} onChange={e=>setWarehouse(e.target.value)}>
+                        <option value="">Mọi kho</option>
+                        {warehouses.filter(w => !company || w.ownerCompanyId === company).map(w => (
+                            <option key={w.id} value={w.id}>{w.name}</option>
+                        ))}
+                    </select>
+                </label>
+                <label>
+                    <span>Nhóm nghiệp vụ</span>
+                    <select className="adm-select" value={category} onChange={e=>setCategory(e.target.value)}>
+                        <option value="">Mọi nghiệp vụ</option>
+                        {Object.entries(transactionCategoryMeta).map(([value, meta]) => (
+                            <option key={value} value={value}>{meta.label}</option>
+                        ))}
+                    </select>
+                </label>
+                {bucket && <button type="button" className="adm-btn" onClick={()=>setBucket('')}>Bỏ lọc kỳ {bucket}</button>}
             </div>
             <div className="adm-stats">
                 <article className="adm-stat">
@@ -728,6 +761,7 @@ export default function AdminFinance() {
                     </div>
                 </Modal>
             )}
+            </>}
         </>
     );
 }

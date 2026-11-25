@@ -48,6 +48,9 @@ public class Warehouse {
     @Column(columnDefinition = "TEXT")
     private String address;
 
+    @Column(length = 2000)
+    private String avatar;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default

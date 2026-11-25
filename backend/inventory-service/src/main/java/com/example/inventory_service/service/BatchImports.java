@@ -38,6 +38,9 @@ public class BatchImports implements ApplicationRunner {
         return db.queryForList("select r.batch_id from batch_reservations r join batch_imports i on i.id=r.import_id where i.company_id=?",UUID.class,company);
     }
     public BatchImport create(UUID warehouse,UUID id,List<UUID> ids,UserIdentity actor,String token) {
+        if (new HashSet<>(ids).size() != ids.size()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mỗi lô chỉ được chọn một lần.");
+        }
         var previous=imports.findById(id);
         if(previous.isPresent()) {
             var order=previous.get();
@@ -83,8 +86,14 @@ public class BatchImports implements ApplicationRunner {
         } catch(RestClientResponseException ex) {
             if(ex.getStatusCode().value()==409) {
                 var detail=ex.getResponseBodyAs(org.springframework.http.ProblemDetail.class);
-                o.setPaymentError(detail==null?null:detail.getDetail());
-                o.setStatus("PENDING");return o;
+                if (detail != null && detail.getProperties() != null
+                        && "INSUFFICIENT_FUNDS".equals(detail.getProperties().get("code"))) {
+                    String guidance = o.isWarehousePayment() ? " Công ty cần cấp thêm ngân sách cho kho." : "";
+                    o.setPaymentError(detail.getDetail() + guidance);
+                    o.setStatus("PENDING");
+                    return o;
+                }
+                throw conflict(detail == null ? "Không thể quyết toán yêu cầu nhập." : detail.getDetail());
             }
             throw ex;
         }

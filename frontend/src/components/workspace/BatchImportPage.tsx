@@ -1,12 +1,13 @@
 import { useState } from 'react';
+import { useReduxFormState } from '../../store/useReduxFormState';
 import { request } from '../../services/api';
 import { saveResource, useAdminData } from '../../services/data';
 import { getAuthSession } from '../../services/authApi';
 import { useQuery } from '../../services/query';
 import { useWorkspace } from '../../services/workspace';
 import { formatCurrency, randomUUID } from '../../utils/format';
-import { Badge } from '../admin/AdminUI';
-import { AlertTriangle } from 'lucide-react';
+import { Badge, Modal } from '../admin/AdminUI';
+import { AlertTriangle, PackagePlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 type BatchLine = { sku: string; name: string; quantity?: number; price?: number };
@@ -89,8 +90,10 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
     const { raw } = useAdminData('products');
     const path = '/warehouses/' + warehouse + '/batch-imports';
     const orders = useQuery<Order[]>(path, () => request<Order[]>('inventory', path));
-    const [selected, setSelected] = useState<string[]>([]);
-    const [requestId, setRequestId] = useState(() => randomUUID());
+    const [creating, setCreating] = useState(false);
+    const [decision, setDecision] = useState<{ order: Order; action: 'approve' | 'cancel' } | null>(null);
+    const [selected, setSelected] = useReduxFormState<string[]>([]);
+    const [requestId, setRequestId] = useReduxFormState(() => randomUUID());
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const reservations = useQuery<string[]>(path + '/reserved', () => request<string[]>('inventory', path + '/reserved'));
@@ -108,6 +111,8 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
         try {
             await saveResource('inventory', path + (action || ''), 'POST', action ? undefined : { requestId, batchIds: chosen.map(b => b.id) });
             toast.success(action?.includes('approve') ? 'Đã duyệt và nhập kho thành công!' : action?.includes('cancel') ? 'Đã hủy yêu cầu' : 'Đã tạo yêu cầu nhập kho thành công!');
+            setCreating(false);
+            setDecision(null);
             setSelected([]);
             setRequestId(randomUUID());
             orders.reload();
@@ -136,8 +141,14 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
     });
 
     return (
-        <>
-            <fieldset disabled={busy} className="wf-card" style={{ border: 0, padding: 20, marginBottom: 24 }}>
+        <div className="wf-operation-stack">
+            <div className="wf-operation-actions">
+                <button type="button" className="adm-btn adm-btn-primary" onClick={() => { setError(''); setCreating(true); }}>
+                    <PackagePlus size={16} /> {manager ? 'Tạo yêu cầu nhập' : 'Nhập lô hàng'}
+                </button>
+            </div>
+            {creating && <Modal title={manager ? 'Tạo yêu cầu nhập kho' : 'Thanh toán và nhập kho'} wide onClose={() => { if (!busy) setCreating(false); }}>
+            <fieldset disabled={busy} className="wf-form-stack">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                     <div>
                         <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: '#1e293b' }}>Chọn các lô hàng cần nhập</h3>
@@ -150,7 +161,14 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                     )}
                 </div>
 
-                {available.length === 0 ? (
+                {batches.error || reservations.error ? (
+                    <div role="alert">
+                        <p>Không tải được danh sách lô hàng. {batches.error || reservations.error}</p>
+                        <button type="button" className="adm-btn" onClick={() => { batches.reload(); reservations.reload(); }}>Thử lại</button>
+                    </div>
+                ) : batches.loading || reservations.loading ? (
+                    <p role="status">Đang tải danh sách lô hàng…</p>
+                ) : available.length === 0 ? (
                     <div style={{ padding: '24px 0', textAlign: 'center', color: '#64748b', fontSize: 13 }}>
                         Không có lô hàng khả dụng nào để nhập (hoặc tất cả các lô đã được nhập / đang chờ duyệt).
                     </div>
@@ -192,6 +210,8 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                         })}
                     </div>
                 )}
+
+                {selected.length > 100 && <p role="alert">Mỗi yêu cầu được chọn tối đa 100 lô.</p>}
 
                 {/* Stock warnings */}
                 {warnings.length > 0 && (
@@ -242,7 +262,7 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                                 <button
                                     className="adm-btn adm-btn-primary"
                                     type="button"
-                                    disabled={!chosen.length || reservations.loading || !!reservations.error}
+                                    disabled={!chosen.length || selected.length > 100 || batches.loading || !!batches.error || reservations.loading || reservations.refreshing || !!reservations.error}
                                     onClick={() => submit()}
                                     style={{ padding: '8px 18px', fontSize: 14 }}
                                 >
@@ -252,13 +272,9 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                         </div>
                     </div>
                 )}
+                {error && <div className="wf-notice" role="alert">{error}</div>}
             </fieldset>
-
-            {error && (
-                <div className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
-                    {error}
-                </div>
-            )}
+            </Modal>}
 
             {/* Orders Table */}
             <div className="wf-card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -278,7 +294,14 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                             </tr>
                         </thead>
                         <tbody>
-                            {!orders.data?.length ? (
+                            {orders.error ? (
+                                <tr><td colSpan={6} role="alert">
+                                    <p>Không tải được lịch sử nhập kho. {orders.error}</p>
+                                    <button type="button" className="adm-btn" onClick={orders.reload}>Thử lại</button>
+                                </td></tr>
+                            ) : orders.loading ? (
+                                <tr><td colSpan={6} role="status">Đang tải lịch sử nhập kho…</td></tr>
+                            ) : !orders.data?.length ? (
                                 <tr>
                                     <td colSpan={6} style={{ textAlign: 'center', padding: '30px 0', color: '#64748b' }}>
                                         Chưa có yêu cầu nhập kho nào.
@@ -308,9 +331,11 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                                                             className="adm-btn adm-btn-primary"
                                                             style={{ padding: '4px 10px', fontSize: 12 }}
                                                             disabled={busy}
-                                                            onClick={() => submit('/' + o.id + '/approve')}
+                                                            onClick={() => { setError(''); setDecision({ order: o, action: 'approve' }); }}
                                                         >
-                                                            Duyệt & thanh toán
+                                                            {o.warehousePayment && o.status === 'PENDING'
+                                                                ? 'Duyệt & thanh toán'
+                                                                : 'Thử lại quyết toán'}
                                                         </button>
                                                     )}
                                                     {o.status === 'PENDING' && (
@@ -318,7 +343,7 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                                                             className="adm-btn"
                                                             style={{ padding: '4px 10px', fontSize: 12, color: '#ef4444' }}
                                                             disabled={busy}
-                                                            onClick={() => submit('/' + o.id + '/cancel')}
+                                                            onClick={() => { setError(''); setDecision({ order: o, action: 'cancel' }); }}
                                                         >
                                                             {manager ? 'Hủy' : 'Từ chối'}
                                                         </button>
@@ -333,6 +358,24 @@ function ImportForm({ warehouse, manager }: { warehouse: string; manager: boolea
                     </table>
                 </div>
             </div>
-        </>
+            {decision && <Modal title={decision.action === 'approve' ? 'Xác nhận thanh toán' : 'Xác nhận hủy yêu cầu'}
+                onClose={() => { if (!busy) setDecision(null); }}>
+                <div className="wf-operation-stack">
+                    <p>{decision.order.batches.map(batch => batch.code).join(', ')}</p>
+                    {decision.action === 'approve' && <p>
+                        Trừ {formatCurrency(Number(decision.order.total) + Math.round(Number(decision.order.total) * 5) / 100)}
+                        {' '}từ {decision.order.warehousePayment ? 'ví kho' : 'ví công ty'}, đã gồm phí 5%.
+                    </p>}
+                    {error && <p className="wf-notice" role="alert">{error}</p>}
+                    <div className="wf-operation-actions">
+                        <button type="button" className="adm-btn" disabled={busy} onClick={() => setDecision(null)}>Quay lại</button>
+                        <button type="button" className="adm-btn adm-btn-primary" disabled={busy}
+                            onClick={() => submit('/' + decision.order.id + '/' + decision.action)}>
+                            {busy ? 'Đang xử lý…' : decision.action === 'approve' ? 'Thanh toán' : 'Hủy yêu cầu'}
+                        </button>
+                    </div>
+                </div>
+            </Modal>}
+        </div>
     );
 }

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import type { AuthEmailState } from "../../layout/auth/AuthLayout";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import AuthField from "./AuthField";
+import Button from "../ui/Button";
 import { roleHome } from "../../services/authApi";
 import type { AuthResponse } from "../../services/authApi";
 
@@ -16,6 +18,7 @@ type Props = { onSubmit: (values: LoginValues) => Promise<AuthResponse> };
 export default function LoginForm({ onSubmit }: Props) {
     "use no memo";
     const navigate = useNavigate();
+    const emailState = useOutletContext<AuthEmailState>();
     const {
         register,
         handleSubmit,
@@ -80,7 +83,7 @@ export default function LoginForm({ onSubmit }: Props) {
                 <label className="auth-checkbox">
                     <input type="checkbox" {...register("remember")} /> Ghi nhớ đăng nhập
                 </label>
-                <Link to="/auth/forgot-password">Quên mật khẩu?</Link>
+                {emailState === true && <Link to="/auth/forgot-password">Quên mật khẩu?</Link>}
             </div>
             {message && (
                 <div
@@ -90,10 +93,10 @@ export default function LoginForm({ onSubmit }: Props) {
                     {message}
                 </div>
             )}
-            <button type="submit" className="auth-submit" style={{ color: '#ffffff' }} disabled={isSubmitting}>
-                <span style={{ color: '#ffffff', fontWeight: 600 }}>{isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}</span>
-                <ArrowRight size={18} color="#ffffff" />
-            </button>
+            <Button variant="frame" type="submit" className="auth-submit wf-button-frame-auth" disabled={isSubmitting}>
+                {isSubmitting ? "Đang đăng nhập…" : "Đăng nhập"}
+                <ArrowRight size={18} aria-hidden="true" />
+            </Button>
             <p className="auth-switch">
                 Chưa có tài khoản?{" "}
                 <Link to="/auth/register">Đăng ký công ty</Link>

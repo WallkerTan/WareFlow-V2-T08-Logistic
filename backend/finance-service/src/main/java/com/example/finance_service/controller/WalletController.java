@@ -31,6 +31,14 @@ public class WalletController {
         access.verifyWalletOwner(actor,company,r.warehouseId());
         ledger.post("OPENING",company,r.warehouseId(),actor.id(),r.requestId(),false,r.amount(),TransactionType.INCOME,TransactionCategory.OTHER,"Số dư đầu kỳ");
     }
+    @PostMapping("/top-up")
+    public void topUp(@RequestHeader("Authorization") String auth, @Valid @RequestBody Funding request) {
+        var actor = access.authenticate(auth, "SYSTEM_ADMIN");
+        UUID company = access.company(actor, request.companyId());
+        access.verifyWalletOwner(actor, company, request.warehouseId());
+        ledger.post("TOP_UP", company, request.warehouseId(), actor.id(), request.requestId(), false,
+                request.amount(), TransactionType.INCOME, TransactionCategory.OTHER, "Nạp tiền vào ví");
+    }
     @PostMapping("/allocate") public void allocate(@RequestHeader("Authorization") String auth,@Valid @RequestBody Funding r) {
         var actor=access.authenticate(auth,"COMPANY_ADMIN");
         var company=access.company(actor,r.companyId());

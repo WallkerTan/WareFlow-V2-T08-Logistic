@@ -12,6 +12,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestClient;
@@ -38,23 +39,39 @@ class AssistantController {
     record Listing(String region, String address, java.math.BigDecimal price) {}
     record Match(UUID warehouseId, String warehouseName, JsonNode product, JsonNode lot, Listing listing) {}
     record Answer(String message, AssistantModel.Intent intent, List<Match> matches) {}
+    record LocalTurn(@jakarta.validation.constraints.NotNull AssistantQuota.Kind kind) {}
     private final WarehouseService warehouses;
     private final AssistantModel model;
+    private final AssistantQuota quota;
     private final RestClient inventory;
 
-    AssistantController(WarehouseService warehouses, AssistantModel model,
+    AssistantController(WarehouseService warehouses, AssistantModel model, AssistantQuota quota,
                         @Value("${INVENTORY_SERVICE_URL:http://localhost:8082}") String url) {
         this.warehouses = warehouses;
         this.model = model;
+        this.quota = quota;
         var factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(2000);
         factory.setReadTimeout(5000);
         inventory = RestClient.builder().baseUrl(url).requestFactory(factory).build();
     }
 
+    @PostMapping("/local-turn")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN','WAREHOUSE_MANAGER','COMPANY_ADMIN')")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void localTurn(@Valid @RequestBody LocalTurn turn) {
+        quota.consume(SecurityUtils.getCurrentUserId(), turn.kind());
+    }
+
     @PostMapping("/chat")
     public Answer chat(@Valid @RequestBody Question question, @RequestHeader("Authorization") String auth) {
+        var userId = SecurityUtils.getCurrentUserId();
+        quota.requireAvailable(userId);
         var manager = SecurityUtils.getCurrentUserRole() == UserRole.WAREHOUSE_MANAGER;
+        var scope = question.warehouseId() == null ? null : inventoryScope(manager);
+        if (scope != null && scope.stream().noneMatch(w -> w.id().equals(question.warehouseId()))) {
+            throw ApiException.forbidden("Kho nằm ngoài phạm vi truy cập.");
+        }
         var history = question.history() == null ? List.<ChatMessage>of() : question.history();
         var intent = Boolean.TRUE.equals(question.keywordOnly()) ? InventoryLookup.product(question.message().trim()) :
                 history.isEmpty() && question.selected() == null
@@ -63,11 +80,11 @@ class AssistantController {
                         : model.configured() ? model.interpret(question.message(), history, question.selected() != null)
                         : InventoryLookup.offline(question.message(), question.selected())
                                 .orElseGet(() -> model.interpret(question.message(), history, question.selected() != null));
+        quota.consume(userId, intent.action() == CHAT || intent.action() == HELP
+                ? AssistantQuota.Kind.CONVERSATION : AssistantQuota.Kind.OPERATION);
         if (intent.action() == CHAT || intent.action() == HELP && intent.reply() != null)
             return new Answer(intent.reply(), intent, List.of());
-        var scope = question.warehouseId() != null || manager ? inventoryScope(manager) : null;
-        if ((manager && question.warehouseId() == null) || (scope != null &&
-                scope.stream().noneMatch(w -> w.id().equals(question.warehouseId()))))
+        if (manager && question.warehouseId() == null)
             throw ApiException.forbidden("Kho nằm ngoài phạm vi truy cập.");
         var selected = Boolean.TRUE.equals(intent.useSelection()) ? question.selected() : null;
         if (Boolean.TRUE.equals(intent.useSelection()) && selected == null)

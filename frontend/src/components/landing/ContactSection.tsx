@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { mutate } from "../../services/api";
 import { RevealOnScroll } from "./RevealOnScroll";
 import { 
     PhoneCall, 
@@ -13,7 +14,6 @@ import {
 export const ContactSection: React.FC = () => {
     const [formData, setFormData] = useState({
         fullName: "",
-        phone: "",
         email: "",
         companyName: "",
         warehouseSize: "under_500",
@@ -22,18 +22,29 @@ export const ContactSection: React.FC = () => {
 
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState("");
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (isSubmitting) return;
+        setError("");
+        if (!formData.fullName.trim() || !formData.message.trim()) {
+            setError("Vui lòng nhập họ tên và nội dung cần hỗ trợ.");
+            return;
+        }
         setIsSubmitting(true);
-        setTimeout(() => {
-            setIsSubmitting(false);
+        try {
+            await mutate("core", "/support-requests", "POST", formData);
             setIsSubmitted(true);
-        }, 800);
+        } catch (failure) {
+            setError(failure instanceof Error ? failure.message : "Gửi yêu cầu thất bại. Vui lòng thử lại.");
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -49,7 +60,7 @@ export const ContactSection: React.FC = () => {
                         Hãy để đội ngũ chuyên gia hỗ trợ bạn ngay hôm nay
                     </h2>
                     <p className="section-subtitle">
-                        Để lại thông tin để nhận tư vấn giải pháp chuyển đổi số kho bãi miễn phí và lịch demo trực quan trong vòng 15 phút.
+                        Để lại email và nội dung cần hỗ trợ để đội ngũ WareFlow liên hệ tư vấn.
                     </p>
                 </div>
             </RevealOnScroll>
@@ -123,7 +134,7 @@ export const ContactSection: React.FC = () => {
                                 </div>
                                 <h3>Cảm ơn bạn đã liên hệ!</h3>
                                 <p>
-                                    Yêu cầu tư vấn của bạn đã được gửi thành công. Chuyên viên giải pháp của WareFlow sẽ liên hệ qua điện thoại hoặc email trong vòng <strong>15 - 30 phút</strong> để tư vấn chi tiết.
+                                    WareFlow đã nhận được yêu cầu và sẽ phản hồi qua email <strong>{formData.email}</strong>.
                                 </p>
                                 <button 
                                     className="button button-small"
@@ -131,7 +142,6 @@ export const ContactSection: React.FC = () => {
                                         setIsSubmitted(false);
                                         setFormData({
                                             fullName: "",
-                                            phone: "",
                                             email: "",
                                             companyName: "",
                                             warehouseSize: "under_500",
@@ -157,26 +167,12 @@ export const ContactSection: React.FC = () => {
                                             name="fullName"
                                             type="text"
                                             required
+                                            maxLength={120}
                                             placeholder="Nguyễn Văn A"
                                             value={formData.fullName}
                                             onChange={handleChange}
                                         />
                                     </div>
-                                    <div className="form-group">
-                                        <label htmlFor="phone">Số điện thoại *</label>
-                                        <input
-                                            id="phone"
-                                            name="phone"
-                                            type="tel"
-                                            required
-                                            placeholder="0912 345 678"
-                                            value={formData.phone}
-                                            onChange={handleChange}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="form-row-2">
                                     <div className="form-group">
                                         <label htmlFor="email">Email công việc *</label>
                                         <input
@@ -184,24 +180,27 @@ export const ContactSection: React.FC = () => {
                                             name="email"
                                             type="email"
                                             required
+                                            maxLength={254}
                                             placeholder="nguyenvana@company.vn"
                                             value={formData.email}
                                             onChange={handleChange}
                                         />
                                     </div>
+                                </div>
+                                <div className="form-row-2">
                                     <div className="form-group">
                                         <label htmlFor="companyName">Tên doanh nghiệp / Kho</label>
                                         <input
                                             id="companyName"
                                             name="companyName"
                                             type="text"
+                                            maxLength={160}
                                             placeholder="Công ty Cổ phần ABC"
                                             value={formData.companyName}
                                             onChange={handleChange}
                                         />
                                     </div>
                                 </div>
-
                                 <div className="form-group">
                                     <label htmlFor="warehouseSize">Quy mô kho dự kiến</label>
                                     <select
@@ -218,17 +217,20 @@ export const ContactSection: React.FC = () => {
                                 </div>
 
                                 <div className="form-group">
-                                    <label htmlFor="message">Bài toán hoặc nhu cầu cần tư vấn</label>
+                                    <label htmlFor="message">Nội dung cần hỗ trợ *</label>
                                     <textarea
                                         id="message"
                                         name="message"
                                         rows={3}
+                                        required
+                                        maxLength={3000}
                                         placeholder="Ví dụ: Cần quản lý hàng cận date ngành dược phẩm, hoặc cần quản lý vị trí ô kệ đa kho..."
                                         value={formData.message}
                                         onChange={handleChange}
                                     />
                                 </div>
 
+                                {error && <p role="alert">{error}</p>}
                                 <button
                                     type="submit"
                                     className="button button-submit"

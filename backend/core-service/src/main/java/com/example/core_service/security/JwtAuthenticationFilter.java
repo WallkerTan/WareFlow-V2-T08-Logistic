@@ -67,17 +67,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserRole role = UserRole.valueOf(roleStr);
             UUID companyId = (companyIdStr != null && !companyIdStr.isBlank()) ? UUID.fromString(companyIdStr) : null;
 
-            // Kiểm tra trạng thái khóa của công ty theo thời gian thực (trừ SYSTEM_ADMIN)
+            // Kiểm tra trạng thái công ty theo thời gian thực (trừ SYSTEM_ADMIN).
             if (companyId != null && role != UserRole.SYSTEM_ADMIN) {
-                boolean isLocked = companyRepository.findById(companyId)
-                        .map(c -> c.getStatus() == CompanyStatus.LOCKED)
-                        .orElse(false);
+                CompanyStatus status = companyRepository.findById(companyId)
+                        .map(c -> c.getStatus())
+                        .orElse(null);
 
-                if (isLocked) {
+                if (status == CompanyStatus.LOCKED || status == CompanyStatus.PENDING) {
                     SecurityContextHolder.clearContext();
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Công ty của bạn hiện đang bị khóa bởi Quản trị viên hệ thống\"}");
+                    String message = status == CompanyStatus.PENDING
+                            ? "Công ty đang chờ quản trị viên duyệt."
+                            : "Công ty của bạn hiện đang bị khóa bởi Quản trị viên hệ thống";
+                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"" + message + "\"}");
                     return false;
                 }
             }

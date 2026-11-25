@@ -70,6 +70,12 @@ public class PurchaseBatchController {
         return batches.findByCompanyIdOrderByCreatedAtDesc(company());
     }
 
+    @GetMapping("/catalog")
+    public PartnerService.BatchCatalog catalog() {
+        company();
+        return partners.purchaseBatchCatalog();
+    }
+
     @GetMapping("/{id}") public PurchaseBatch get(@PathVariable UUID id) {
         var company=company();
         return batches.findById(id).filter(b->company.equals(b.getCompanyId())).orElseThrow(()->ApiException.notFound("Không tìm thấy lô."));
@@ -79,7 +85,7 @@ public class PurchaseBatchController {
         var company=company();
         var lines=new ArrayList<PurchaseBatch.Line>();
         for(var item: request.lines()) {
-            var supplier=partners.get("SUPPLIER",item.supplierId(),false);
+            var supplier=partners.purchaseBatchSupplier(item.supplierId());
             var product=products.findById(item.productId()).filter(p->supplier.getId().equals(p.getSupplierId()))
                     .orElseThrow(()->ApiException.badRequest("Sản phẩm không thuộc nhà cung cấp đã chọn."));
             var amount=product.getPrice().multiply(item.quantity()).setScale(2,RoundingMode.HALF_UP);

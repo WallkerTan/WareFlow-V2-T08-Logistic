@@ -62,6 +62,9 @@ export default function AdminDashboard() {
         shipments,
         systemLogs,
         transactions,
+        transactionsError,
+        transactionsLoading,
+        reloadTransactions,
         users,
         warehouses,
         budgets,
@@ -218,7 +221,11 @@ export default function AdminDashboard() {
                     }
                 >
                     <div className="adm-chart-box">
-                        <ResponsiveContainer width="100%" height="100%">
+                        {transactionsError ? <div role="alert">
+                            <p>Không tải được dữ liệu thu chi. {transactionsError}</p>
+                            <button type="button" className="adm-btn" onClick={reloadTransactions}>Thử lại</button>
+                        </div> : transactionsLoading ? <p role="status">Đang tải dữ liệu thu chi…</p>
+                            : <ResponsiveContainer width="100%" height="100%">
                             <AreaChart
                                 data={revenueTrend}
                                 margin={{
@@ -315,7 +322,7 @@ export default function AdminDashboard() {
                                     fill="url(#admExpense)"
                                 />
                             </AreaChart>
-                        </ResponsiveContainer>
+                        </ResponsiveContainer>}
                     </div>
                 </Card>
 

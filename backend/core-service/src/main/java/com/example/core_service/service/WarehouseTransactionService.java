@@ -82,7 +82,7 @@ public class WarehouseTransactionService {
             throw ApiException.badRequest("Chỉ hỗ trợ đề nghị BUY hoặc RENT");
         }
 
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+        Warehouse warehouse = warehouseRepository.locked(request.getWarehouseId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy kho"));
 
         if (warehouse.getStatus() != WarehouseStatus.AVAILABLE) {

@@ -1,8 +1,9 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, Link, useLocation, Navigate } from "react-router-dom";
 import { ArrowUpRight, ChevronRight, Menu, X } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import WareFlowFooter from "../common/WareFlowFooter";
+import { FrameButtonLink } from "../ui/Button";
 import "../../layout/main/main.css";
 import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
@@ -36,10 +37,11 @@ import {
 import {
     WorkspaceProvider,
     DataStatus,
+    DataLoadingOverlay,
     WarehousePicker,
     useWorkspace,
 } from "../../services/workspace";
-import { clearData, useQuery } from "../../services/query";
+import { useQuery } from "../../services/query";
 import { request } from "../../services/api";
 
 function WorkspaceOutlet({ scoped }: { scoped: boolean }) {
@@ -54,12 +56,27 @@ function WorkspaceOutlet({ scoped }: { scoped: boolean }) {
     return <Outlet key={scoped ? warehouseId : "workspace"} />;
 }
 
+function WorkspaceAccount({ config, fallbackAvatar }: { config: WorkspaceConfig; fallbackAvatar?: string }) {
+    const { warehouse } = useWorkspace();
+    const warehouseAvatar = config.role === "storehouse" && typeof warehouse?.avatar === "string"
+        ? warehouse.avatar
+        : undefined;
+    const avatar = warehouseAvatar || fallbackAvatar;
+    return (
+        <Link className="wf-account" to={config.profile} aria-label={`Hồ sơ ${config.title}`}>
+            {avatar ? <img src={avatar} alt="Avatar" className="wf-account-avatar-img" /> : <span>{config.avatar}</span>}
+        </Link>
+    );
+}
+
 export default function WorkspaceShell({
     config,
 }: {
     config: WorkspaceConfig;
 }) {
     const [expanded, setExpanded] = useState(false);
+    const [compact, setCompact] = useState(false);
+    const contentScroll = useRef<HTMLDivElement>(null);
     const { pathname } = useLocation();
     const storedSession = useSyncExternalStore(
         (fn) => {
@@ -77,14 +94,20 @@ export default function WorkspaceShell({
     }, [expiresAt]);
 
     useEffect(() => {
-        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        contentScroll.current?.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }, [pathname]);
 
     const userProfileQuery = useQuery<{ avatar?: string; profile?: { avatar?: string; logo?: string } }>(
         session?.userId ? `user-profile:${session.userId}` : null,
         () => request('core', '/users/me').catch(() => ({} as { avatar?: string }))
     );
+    const companyProfileQuery = useQuery<{ profile?: { logo?: string } }>(
+        config.role === 'company' && session?.userId ? 'profile:company' : null,
+        () => request('core', '/companies/my-company'),
+    );
     const avatarUrl =
+        companyProfileQuery.data?.profile?.logo ||
         userProfileQuery.data?.avatar ||
         userProfileQuery.data?.profile?.avatar ||
         (session as { avatar?: string } | null)?.avatar;
@@ -106,57 +129,59 @@ export default function WorkspaceShell({
     return (
         <WorkspaceProvider>
             <div
-                className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}`}
+                className={`wf-page wf-role-${config.role}`}
             >
-                <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
-                    <div className="wf-sidebar-panel">
-                        <Link
-                            className="wf-brand"
-                            to={config.home}
-                            onClick={() => setExpanded(false)}
-                        >
-                            <img
-                                src="/logo.png"
-                                alt="WareFlow"
-                                className="wf-brand-logo-img"
-                            />
-                            ware
-                            <span>flow</span>
-                        </Link>
-                        <div className="wf-workspace">
-                            <Icon size={22} />
-                            <div>
-                                <strong>{config.title}</strong>
-                                <small>{config.description}</small>
+                <div
+                    className={`admin-shell wf-shell wf-role-${config.role}${expanded ? " wf-menu-open" : ""}${compact ? " wf-compact" : ""}`}
+                >
+                    <aside className="wf-sidebar" id={`${config.role}-sidebar`}>
+                        <div className="wf-sidebar-panel">
+                            <Link
+                                className="wf-brand"
+                                to={config.home}
+                                onClick={() => setExpanded(false)}
+                            >
+                                <img
+                                    src="/logo.png"
+                                    alt="WareFlow"
+                                    className="wf-brand-logo-img"
+                                />
+                                ware
+                                <span>flow</span>
+                            </Link>
+                            <div className="wf-workspace">
+                                <Icon size={22} />
+                                <div>
+                                    <strong>{config.title}</strong>
+                                    <small>{config.description}</small>
+                                </div>
+                            </div>
+                            <p className="wf-nav-label">{config.navLabel}</p>
+                            <nav aria-label={`Điều hướng ${config.title}`}>
+                                {config.links.map((link) => (
+                                    <NavLink
+                                        key={link.to}
+                                        to={link.to}
+                                        onClick={() => setExpanded(false)}
+                                    >
+                                        <link.icon size={19} />
+                                        {link.label}
+                                    </NavLink>
+                                ))}
+                            </nav>
+                            <div className="wf-sidebar-bottom">
+                                <span className="wf-mini-mark">
+                                    <Icon size={16} />
+                                </span>
+                                <div>
+                                    <strong>{config.title}</strong>
+                                    <small>
+                                        WareFlow · Quản lý kho & logistics
+                                    </small>
+                                </div>
                             </div>
                         </div>
-                        <p className="wf-nav-label">{config.navLabel}</p>
-                        <nav aria-label={`Điều hướng ${config.title}`}>
-                            {config.links.map((link) => (
-                                <NavLink
-                                    key={link.to}
-                                    to={link.to}
-                                    onClick={() => setExpanded(false)}
-                                >
-                                    <link.icon size={19} />
-                                    {link.label}
-                                </NavLink>
-                            ))}
-                        </nav>
-                        <div className="wf-sidebar-bottom">
-                            <span className="wf-mini-mark">
-                                <Icon size={16} />
-                            </span>
-                            <div>
-                                <strong>{config.title}</strong>
-                                <small>
-                                    WareFlow · Quản lý kho & logistics
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </aside>
-                <div className="wf-main">
+                    </aside>
                     <header className="wf-topbar">
                         <div className="wf-breadcrumb">
                             <button
@@ -181,48 +206,34 @@ export default function WorkspaceShell({
                             <span className="wf-role-badge">
                                 {config.topbarLabel}
                             </span>
-                            <Link
-                                className="wf-account"
-                                to={config.profile}
-                                aria-label={`Hồ sơ ${config.title}`}
-                            >
-                                {avatarUrl ? (
-                                    <img
-                                        src={avatarUrl}
-                                        alt="Avatar"
-                                        className="wf-account-avatar-img"
-                                        style={{
-                                            width: 31,
-                                            height: 31,
-                                            borderRadius: "50%",
-                                            objectFit: "cover",
-                                            display: "block",
-                                        }}
-                                    />
-                                ) : (
-                                    <span>{config.avatar}</span>
-                                )}
-                            </Link>
-                            <Link
+                            <WorkspaceAccount config={config} fallbackAvatar={avatarUrl} />
+                            <FrameButtonLink
                                 className="wf-signin"
                                 to="/auth/login"
                                 onClick={() => {
                                     clearAuthSession();
-                                    clearData();
                                 }}
                             >
-                                Đăng xuất <ArrowUpRight size={15} />
-                            </Link>
+                                Đăng xuất <ArrowUpRight size={15} aria-hidden="true" />
+                            </FrameButtonLink>
                         </div>
                     </header>
-                    <main className="wf-content">
-                        <DataStatus />
-                        <WorkspaceAssistant role={config.role} />
-                        {config.role === "storehouse" && <WarehousePicker />}
-                        <WorkspaceOutlet
-                            scoped={config.role === "storehouse"}
-                        />
-                    </main>
+                    <div
+                        className="wf-content-scroll"
+                        ref={contentScroll}
+                        onScroll={(event) => {
+                            const scrollTop = event.currentTarget.scrollTop;
+                            setCompact((wasCompact) => scrollTop > (wasCompact ? 0 : 24));
+                        }}
+                    >
+                        <main className="wf-content">
+                            <DataStatus />
+                            {config.role === "storehouse" && <WarehousePicker />}
+                            <WorkspaceOutlet scoped={config.role === "storehouse"} />
+                        </main>
+                    </div>
+                    <DataLoadingOverlay />
+                    <WorkspaceAssistant role={config.role} />
                 </div>
                 <WareFlowFooter />
             </div>

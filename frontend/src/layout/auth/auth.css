@@ -376,7 +376,7 @@
     color:var(--auth-blue)}
 .auth-login-options a:hover {
     text-decoration:underline}
-.auth-page .auth-submit {
+.auth-page .auth-submit:not(.wf-button-frame) {
     display:flex;
     align-items:center;
     justify-content:center;
@@ -394,13 +394,13 @@
     box-shadow:0 4px 10px #4567ed25;
     transition:background .15s,transform .15s;
     margin-top:2px}
-.auth-page .auth-submit * {
+.auth-page .auth-submit:not(.wf-button-frame) * {
     color:#ffffff !important}
-.auth-page .auth-submit:hover {
+.auth-page .auth-submit:not(.wf-button-frame):hover {
     background:#3557d6;
     color:#ffffff !important;
     transform:translateY(-1px)}
-.auth-page .auth-submit:disabled {
+.auth-page .auth-submit:not(.wf-button-frame):disabled {
     opacity:.6;
     cursor:wait}
 .auth-switch {
@@ -457,6 +457,26 @@
     font-size:9.5px}
 .register-form {
     gap:clamp(8px, 1vh, 11px)}
+.register-email-verification {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 10px 14px 14px;
+    border: 1px solid #dce5f5;
+    border-radius: 8px;
+    background: #f6f8ff;
+}
+.register-email-verification legend {
+    padding: 0 6px;
+    font-weight: 700;
+    color: #253553;
+}
+.register-email-verification p {
+    margin: 0;
+    color: #52637e;
+    font-size: 13px;
+}
 .register-form .auth-security {
     padding-top:clamp(6px, 1vh, 10px)}
 .field-error {

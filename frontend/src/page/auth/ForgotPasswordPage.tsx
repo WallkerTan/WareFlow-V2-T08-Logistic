@@ -1,10 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useOutletContext } from "react-router-dom";
+import type { AuthEmailState } from "../../layout/auth/AuthLayout";
 import toast from "react-hot-toast";
 import { authApi } from "../../services/authApi";
 
 export default function ForgotPasswordPage() {
     const navigate = useNavigate();
+    const emailState = useOutletContext<AuthEmailState>();
     const [email, setEmail] = useState("");
     const [sent, setSent] = useState(false);
     const [otp, setOtp] = useState("");
@@ -46,6 +48,11 @@ export default function ForgotPasswordPage() {
         event.preventDefault();
         void submit(sent);
     }
+
+    if (emailState !== true) return <div className="auth-form">
+        <p role="status">{emailState === 'loading' ? 'Đang tải cấu hình email…' : emailState === 'error' ? 'Không tải được cấu hình email.' : 'Khôi phục mật khẩu qua email đang tắt. Vui lòng liên hệ quản trị viên.'}</p>
+        <Link to="/auth/login">Quay lại đăng nhập</Link>
+    </div>;
 
     return <form className="auth-form" onSubmit={onSubmit}>
         <label className="wf-field"><span>Email tài khoản</span>

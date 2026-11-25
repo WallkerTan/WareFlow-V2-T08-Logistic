@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -41,14 +42,51 @@ class CompanyAuthorizationTests {
 
     @BeforeEach
     void setUp() throws Exception {
+        systemAdminToken = login("admin@wareflow.com", "admin123");
         AuthResponse firstCompany = registerCompany("first");
         AuthResponse secondCompany = registerCompany("second");
         companyAdminToken = firstCompany.accessToken();
         companyId = firstCompany.companyId().toString();
         otherCompanyAdminToken = secondCompany.accessToken();
         otherCompanyId = secondCompany.companyId().toString();
-        systemAdminToken = login("admin@wareflow.com", "admin123");
         warehouseManagerToken = registerWarehouseManager();
+    }
+
+    @Test
+    void systemAdmin_canUpdateWarehouseDetailsAndImage() throws Exception {
+        String initialName = "Warehouse " + UUID.randomUUID();
+        MvcResult created = mockMvc.perform(post("/warehouses")
+                        .header("Authorization", bearer(systemAdminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", initialName, "warehouseType", "BUY", "area", 100,
+                                "price", 5000, "region", "North"))))
+                .andExpect(status().isCreated()).andReturn();
+        String id = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asText();
+        String newName = initialName + " updated";
+        String avatar = "https://example.test/warehouse.jpg";
+        String update = objectMapper.writeValueAsString(Map.of(
+                "name", newName, "region", "South", "address", "12 Main Street",
+                "area", 120, "warehouseType", "RENT", "price", 1000, "avatar", avatar));
+
+        mockMvc.perform(patch("/warehouses/{id}", id)
+                        .header("Authorization", bearer(companyAdminToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(patch("/warehouses/{id}", id)
+                        .header("Authorization", bearer(systemAdminToken))
+                        .contentType(MediaType.APPLICATION_JSON).content(update))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/warehouses/{id}", id).header("Authorization", bearer(systemAdminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value(newName))
+                .andExpect(jsonPath("$.address").value("12 Main Street"))
+                .andExpect(jsonPath("$.region").value("South"))
+                .andExpect(jsonPath("$.area").value(120))
+                .andExpect(jsonPath("$.warehouseType").value("RENT"))
+                .andExpect(jsonPath("$.price").value(1000))
+                .andExpect(jsonPath("$.avatar").value(avatar))
+                .andExpect(jsonPath("$.status").value("AVAILABLE"));
     }
 
     @Test
@@ -114,7 +152,15 @@ class CompanyAuthorizationTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value(UserRole.COMPANY_ADMIN.name()))
                 .andReturn();
-        return objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponse.class);
+        var registration = objectMapper.readValue(result.getResponse().getContentAsString(), AuthResponse.class);
+        mockMvc.perform(patch("/companies/{id}/status", registration.companyId())
+                        .header("Authorization", bearer(systemAdminToken))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"ACTIVE\"}"))
+                .andExpect(status().isOk());
+        var session = mockMvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "password", "12345678"))))
+                .andExpect(status().isOk()).andReturn();
+        return objectMapper.readValue(session.getResponse().getContentAsString(), AuthResponse.class);
     }
 
     private String login(String email, String password) throws Exception {

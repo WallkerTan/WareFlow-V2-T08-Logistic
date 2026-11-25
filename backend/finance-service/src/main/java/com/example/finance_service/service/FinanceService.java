@@ -27,14 +27,14 @@ public class FinanceService {
 
     public BudgetResponse createBudget(UUID companyId, BudgetRequest request) {
         period(request.period());
-        if (budgets.existsByCompanyIdAndWarehouseIdAndPeriod(companyId, request.warehouseId(), request.period())) conflict("Budget already exists for this scope and period");
+        if (budgets.existsByCompanyIdAndWarehouseIdAndPeriod(companyId, request.warehouseId(), request.period())) conflict("Đã có ngân sách cho kỳ và phạm vi này. Hãy mở mục Ngân sách và chọn Điều chỉnh.");
         Budget b = budgets.save(Budget.builder().companyId(companyId).warehouseId(request.warehouseId()).allocated(request.allocated()).period(request.period()).build());
         return budgetResponse(b);
     }
     public BudgetResponse updateBudget(UUID companyId, UUID id, BudgetRequest request) {
         period(request.period());
         Budget b = budgets.findByIdAndCompanyId(id, companyId).orElseThrow(() -> notFound("Budget not found"));
-        if (budgets.existsByCompanyIdAndWarehouseIdAndPeriodAndIdNot(companyId, request.warehouseId(), request.period(), id)) conflict("Budget already exists for this scope and period");
+        if (budgets.existsByCompanyIdAndWarehouseIdAndPeriodAndIdNot(companyId, request.warehouseId(), request.period(), id)) conflict("Đã có ngân sách cho kỳ và phạm vi này. Hãy mở mục Ngân sách và chọn Điều chỉnh.");
         b.setAllocated(request.allocated()); b.setWarehouseId(request.warehouseId()); b.setPeriod(request.period());
         return budgetResponse(budgets.save(b));
     }
@@ -57,7 +57,16 @@ public class FinanceService {
         access.warehouse(user, warehouseId, companyId);
         Instant[] range = period(period);
         Page<Transaction> page;
-        if (warehouseId != null) page = type == null
+        if (companyId == null && "SYSTEM_ADMIN".equals(user.role())) {
+            page = transactions.findAll((root, query, cb) -> {
+                var filters = new java.util.ArrayList<jakarta.persistence.criteria.Predicate>();
+                filters.add(cb.greaterThanOrEqualTo(root.get("createdAt"), range[0]));
+                filters.add(cb.lessThan(root.get("createdAt"), range[1]));
+                if (warehouseId != null) filters.add(cb.equal(root.get("warehouseId"), warehouseId));
+                if (type != null) filters.add(cb.equal(root.get("type"), type));
+                return cb.and(filters.toArray(jakarta.persistence.criteria.Predicate[]::new));
+            }, pageable);
+        } else if (warehouseId != null) page = type == null
                 ? transactions.findByCompanyIdAndWarehouseIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(companyId, warehouseId, range[0], range[1], pageable)
                 : transactions.findByCompanyIdAndWarehouseIdAndTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(companyId, warehouseId, type, range[0], range[1], pageable);
         else page = type == null

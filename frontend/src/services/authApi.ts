@@ -10,6 +10,7 @@ export type CompanyRegistrationRequest = {
     phone: string;
     email: string;
     password: string;
+    otp?: string;
 };
 
 export type AuthResponse = {
@@ -112,6 +113,17 @@ async function postReset(path: string, payload: object, expectedStatus: number) 
 }
 
 export const authApi = {
+    emailConfig: async (signal: AbortSignal): Promise<boolean> => {
+        const response = await fetch(`${baseUrl}/auth/email-config`, {
+            cache: "no-store",
+            signal: AbortSignal.any([signal, AbortSignal.timeout(8000)]),
+        });
+        if (!response.ok) throw new Error("Không tải được cấu hình email.");
+        const data = await response.json();
+        if (typeof data.emailEnabled !== "boolean") throw new Error("Cấu hình email không hợp lệ.");
+        return data.emailEnabled;
+    },
+    requestRegistrationCode: (email: string) => postReset("registration-code", { email }, 202),
     forgotPassword: (email: string) => postReset("forgot-password", { email }, 202),
     resetPassword: (email: string, otp: string, newPassword: string) =>
         postReset("reset-password", { email, otp, newPassword }, 204),
@@ -145,6 +157,7 @@ export const authApi = {
             phone: values.phone.replace(/[\s.-]/g, ""),
             email: values.email.trim().toLowerCase(),
             password: values.password,
+            otp: values.otp,
         }),
 };
 

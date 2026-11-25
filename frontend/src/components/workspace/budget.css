@@ -12,9 +12,9 @@
 .budget-request-detail dl { display:grid; grid-template-columns:140px minmax(0,1fr); gap:10px; background:#f7f9fc; padding:18px; border-radius:10px; font-size:12px; }
 .budget-request-detail dd { margin:0; overflow-wrap:anywhere; }
 .budget-request-detail p { white-space:pre-wrap; overflow-wrap:anywhere; }
-.budget-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+.budget-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; margin-top:22px; }
 .budget-error { color:#bb3a51; font-size:12px; }
-.budget-page { display:grid; gap:22px; }
+.budget-page { display:grid; grid-template-columns:minmax(0,1fr); gap:22px; }
 .budget-page .wf-page-heading { margin-bottom:0; }
 .budget-overview { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; }
 .budget-stat { border:1px solid #e5eaf1; border-radius:12px; background:#fff; padding:22px; }
@@ -25,6 +25,12 @@
 .budget-form { display:grid; gap:18px; padding-top:12px; }
 .budget-note { color:#8792a5; font-size:11px; line-height:1.8; margin:0; }
 .budget-company-requests { margin-top:24px; }
+@container workspace-content (max-width: 760px) {
+    .budget-overview { grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr)); }
+}
+@container workspace-content (max-width: 540px) {
+    .budget-filters { grid-template-columns:minmax(0,1fr); }
+}
 @media(max-width:700px) {
     .budget-overview { grid-template-columns:1fr; gap:12px; }
     .budget-stat { padding:18px; }

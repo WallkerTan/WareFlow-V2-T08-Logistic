@@ -81,6 +81,7 @@ services:
       WF_AI_MODEL: ${WF_AI_MODEL:-}
       WF_AI_API_KEY: ${WF_AI_API_KEY:-}
       INVENTORY_SERVICE_URL: http://inventory-service:8082
+      EMAIL_ENABLED: "${EMAIL_ENABLED:-false}"
       SMTP_HOST: "${SMTP_HOST:-localhost}"
       SMTP_PORT: "${SMTP_PORT:-587}"
       SMTP_USERNAME: "${SMTP_USERNAME:-}"

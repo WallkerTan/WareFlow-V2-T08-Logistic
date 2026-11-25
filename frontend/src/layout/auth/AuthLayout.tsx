@@ -1,11 +1,36 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, Boxes, Check, Package, Truck, Warehouse } from 'lucide-react';
 import './auth.css';
+import { authApi } from '../../services/authApi';
+
+export type AuthEmailState = boolean | 'loading' | 'error';
 
 export default function AuthLayout() {
     const pathname = useLocation().pathname;
     const isRegister = pathname.endsWith('register');
     const isForgot = pathname.endsWith('forgot-password');
+    const [emailState, setEmailState] = useState<AuthEmailState>('loading');
+    const [configAttempt, setConfigAttempt] = useState(0);
+    useEffect(() => {
+        let pending: AbortController | undefined;
+        function loadEmailConfig() {
+            pending?.abort();
+            const controller = new AbortController();
+            pending = controller;
+            authApi.emailConfig(controller.signal).then(enabled => {
+                if (!controller.signal.aborted) setEmailState(enabled);
+            }).catch(() => {
+                if (!controller.signal.aborted) setEmailState('error');
+            });
+        }
+        loadEmailConfig();
+        window.addEventListener('focus', loadEmailConfig);
+        return () => {
+            window.removeEventListener('focus', loadEmailConfig);
+            pending?.abort();
+        };
+    }, [configAttempt, pathname]);
     return <div className="auth-page">
         <aside className="auth-aside">
             <Link to="/" className="wareflow-brand" aria-label="WareFlow trang chủ">
@@ -33,7 +58,11 @@ export default function AuthLayout() {
                 <h2>{isForgot ? 'Quên mật khẩu' : isRegister ? 'Đăng ký công ty' : 'Chào mừng trở lại' }<span className="heading-dot">.</span></h2>
                 <p className="auth-description">{isRegister ? 'Thiết lập không gian làm việc và bắt đầu quản lý doanh nghiệp của bạn.' : 'Đăng nhập để tiếp tục quản lý và kết nối mọi hoạt động kho hàng.'}</p>
                 <nav className="auth-tabs" aria-label="Tài khoản"><Link to="/auth/login" aria-current={!isRegister ? 'page' : undefined}>Đăng nhập</Link><Link to="/auth/register" aria-current={isRegister ? 'page' : undefined}>Đăng ký công ty</Link></nav>
-                <Outlet />
+                {emailState === 'error' && (isRegister || isForgot) && <button type="button" onClick={() => {
+                    setEmailState('loading');
+                    setConfigAttempt(attempt => attempt + 1);
+                }}>Tải lại cấu hình email</button>}
+                <Outlet context={emailState} />
             </div>
         </main>
     </div>;

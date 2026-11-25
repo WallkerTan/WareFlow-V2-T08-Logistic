@@ -2,6 +2,7 @@ package com.example.delivery_service.config;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Session;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,23 @@ public class ShipmentDataInitializer implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        boolean postgres = em.unwrap(Session.class).doReturningWork(connection ->
+                "PostgreSQL".equals(connection.getMetaData().getDatabaseProductName()));
+        if (postgres) em.createNativeQuery("""
+            do $$
+            begin
+                if exists (
+                    select 1 from pg_constraint
+                    where conrelid = cast('shipments' as regclass) and conname = 'shipments_status_check'
+                      and pg_get_constraintdef(oid) not like '%CANCELLED%'
+                ) then
+                    alter table shipments drop constraint shipments_status_check,
+                        add constraint shipments_status_check
+                        check (status in ('CREATED', 'IN_TRANSIT', 'DELIVERED', 'FAILED', 'RETURNED', 'CANCELLED'));
+                end if;
+            end;
+            $$
+            """).executeUpdate();
         var duplicates = em.createNativeQuery("""
             select document_id from shipments group by document_id having count(*) > 1
             """, Object.class).getResultList();
