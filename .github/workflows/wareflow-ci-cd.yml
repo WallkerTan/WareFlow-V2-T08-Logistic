@@ -1,0 +1,151 @@
+name: WareFlow CI/CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Thành phần cần deploy lên VPS
+        required: true
+        type: choice
+        options:
+          - frontend
+          - core-service
+          - inventory-service
+          - finance-service
+          - delivery-service
+          - api-gateway
+          - config-server
+          - eureka-server
+          - all
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'tan-leader' || github.sha }}
+      - id: source
+        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  frontend:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+        env:
+          VITE_API_BASE_URL: /api
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: frontend
+          path: frontend/dist/
+          if-no-files-found: error
+
+  backend:
+    needs: source
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [core-service, inventory-service, finance-service, delivery-service, api-gateway, config-server, eureka-server]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wareflow_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d wareflow_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DB_HOST: localhost
+      DB_PORT: '5432'
+      DB_NAME: wareflow_ci
+      DB_USER: postgres
+      DB_PASSWORD: ci_only
+      EMAIL_ENABLED: 'false'
+      EUREKA_CLIENT_ENABLED: ${{ matrix.service == 'eureka-server' && 'true' || 'false' }}
+      SPRING_CLOUD_CONFIG_ENABLED: 'false'
+      FINANCE_TEST_DB_URL: jdbc:postgresql://localhost:5432/wareflow_ci
+      FINANCE_TEST_DB_DRIVER: org.postgresql.Driver
+      FINANCE_TEST_DB_DIALECT: org.hibernate.dialect.PostgreSQLDialect
+      FINANCE_TEST_DB_USER: postgres
+      FINANCE_TEST_DB_PASSWORD: ci_only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Test and package
+        run: bash gradlew --no-daemon ":$WF_SERVICE:test" ":$WF_SERVICE:bootJar"
+        env:
+          WF_SERVICE: ${{ matrix.service }}
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: ${{ matrix.service }}
+          path: backend/${{ matrix.service }}/build/libs/*-SNAPSHOT.jar
+          if-no-files-found: error
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: [source, frontend, backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+    concurrency:
+      group: wareflow-production-vps
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+      - name: Deploy verified artifacts
+        run: |
+          if [[ $DEPLOY_TARGET == all ]]; then
+            bash .github/scripts/deploy-vps.sh release eureka-server config-server core-service inventory-service finance-service delivery-service api-gateway frontend
+          else
+            bash .github/scripts/deploy-vps.sh release "$DEPLOY_TARGET"
+          fi
+        env:
+          DEPLOY_TARGET: ${{ inputs.target }}
+          VPS_HOST: ${{ vars.VPS_HOST }}
+          VPS_USER: ${{ vars.VPS_USER }}
+          VPS_SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
