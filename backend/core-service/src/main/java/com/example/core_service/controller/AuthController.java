@@ -7,7 +7,12 @@ import com.example.core_service.dto.response.AuthResponse;
 import com.example.core_service.log.AuditLog;
 import com.example.core_service.security.UserPrincipal;
 import com.example.core_service.service.AuthService;
+import com.example.core_service.service.AuthEmail;
+import com.example.core_service.service.RegistrationEmailService;
+import com.example.core_service.service.PasswordResetService;
+import com.example.core_service.exception.ApiException;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -24,6 +29,41 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordReset;
+    private final AuthEmail authEmail;
+    private final RegistrationEmailService registrationEmail;
+
+    public record EmailConfig(boolean emailEnabled) {}
+
+    public record ForgotPassword(@NotBlank @Email @Size(max = 255) String email) {}
+    public record ResetPassword(@NotBlank @Email @Size(max = 255) String email,
+                                @NotNull @Pattern(regexp = "[0-9]{6}") String otp,
+                                @NotBlank @Size(min = 8, max = 100) String newPassword) {}
+
+    @GetMapping("/email-config")
+    public EmailConfig emailConfig() {
+        return new EmailConfig(authEmail.enabled());
+    }
+
+    @PostMapping("/registration-code")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void requestRegistrationCode(@Valid @RequestBody ForgotPassword request) {
+        registrationEmail.request(request.email());
+    }
+
+    @PostMapping("/forgot-password")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public void forgotPassword(@Valid @RequestBody ForgotPassword request) {
+        passwordReset.request(request.email());
+    }
+
+    @PostMapping("/reset-password")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void resetPassword(@Valid @RequestBody ResetPassword request) {
+        if (!passwordReset.confirm(request.email(), request.otp(), request.newPassword())) {
+            throw ApiException.badRequest("Mã xác nhận không hợp lệ hoặc đã hết hạn.");
+        }
+    }
 
     /**
      * Đăng ký công ty mới kèm tài khoản quản trị (COMPANY_ADMIN).
@@ -33,7 +73,8 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     @AuditLog(action = "REGISTER_COMPANY", targetType = "Company", description = "Đăng ký công ty mới kèm tài khoản COMPANY_ADMIN")
     public AuthResponse registerCompany(@Valid @RequestBody RegisterCompanyRequest request) {
-        return authService.registerCompany(request);
+        return requireConfirmed(registrationEmail.register(request.getEmail(), request.getOtp(),
+                () -> authService.registerCompany(request)));
     }
 
     /**
@@ -44,7 +85,13 @@ public class AuthController {
     @ResponseStatus(HttpStatus.CREATED)
     @AuditLog(action = "REGISTER_WAREHOUSE_MANAGER", targetType = "User", description = "Đăng ký tài khoản quản lý kho")
     public AuthResponse registerWarehouseManager(@Valid @RequestBody RegisterWarehouseManagerRequest request) {
-        return authService.registerWarehouseManager(request);
+        return requireConfirmed(registrationEmail.register(request.getEmail(), request.getOtp(),
+                () -> authService.registerWarehouseManager(request)));
+    }
+
+    private AuthResponse requireConfirmed(AuthResponse response) {
+        if (response == null) throw ApiException.badRequest("Mã đăng ký không hợp lệ hoặc đã hết hạn. Hãy kiểm tra mã hoặc yêu cầu mã mới.");
+        return response;
     }
 
     /**

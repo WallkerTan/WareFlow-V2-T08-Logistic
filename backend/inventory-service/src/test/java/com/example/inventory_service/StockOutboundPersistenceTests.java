@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,14 +45,14 @@ class StockOutboundPersistenceTests {
             UUID warehouse = UUID.randomUUID(), targetWarehouse = UUID.randomUUID();
             Product source = products.save(Product.builder().warehouseId(warehouse).sku("SKU").name("Product").unit("box").build());
             Product target = products.save(Product.builder().warehouseId(targetWarehouse).sku("SKU").name("Product").unit("box").build());
-            StockLot lot = lots.save(StockLot.builder().product(source).lotCode("BATCH").quantity(new BigDecimal("10")).build());
+            StockLot lot = lots.save(StockLot.builder().product(source).lotCode("BATCH").unitCost(BigDecimal.TEN).quantity(new BigDecimal("10")).build());
             return new Fixture(warehouse, targetWarehouse, lot.getId(), target.getId());
         });
     }
     UUID pending(Fixture f, boolean transfer) {
         var request = new CreateExportRequest(transfer ? StockDocumentType.EXPORT_TRANSFER : StockDocumentType.EXPORT_SALE,
                 transfer ? f.targetWarehouse() : null,
-                List.of(new CreateExportRequest.Line(f.lot(), new BigDecimal("6"), transfer ? f.targetProduct() : null)), null);
+                List.of(new CreateExportRequest.Line(f.lot(), new BigDecimal("6"), transfer ? f.targetProduct() : null)), null,"An","0900000000","Hà Nội");
         UUID id = service.create(f.warehouse(), request, user).id();
         service.transition(f.warehouse(), id, "submit", null, user);
         return id;
@@ -66,6 +68,18 @@ class StockOutboundPersistenceTests {
         assertEquals(0, new BigDecimal("6").compareTo(lots.findById(targetLot).orElseThrow().getQuantity()));
         assertEquals(2, movements.findAll().stream().filter(m -> id.equals(m.getDocumentId())).count());
         assertNotNull(service.get(f.warehouse(), id).lines().getFirst().get("targetLotId"));
+
+        var page = PageRequest.of(0, 1, Sort.by(Sort.Direction.DESC, "createdAt", "id"));
+        var sourceHistory = movements.findHistory(f.warehouse(), page);
+        var targetHistory = movements.findHistory(f.targetWarehouse(), page);
+        assertEquals(1, sourceHistory.getTotalElements());
+        assertEquals(1, targetHistory.getTotalElements());
+        var sourceMovement = sourceHistory.getContent().getFirst();
+        assertEquals("SKU", sourceMovement.sku());
+        assertEquals("BATCH", sourceMovement.lotCode());
+        assertEquals("EXPORT_TRANSFER", sourceMovement.documentType());
+        assertEquals(0, new BigDecimal("-6").compareTo(sourceMovement.qtyChange()));
+        assertEquals(0, new BigDecimal("6").compareTo(targetHistory.getContent().getFirst().qtyChange()));
     }
 
     @Test void staleLotUpdateCannotOverwriteAnotherStockOperation() {

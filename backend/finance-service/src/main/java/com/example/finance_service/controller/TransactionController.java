@@ -28,9 +28,10 @@ public class TransactionController {
     public Page<TransactionResponse> list(@RequestHeader(value="Authorization", required=false) String auth,
             @RequestParam(required=false) UUID companyId, @RequestParam(required=false) UUID warehouseId,
             @RequestParam(required=false) TransactionType type, @RequestParam String period,
-            @PageableDefault(size=20, sort="createdAt", direction=Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size=20, sort={"createdAt", "id"}, direction=Sort.Direction.DESC) Pageable pageable) {
         var user = access.authenticate(auth, "COMPANY_ADMIN", "WAREHOUSE_MANAGER", "SYSTEM_ADMIN");
-        UUID scope = access.company(user, companyId);
+        UUID scope = "SYSTEM_ADMIN".equals(user.role()) && companyId == null
+                ? null : access.company(user, companyId);
         if ("WAREHOUSE_MANAGER".equals(user.role()) && warehouseId == null) throw new org.springframework.web.server.ResponseStatusException(HttpStatus.BAD_REQUEST, "warehouseId is required");
         return finance.transactions(scope, warehouseId, type, period, pageable, user);
     }

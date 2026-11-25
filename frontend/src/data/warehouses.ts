@@ -17,6 +17,7 @@ export type Depot = {
     image: string;
     ownerCompanyId?: string;
     handover?: Row;
+    createdAt?: string;
 };
 export function toDepot(w: Row): Depot {
     const images = object(w.profile).images;
@@ -30,9 +31,10 @@ export function toDepot(w: Row): Depot {
         type: w.warehouseType === "BUY" ? "Mua bán" : "Cho thuê",
         status: String(w.status).toLowerCase() as Status,
         company: String(w.ownerCompanyName || ""),
-        image: Array.isArray(images) ? String(images[0] || "") : "",
+        image: String(w.avatar || (Array.isArray(images) ? images[0] || "" : "")),
         ownerCompanyId: String(w.ownerCompanyId || ""),
         handover: object(w.handover),
+        createdAt: String(w.createdAt || ""),
     };
 }
 export function useDepots(marketplace = false): Depot[] {
@@ -95,6 +97,13 @@ export async function updateDepotStatus(
                     : undefined,
         },
     );
+}
+export async function updateDepot(id: string, fields: {
+    name: string; address: string; region: string; area?: number; avatar?: string;
+    warehouseType?: "BUY" | "RENT"; price?: number;
+}) {
+    const result = await saveResource("core", `/warehouses/${encodeURIComponent(id)}`, "PATCH", fields);
+    return toDepot(object(result));
 }
 export function depotImage(image: string, fallback: string) {
     return /^https?:\/\//.test(image) ? image : fallback;

@@ -1,3 +1,6 @@
+import WalletPanel from './WalletPanel';
+import BatchImportPage from './BatchImportPage';
+import PurchaseBatches from './PurchaseBatches';
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
@@ -36,13 +39,16 @@ import {
     formatCompactCurrency,
 } from "../../utils/format";
 import OperationForm from "./OperationForm";
+import OperationModal from "./OperationModal";
+
+type PageAction = { label: string } & ({ to: string } | { onClick: () => void });
 
 export function Heading({
     title,
     action,
 }: {
     title: string;
-    action?: { to: string; label: string };
+    action?: PageAction;
 }) {
     return (
         <div className="admin-page-head">
@@ -51,12 +57,15 @@ export function Heading({
                 <h2>{title}</h2>
                 <p>Theo dõi và quản lý tập trung hoạt động của doanh nghiệp.</p>
             </div>
-            {action && (
+            {action && ('to' in action ? (
                 <Link className="adm-btn adm-btn-primary" to={action.to}>
-                    <Plus size={16} />
-                    {action.label}
+                    <Plus size={16} /> {action.label}
                 </Link>
-            )}
+            ) : (
+                <button type="button" className="adm-btn adm-btn-primary" onClick={action.onClick}>
+                    <Plus size={16} /> {action.label}
+                </button>
+            ))}
         </div>
     );
 }
@@ -109,14 +118,18 @@ export function DataPage({
     action,
     details,
     actions,
+    renderCell,
+    renderDetail,
 }: {
     title: string;
     columns: string[];
     rows: string[][];
     embedded?: boolean;
-    action?: { to: string; label: string };
+    action?: PageAction;
     details?: (id: string) => ReactNode;
     actions?: (id: string) => ReactNode;
+    renderCell?: (id: string, column: number) => ReactNode;
+    renderDetail?: (id: string) => ReactNode;
 }) {
     const [query, setQuery] = useState("");
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -159,13 +172,13 @@ export function DataPage({
                                     onClick={() => setSelectedId(r[0])}
                                     tabIndex={0}
                                     onKeyDown={(e) => {
-                                        if (e.key === "Enter")
+                                        if (e.key === "Enter" && e.target === e.currentTarget)
                                             setSelectedId(r[0]);
                                     }}
                                 >
                                     {r.map((v, i) => (
                                         <td key={i}>
-                                            {i === r.length - 1 ? (
+                                            {renderCell?.(r[0], i) ?? (i === r.length - 1 ? (
                                                 <Badge
                                                     label={v}
                                                     tone={
@@ -180,7 +193,7 @@ export function DataPage({
                                                 />
                                             ) : (
                                                 v
-                                            )}
+                                            ))}
                                         </td>
                                     ))}
                                 </tr>
@@ -202,10 +215,11 @@ export function DataPage({
             </Card>
             {selected && (
                 <Modal
-                    title={"Chi tiết: " + selected[0]}
+                    title={renderDetail ? title : "Chi tiết: " + selected[0]}
+                    wide={!!renderDetail}
                     onClose={() => setSelectedId(null)}
                     footer={
-                        <div className="workspace-toolbar">
+                        <div className="wf-operation-actions">
                             {actions?.(selected[0])}
                             <button
                                 className="adm-btn"
@@ -216,7 +230,7 @@ export function DataPage({
                         </div>
                     }
                 >
-                    <div className="adm-form">
+                    {renderDetail ? renderDetail(selected[0]) : <div className="adm-form">
                         <div className="wf-fields">
                             {columns.map((c, i) => (
                                 <label className="wf-field" key={c}>
@@ -228,7 +242,7 @@ export function DataPage({
                                 </label>
                             ))}
                         </div>
-                    </div>
+                    </div>}
                     {details?.(selected[0])}
                 </Modal>
             )}
@@ -240,6 +254,7 @@ export function InventoryPage({
 }: {
     storehouse?: boolean;
 }) {
+    const [tab,setTab]=useState<"products"|"batches"|"import">("products");
     const { products, raw } = useAdminData("products");
     const [editing, setEditing] = useState<Row | null>(null);
     return (
@@ -249,14 +264,19 @@ export function InventoryPage({
                     storehouse ? "Hàng hóa trong kho" : "Hàng hóa toàn công ty"
                 }
             />
-            <div className="workspace-toolbar">
-                <button
-                    className="adm-btn adm-btn-primary"
-                    onClick={() => setEditing({})}
-                >
-                    Thêm sản phẩm
-                </button>
+            <div className="workspace-inventory-controls">
+                <nav className="workspace-inventory-tabs" aria-label="Danh mục kho">
+                    <button type="button" className="adm-btn" aria-pressed={tab === 'products'} onClick={() => setTab('products')}>Sản phẩm</button>
+                    <button type="button" className="adm-btn" aria-pressed={tab === 'batches'} onClick={() => setTab('batches')}>Lô hàng</button>
+                    <button type="button" className="adm-btn" aria-pressed={tab === 'import'} onClick={() => setTab('import')}>Nhập hàng</button>
+                </nav>
+                {tab === 'products' && (
+                    <button type="button" className="adm-btn adm-btn-primary" onClick={() => setEditing({})}>
+                        Thêm sản phẩm
+                    </button>
+                )}
             </div>
+            {tab==='import'?<BatchImportPage/>:tab==='batches'?<PurchaseBatches/>:<>
             <Stats />
             <DataPage
                 embedded
@@ -319,6 +339,7 @@ export function InventoryPage({
                     </Link>
                 </div>
             )}
+        </>}
         </>
     );
 }
@@ -412,7 +433,6 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
     const sums = cashSummary(rows);
     const strokeColor = storehouse ? "#7955c1" : "#17846b";
     const fillColor = storehouse ? "#f3edfc" : "#eaf6f1";
-    const companyBalance = transactions.reduce((acc, t) => acc + (t.type === 'INCOME' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
     return (
         <>
             <Heading
@@ -424,32 +444,10 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                 action={
                     storehouse
                         ? undefined
-                        : { to: "/company/budget/new", label: "Cấp ngân sách" }
+                        : { onClick: () => setEditing({ mode: "budget" }), label: "Lập ngân sách" }
                 }
             />
-            {!storehouse && (
-                <div className="wf-card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--workspace-gradient)', color: '#ffffff', borderRadius: 8, boxShadow: 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.2)', display: 'grid', placeItems: 'center' }}>
-                            <Wallet size={24} color="#ffffff" />
-                        </div>
-                        <div>
-                            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.92, fontWeight: 600, color: '#ffffff' }}>
-                                SỐ DƯ KHẢ DỤNG CÔNG TY
-                            </span>
-                            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2, color: '#ffffff' }}>
-                                {formatCurrency(companyBalance)}
-                            </div>
-                        </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                        <small style={{ display: 'block', opacity: 0.92, fontSize: 12, color: '#ffffff' }}>Nguồn tiền dùng để cấp ngân sách cho các kho</small>
-                        <Link to="/company/budget/new" className="adm-btn" style={{ marginTop: 6, background: '#ffffff', color: '#246853', fontWeight: 700, border: 0, boxShadow: 'none' }}>
-                            Cấp ngân sách kho →
-                        </Link>
-                    </div>
-                </div>
-            )}
+            <WalletPanel/>
             {!storehouse && <Stats />}
             <div className="workspace-toolbar">
                 <button
@@ -460,25 +458,13 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                 </button>
             </div>
             {editing && (
-                <Modal
-                    title={
-                        editing.mode === "budget"
-                            ? "Điều chỉnh ngân sách"
-                            : "Ghi nhận thu chi"
-                    }
+                <OperationModal
+                    title={editing.mode === "transaction" ? "Ghi nhận thu chi" : editing.initial ? "Điều chỉnh ngân sách" : "Lập ngân sách"}
+                    mode={editing.mode}
+                    initial={editing.initial}
+                    back={storehouse ? "/storehouse/finance" : "/company/finance"}
                     onClose={() => setEditing(null)}
-                >
-                    <OperationForm
-                        mode={editing.mode}
-                        initial={editing.initial}
-                        back={
-                            storehouse
-                                ? "/storehouse/finance"
-                                : "/company/finance"
-                        }
-                        onSaved={() => setEditing(null)}
-                    />
-                </Modal>
+                />
             )}
             <div className="workspace-toolbar">
                 <label>

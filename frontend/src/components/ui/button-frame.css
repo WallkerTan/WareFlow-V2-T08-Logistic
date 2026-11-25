@@ -1,0 +1,93 @@
+/*
+ * From Uiverse.io by mrhyddenn - https://uiverse.io/mrhyddenn/tricky-baboon-12
+ * MIT License, Copyright (c) mrhyddenn
+ */
+.wf-button-frame {
+    appearance: none;
+    position: relative;
+    display: inline-block;
+    border: 0;
+    background: none;
+    padding: var(--wf-frame-inset, 8px);
+    color: #0f1923;
+    cursor: pointer;
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 14px;
+    font-weight: bold;
+    white-space: nowrap;
+    transition: color .15s ease;
+}
+.wf-button-frame::before,
+.wf-button-frame::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    left: 0;
+    height: calc(50% - 5px);
+    border: 1px solid var(--wf-frame-border, #7d8082);
+    transition: all .15s ease;
+}
+.wf-button-frame::before { top: 0; border-bottom-width: 0; }
+.wf-button-frame::after { bottom: 0; border-top-width: 0; }
+.wf-button-frame:active::before,
+.wf-button-frame:active::after { right: 3px; left: 3px; }
+.wf-button-frame:active::before { top: 3px; }
+.wf-button-frame:active::after { bottom: 3px; }
+.wf-button-frame:focus-visible { outline: 2px solid #4567ed; outline-offset: 2px; }
+.wf-button-frame__inner {
+    position: relative;
+    display: block;
+    padding: var(--wf-frame-padding, 10px 20px);
+    overflow: hidden;
+    color: #fff;
+    background: var(--wf-frame-background, #0f1923);
+}
+.wf-button-frame__inner::before,
+.wf-button-frame__inner::after {
+    content: '';
+    position: absolute;
+    background: var(--wf-frame-background, #0f1923);
+}
+.wf-button-frame__inner::before { top: 0; left: 0; width: 2px; height: 2px; }
+.wf-button-frame__inner::after { right: 0; bottom: 0; width: 4px; height: 4px; transition: background .2s ease; }
+.wf-button-frame__slide {
+    position: absolute;
+    top: 0;
+    bottom: -1px;
+    left: -8px;
+    width: 0;
+    background: var(--wf-frame-hover, #ff4655);
+    transform: skew(-15deg);
+    transition: width .2s ease;
+}
+.wf-button-frame__text {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.wf-button-frame:not(:disabled):is(:hover, :focus-visible) .wf-button-frame__slide { width: calc(100% + 15px); }
+.wf-button-frame:not(:disabled):is(:hover, :focus-visible) .wf-button-frame__inner::after { background: #fff; }
+.wf-button-frame:disabled { opacity: .6; cursor: wait; }
+.auth-submit.wf-button-frame { width: 100%; color: #fff; }
+.wf-button-frame.wf-button-frame-auth {
+    --wf-frame-background: #3557d6;
+    --wf-frame-border: var(--auth-blue, #4567ed);
+    --wf-frame-hover: var(--auth-blue, #4567ed);
+}
+.wf-signin.wf-button-frame {
+    --wf-frame-inset: 5px;
+    --wf-frame-padding: 6px 10px;
+    --wf-frame-background: var(--workspace-dark, #0f1923);
+    --wf-frame-border: var(--workspace-accent, #7d8082);
+    --wf-frame-hover: var(--workspace-accent, #ff4655);
+}
+@media (prefers-reduced-motion: reduce) {
+    .wf-button-frame,
+    .wf-button-frame::before,
+    .wf-button-frame::after,
+    .wf-button-frame__inner::after,
+    .wf-button-frame__slide { transition: none; }
+}

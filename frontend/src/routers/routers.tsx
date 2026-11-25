@@ -14,6 +14,8 @@ import CompanyFinancePage from "../page/company/CompanyFinancePage";
 import CompanyEmployeesPage from "../page/company/CompanyEmployeesPage";
 import CompanyTransfersPage from "../page/company/CompanyTransfersPage";
 import CompanyApprovalsPage from "../page/company/CompanyApprovalsPage";
+import CompanyBatchesPage from "../page/company/CompanyBatchesPage";
+import BatchImportPage from "../components/workspace/BatchImportPage";
 import CompanyBudgetNewPage from "../page/company/CompanyBudgetNewPage";
 import CompanyEmployeesNewPage from "../page/company/CompanyEmployeesNewPage";
 import CompanyTransfersNewPage from "../page/company/CompanyTransfersNewPage";
@@ -24,7 +26,7 @@ import StorehouseInboundNewPage from "../page/storehouse/StorehouseInboundNewPag
 import StorehouseOutboundNewPage from "../page/storehouse/StorehouseOutboundNewPage";
 import StorehouseShipmentsPage from "../page/storehouse/StorehouseShipmentsPage";
 import StorehouseShipmentsNewPage from "../page/storehouse/StorehouseShipmentsNewPage";
-import { createBrowserRouter, Navigate, Link } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import LandingPage from "../page/LandingPage";
 import NotFound from "../page/NotFound";
 import AuthLayout from "../layout/auth/AuthLayout";
@@ -49,6 +51,7 @@ import AdminProducts from "../page/admin/AdminProducts";
 import AdminUsers from "../page/admin/AdminUsers";
 import AdminLogs from "../page/admin/AdminLogs";
 import AdminNotifications from "../page/admin/AdminNotifications";
+import AdminSupportRequests from "../page/admin/AdminSupportRequests";
 import StockLots from "../page/storehouse/StockLots";
 
 const router = createBrowserRouter([
@@ -76,51 +79,16 @@ const router = createBrowserRouter([
                 path: "companies/:companyId",
                 element: <AdminCompanyDetailPage />,
             },
-            {
-                path: "warehouses",
-                element: (
-                    <>
-                        <WarehouseManagement />
-                        <div className="workspace-quick">
-                            <Link to="/admin/warehouses/new">
-                                Tạo kho hàng →
-                            </Link>
-                        </div>
-                    </>
-                ),
-            },
+            { path: "warehouses", element: <WarehouseManagement /> },
             { path: "approvals/warehouses", element: <AdminWarehouseApprovals /> },
-            {
-                path: "suppliers",
-                element: (
-                    <>
-                        <AdminSuppliers />
-                        <div className="workspace-quick">
-                            <Link to="/admin/suppliers/new">
-                                Tạo nhà cung cấp →
-                            </Link>
-                        </div>
-                    </>
-                ),
-            },
-            {
-                path: "products",
-                element: (
-                    <>
-                        <AdminProducts />
-                        <div className="workspace-quick">
-                            <Link to="/admin/products/new">
-                                Thêm sản phẩm cho nhà cung cấp →
-                            </Link>
-                        </div>
-                    </>
-                ),
-            },
+            { path: "suppliers", element: <AdminSuppliers /> },
+            { path: "products", element: <AdminProducts /> },
             { path: "finance", element: <AdminFinance /> },
             { path: "shipments", element: <RecordsPage mode="shipments" /> },
             { path: "users", element: <AdminUsers /> },
             { path: "logs", element: <AdminLogs /> },
             { path: "notifications", element: <AdminNotifications /> },
+            { path: "support-requests", element: <AdminSupportRequests /> },
             { path: "profile", element: <WareflowProfile /> },
             { path: "modal-preview", element: <ModalPreview /> },
             { path: "warehouses/new", element: <AdminWarehousesNewPage /> },
@@ -134,6 +102,8 @@ const router = createBrowserRouter([
         children: [
             { index: true, element: <Navigate to="dashboard" replace /> },
             { path: "dashboard", element: <CompanyDashboardPage /> },
+            { path: "batches", element: <CompanyBatchesPage /> },
+            { path: "inbound", element: <BatchImportPage /> },
             { path: "warehouses", element: <CompanyWarehouses /> },
             { path: "inventory", element: <CompanyInventoryPage /> },
             { path: "finance", element: <CompanyFinancePage /> },

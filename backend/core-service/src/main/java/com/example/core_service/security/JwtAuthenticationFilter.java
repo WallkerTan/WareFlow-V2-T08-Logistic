@@ -26,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final com.example.core_service.repository.UserRepository users;
     private final CompanyRepository companyRepository;
 
     @Override
@@ -37,7 +38,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith(BEARER_PREFIX)) {
             boolean authenticated = authenticate(header.substring(BEARER_PREFIX.length()), request, response);
-            if (!authenticated && response.isCommitted()) {
+            if (!authenticated && response.getStatus() >= 400) {
                 return;
             }
         }
@@ -50,6 +51,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Claims claims = jwtTokenProvider.parse(token);
 
             UUID userId = UUID.fromString(claims.getSubject());
+            if (users.findById(userId).filter(user -> user.getStatus()==com.example.core_service.entity.enums.UserStatus.ACTIVE).isEmpty()) {
+                SecurityContextHolder.clearContext();
+                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Tài khoản không hoạt động");
+                return false;
+            }
             String email = claims.get(JwtTokenProvider.CLAIM_EMAIL, String.class);
             String roleStr = claims.get(JwtTokenProvider.CLAIM_ROLE, String.class);
             String companyIdStr = claims.get(JwtTokenProvider.CLAIM_COMPANY_ID, String.class);
@@ -61,17 +67,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             UserRole role = UserRole.valueOf(roleStr);
             UUID companyId = (companyIdStr != null && !companyIdStr.isBlank()) ? UUID.fromString(companyIdStr) : null;
 
-            // Kiểm tra trạng thái khóa của công ty theo thời gian thực (trừ SYSTEM_ADMIN)
+            // Kiểm tra trạng thái công ty theo thời gian thực (trừ SYSTEM_ADMIN).
             if (companyId != null && role != UserRole.SYSTEM_ADMIN) {
-                boolean isLocked = companyRepository.findById(companyId)
-                        .map(c -> c.getStatus() == CompanyStatus.LOCKED)
-                        .orElse(false);
+                CompanyStatus status = companyRepository.findById(companyId)
+                        .map(c -> c.getStatus())
+                        .orElse(null);
 
-                if (isLocked) {
+                if (status == CompanyStatus.LOCKED || status == CompanyStatus.PENDING) {
                     SecurityContextHolder.clearContext();
                     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                     response.setContentType("application/json;charset=UTF-8");
-                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"Công ty của bạn hiện đang bị khóa bởi Quản trị viên hệ thống\"}");
+                    String message = status == CompanyStatus.PENDING
+                            ? "Công ty đang chờ quản trị viên duyệt."
+                            : "Công ty của bạn hiện đang bị khóa bởi Quản trị viên hệ thống";
+                    response.getWriter().write("{\"status\":403,\"error\":\"Forbidden\",\"message\":\"" + message + "\"}");
                     return false;
                 }
             }

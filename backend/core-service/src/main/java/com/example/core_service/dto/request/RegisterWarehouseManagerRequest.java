@@ -31,6 +31,8 @@ public class RegisterWarehouseManagerRequest {
     @Size(max = 255, message = "Email tối đa 255 ký tự")
     private String email;
 
+    private String otp;
+
     @NotBlank(message = "Mật khẩu không được để trống")
     @Size(min = 8, max = 100, message = "Mật khẩu tối thiểu 8 ký tự, tối đa 100 ký tự")
     private String password;

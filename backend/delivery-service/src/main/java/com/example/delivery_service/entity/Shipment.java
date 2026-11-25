@@ -50,6 +50,7 @@ public class Shipment {
     @Column(name = "cod_amount", precision = 15, scale = 2)
     @Builder.Default
     private BigDecimal codAmount = BigDecimal.ZERO;
+    private Boolean pricedExport;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "cod_status")

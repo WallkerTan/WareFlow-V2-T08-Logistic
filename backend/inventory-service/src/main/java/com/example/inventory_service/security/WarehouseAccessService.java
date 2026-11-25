@@ -86,18 +86,16 @@ public class WarehouseAccessService {
 
         try {
             var warehouse = coreClient.get().uri("/warehouses/{id}", warehouseId)
-                    .header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(com.fasterxml.jackson.databind.JsonNode.class);
-            if (warehouse == null || !warehouse.path("id").asText().equals(warehouseId.toString())) {
+                    .header(HttpHeaders.AUTHORIZATION, authorization).retrieve().body(WarehouseScope.class);
+            if (warehouse == null || !warehouseId.equals(warehouse.id())) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy kho");
             }
             if ("WAREHOUSE_MANAGER".equals(role)) {
-                String manager = warehouse.path("handover").path("managerId").asText("");
-                if (!userId.toString().equals(manager)) {
+                if (warehouse.handover() == null || !userId.equals(warehouse.handover().managerId())) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không được phân công quản lý kho này");
                 }
             } else {
-                String ownerCompany = warehouse.path("ownerCompanyId").asText("");
-                if (companyId == null || !companyId.toString().equals(ownerCompany)) {
+                if (companyId == null || !companyId.equals(warehouse.ownerCompanyId())) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Kho không thuộc công ty của bạn");
                 }
             }
@@ -115,6 +113,15 @@ public class WarehouseAccessService {
         }
         return new UserIdentity(userId, companyId, role);
     }
+
+    public void verifyDestination(String auth, UUID source, UUID target) {
+        var from=coreClient.get().uri("/warehouses/{id}",source).header(HttpHeaders.AUTHORIZATION,auth).retrieve().body(WarehouseScope.class);
+        var to=coreClient.get().uri("/warehouses/{id}",target).header(HttpHeaders.AUTHORIZATION,auth).retrieve().body(WarehouseScope.class);
+        if(from==null||to==null||from.ownerCompanyId()==null||!from.ownerCompanyId().equals(to.ownerCompanyId()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Kho nhận phải thuộc cùng công ty.");
+    }
+    private record WarehouseScope(UUID id, UUID ownerCompanyId, Handover handover) {}
+    private record Handover(UUID managerId) {}
 
     public record UserIdentity(UUID id, UUID companyId, String role) { }
 }

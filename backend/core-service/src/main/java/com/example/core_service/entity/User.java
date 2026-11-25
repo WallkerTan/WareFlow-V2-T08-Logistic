@@ -43,6 +43,11 @@ public class User {
     private String fullName;
 
     private String avatar;
+    private Instant removedAt;
+
+    private String resetCodeHash;
+    private Instant resetCodeExpiresAt;
+    private Integer resetAttempts;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

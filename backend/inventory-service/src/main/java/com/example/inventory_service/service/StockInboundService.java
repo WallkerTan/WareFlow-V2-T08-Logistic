@@ -367,6 +367,7 @@ public class StockInboundService {
 
             if (existingLotOpt.isPresent()) {
                 lot = existingLotOpt.get();
+                if(lot.getUnitCost()!=null && lot.getUnitCost().compareTo(price)!=0) throw new ResponseStatusException(HttpStatus.CONFLICT,"Giá nhập khác lô hiện có.");
                 lot.setQuantity(lot.getQuantity().add(receivedQty));
                 if (lot.getExpiryDate() == null && lineReq.expiryDate() != null) {
                     lot.setExpiryDate(lineReq.expiryDate());
@@ -380,6 +381,7 @@ public class StockInboundService {
                 lot = StockLot.builder()
                         .product(product)
                         .lotCode(lotCode)
+                        .unitCost(price)
                         .expiryDate(lineReq.expiryDate())
                         .quantity(receivedQty)
                         .reserved(BigDecimal.ZERO)

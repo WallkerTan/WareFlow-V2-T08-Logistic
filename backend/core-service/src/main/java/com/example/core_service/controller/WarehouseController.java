@@ -5,6 +5,8 @@ import com.example.core_service.dto.response.WarehouseResponse;
 import com.example.core_service.entity.enums.WarehouseStatus;
 import com.example.core_service.entity.enums.WarehouseType;
 import com.example.core_service.service.WarehouseService;
+import com.example.core_service.service.WarehouseService.WarehouseProfileUpdate;
+import com.example.core_service.log.AuditLog;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +25,11 @@ import java.util.UUID;
 public class WarehouseController {
 
     private final WarehouseService warehouseService;
+
+    @GetMapping("/my-company")
+    public Page<WarehouseResponse> myCompany(Pageable pageable) {
+        return warehouseService.myCompany(pageable);
+    }
 
     /**
      * SYSTEM_ADMIN: Tạo kho hệ thống mới (ownerCompany = null, status = AVAILABLE).
@@ -72,5 +79,20 @@ public class WarehouseController {
     public WarehouseResponse getWarehouseById(@PathVariable UUID id) {
         return warehouseService.getWarehouseById(id);
     }
+    @PutMapping("/{id}/profile")
+    @PreAuthorize("hasRole('WAREHOUSE_MANAGER')")
+    @AuditLog(action = "UPDATE_WAREHOUSE_PROFILE", targetType = "Warehouse")
+    public WarehouseResponse updateAssignedProfile(@PathVariable UUID id, @Valid @RequestBody WarehouseProfileUpdate request) {
+        return warehouseService.updateAssignedProfile(id, request);
+    }
+
+    @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @AuditLog(action = "UPDATE_SYSTEM_WAREHOUSE", targetType = "Warehouse")
+    public WarehouseResponse updateSystemWarehouse(@PathVariable UUID id,
+            @Valid @RequestBody WarehouseService.SystemWarehouseUpdate request) {
+        return warehouseService.updateSystemWarehouse(id, request);
+    }
+
 }
 

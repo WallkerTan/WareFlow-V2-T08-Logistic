@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Link } from "react-router-dom";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import AuthField from "./AuthField";
+import Button from "../ui/Button";
+import { authApi } from "../../services/authApi";
 
 export type RegisterValues = {
     companyName: string;
@@ -10,18 +12,21 @@ export type RegisterValues = {
     fullName: string;
     phone: string;
     email: string;
+    otp?: string;
     password: string;
     confirmPassword: string;
     accepted: boolean;
 };
-type Props = { onSubmit?: (values: RegisterValues) => Promise<unknown> };
+type Props = { onSubmit?: (values: RegisterValues) => Promise<unknown>; emailEnabled?: boolean };
 
-export default function RegisterForm({ onSubmit }: Props) {
+export default function RegisterForm({ onSubmit, emailEnabled = false }: Props) {
     "use no memo";
     const {
         register,
         handleSubmit,
         getValues,
+        resetField,
+        trigger,
         formState: { errors, isSubmitting },
     } = useForm<RegisterValues>({
         defaultValues: {
@@ -30,6 +35,7 @@ export default function RegisterForm({ onSubmit }: Props) {
             fullName: "",
             phone: "",
             email: "",
+            otp: "",
             password: "",
             confirmPassword: "",
             accepted: false,
@@ -37,14 +43,46 @@ export default function RegisterForm({ onSubmit }: Props) {
     });
     const [message, setMessage] = useState("");
     const [success, setSuccess] = useState(false);
+    const [sentEmail, setSentEmail] = useState("");
+    const [sending, setSending] = useState(false);
+    const [wait, setWait] = useState(0);
+
+    useEffect(() => {
+        if (!wait) return;
+        const timer = window.setTimeout(() => setWait(wait - 1), 1000);
+        return () => window.clearTimeout(timer);
+    }, [wait]);
+
+    async function sendCode() {
+        if (!emailEnabled || sending || isSubmitting || wait) return;
+        setSending(true);
+        setMessage("");
+        setSuccess(false);
+        try {
+            if (!await trigger("email")) return;
+            const email = getValues("email").trim().toLowerCase();
+            await authApi.requestRegistrationCode(email);
+            setSentEmail(email);
+            resetField("otp");
+            setWait(60);
+        } catch (error) {
+            setMessage(error instanceof Error ? error.message : "Không gửi được mã xác minh.");
+        } finally {
+            setSending(false);
+        }
+    }
     async function submit(values: RegisterValues) {
         setMessage("");
         setSuccess(false);
         try {
             if (onSubmit) {
-                await onSubmit(values);
+                if (emailEnabled && values.email.trim().toLowerCase() !== sentEmail) {
+                    setMessage("Vui lòng yêu cầu mã xác minh cho địa chỉ email này.");
+                    return;
+                }
+                await onSubmit({ ...values, otp: emailEnabled ? values.otp : undefined });
                 setSuccess(true);
-                setMessage("Đăng ký tài khoản công ty thành công! Vui lòng chuyển sang trang Đăng nhập.");
+                setMessage("Đã gửi hồ sơ đăng ký công ty. Bạn có thể đăng nhập sau khi quản trị viên duyệt.");
             } else
                 setMessage(
                     "Đây là bản giao diện. Chưa gửi yêu cầu đăng ký công ty đến máy chủ.",
@@ -142,6 +180,8 @@ export default function RegisterForm({ onSubmit }: Props) {
                 type="email"
                 autoComplete="email"
                 placeholder="ban@congty.vn"
+                readOnly={sending}
+                maxLength={255}
                 required
                 {...register("email", {
                     required: "Vui lòng nhập email.",
@@ -152,6 +192,28 @@ export default function RegisterForm({ onSubmit }: Props) {
                 })}
                 error={errors.email?.message}
             />
+            {emailEnabled && <fieldset className="register-email-verification">
+                <legend>Xác minh email</legend>
+                <p>Gửi mã đến email công việc ở trên, sau đó nhập mã 6 chữ số để tiếp tục đăng ký.</p>
+                <button type="button" className="auth-submit" disabled={sending || isSubmitting || wait > 0} onClick={() => void sendCode()}>
+                    {sending ? "Đang gửi mã…" : wait ? `Gửi lại mã sau ${wait}s` : sentEmail ? "Gửi lại mã" : "Gửi mã xác minh"}
+                </button>
+                {sentEmail && <small role="status">Nếu email có thể đăng ký, mã sẽ được gửi đến {sentEmail} và có hiệu lực trong 10 phút.</small>}
+                <AuthField
+                    id="registrationOtp"
+                    label="Mã xác minh email"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    maxLength={6}
+                    required
+                    {...register("otp", {
+                        shouldUnregister: true,
+                        required: "Vui lòng nhập mã xác minh.",
+                        pattern: { value: /^[0-9]{6}$/, message: "Mã xác minh gồm 6 chữ số." },
+                    })}
+                    error={errors.otp?.message}
+                />
+            </fieldset>}
             <div className="auth-field-row">
                 <AuthField
                     id="password"
@@ -209,10 +271,10 @@ export default function RegisterForm({ onSubmit }: Props) {
                     {message}
                 </div>
             )}
-            <button className="auth-submit" disabled={isSubmitting}>
+            <Button variant="frame" type="submit" className="auth-submit wf-button-frame-auth" disabled={isSubmitting || sending}>
                 {isSubmitting ? "Đang tạo tài khoản…" : "Tạo tài khoản công ty"}
                 <ArrowRight size={18} />
-            </button>
+            </Button>
             <p className="auth-switch">
                 Đã có tài khoản? <Link to="/auth/login">Đăng nhập</Link>
             </p>

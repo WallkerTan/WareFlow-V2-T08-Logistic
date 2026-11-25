@@ -24,11 +24,13 @@ public class ShipmentService {
     private final InventoryClient inventory;
 
     public ShipmentResponse create(UUID warehouse, ShipmentRequests.Create request, UUID actor, String token) {
-        inventory.requireCompletedSale(token, warehouse, request.documentId());
-        BigDecimal amount = request.codAmount() == null ? BigDecimal.ZERO : request.codAmount();
+        var existing=repository.findByDocumentIdAndWarehouseId(request.documentId(),warehouse);
+        if(existing.isPresent() && request.trackingCode().equals("WF-"+request.documentId()) && request.carrier().equals("WareFlow")) return ShipmentResponse.from(existing.get());
+        BigDecimal documentTotal=inventory.requireCompletedSale(token, warehouse, request.documentId());
+        BigDecimal amount = documentTotal!=null?documentTotal:request.codAmount() == null ? BigDecimal.ZERO : request.codAmount();
         var shipment = Shipment.builder().warehouseId(warehouse).documentId(request.documentId())
             .carrier(clean(request.carrier())).trackingCode(clean(request.trackingCode()))
-            .codAmount(amount).codStatus(amount.signum() == 0 ? CodStatus.NOT_REQUIRED : CodStatus.PENDING).build();
+            .pricedExport(documentTotal!=null).codAmount(amount).codStatus(amount.signum() == 0 ? CodStatus.NOT_REQUIRED : CodStatus.PENDING).build();
         event(shipment, actor, "CREATED", null, null);
         return ShipmentResponse.from(repository.saveAndFlush(shipment));
     }
@@ -57,9 +59,10 @@ public class ShipmentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cần ít nhất một trường cập nhật");
         if (request.carrier() != null) s.setCarrier(clean(request.carrier()));
         if (request.trackingCode() != null) s.setTrackingCode(clean(request.trackingCode()));
-        if (request.codAmount() != null) {
+        if(request.codAmount()!=null) {
+            if(Boolean.TRUE.equals(s.getPricedExport()) && request.codAmount().compareTo(s.getCodAmount())!=0) conflict("COD phải khớp giá trị phiếu xuất.");
             s.setCodAmount(request.codAmount());
-            s.setCodStatus(request.codAmount().signum() == 0 ? CodStatus.NOT_REQUIRED : CodStatus.PENDING);
+            s.setCodStatus(request.codAmount().signum()==0?CodStatus.NOT_REQUIRED:CodStatus.PENDING);
         }
         event(s, actor, "UPDATED", null, null);
         return ShipmentResponse.from(repository.saveAndFlush(s));
@@ -69,10 +72,10 @@ public class ShipmentService {
         var s = locked(warehouse, id);
         if (s.getStatus() == request.status()) return ShipmentResponse.from(s);
         Set<ShipmentStatus> allowed = switch (s.getStatus()) {
-            case CREATED -> Set.of(ShipmentStatus.IN_TRANSIT);
-            case IN_TRANSIT -> Set.of(ShipmentStatus.DELIVERED, ShipmentStatus.FAILED);
-            case FAILED -> Set.of(ShipmentStatus.IN_TRANSIT, ShipmentStatus.RETURNED);
-            case DELIVERED, RETURNED -> Set.of();
+            case CREATED -> Set.of(ShipmentStatus.IN_TRANSIT, ShipmentStatus.DELIVERED, ShipmentStatus.CANCELLED);
+            case IN_TRANSIT -> Set.of(ShipmentStatus.DELIVERED, ShipmentStatus.FAILED, ShipmentStatus.CANCELLED);
+            case FAILED -> Set.of(ShipmentStatus.IN_TRANSIT, ShipmentStatus.RETURNED, ShipmentStatus.DELIVERED, ShipmentStatus.CANCELLED);
+            case DELIVERED, RETURNED, CANCELLED -> Set.of();
         };
         if (!allowed.contains(request.status())) conflict("Không thể chuyển từ " + s.getStatus() + " sang " + request.status());
         var previous = s.getStatus();

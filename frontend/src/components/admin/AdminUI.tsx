@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
+
+let modalCount = 0;
+let overflowBeforeModal = '';
 
 type Tone = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'purple';
 
@@ -102,35 +105,67 @@ export function Modal({
     onClose,
     children,
     footer,
+    wide = false,
 }: {
     title: string;
     description?: string;
     onClose: () => void;
     children: ReactNode;
     footer?: ReactNode;
+    wide?: boolean;
 }) {
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const closeRef = useRef(onClose);
+
+    useEffect(() => { closeRef.current = onClose; }, [onClose]);
     useEffect(() => {
+        const dialog = dialogRef.current;
+        const opener = document.activeElement;
+        if (modalCount === 0) overflowBeforeModal = document.body.style.overflow;
+        modalCount++;
+        document.body.style.overflow = 'hidden';
+        dialog?.focus({ preventScroll: true });
+
         const onKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onClose();
+            const dialogs = document.querySelectorAll('.adm-modal');
+            if (!dialog || dialogs[dialogs.length - 1] !== dialog) return;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                closeRef.current();
+                return;
+            }
+            if (event.key !== 'Tab') return;
+            const items = Array.from(dialog.querySelectorAll<HTMLElement>(
+                'a[href], button, input, select, textarea, [tabindex="0"]',
+            )).filter(item => !item.matches(':disabled') && item.getClientRects().length > 0);
+            const first = items[0];
+            const last = items.at(-1);
+            if (!first || !last) {
+                event.preventDefault();
+            } else if (document.activeElement === dialog || !dialog.contains(document.activeElement) ||
+                (event.shiftKey ? document.activeElement === first : document.activeElement === last)) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            }
         };
         document.addEventListener('keydown', onKey);
-        const previous = document.body.style.overflow;
-        document.body.style.overflow = 'hidden';
         return () => {
             document.removeEventListener('keydown', onKey);
-            document.body.style.overflow = previous;
+            modalCount--;
+            if (modalCount === 0) document.body.style.overflow = overflowBeforeModal;
+            if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
         };
-    }, [onClose]);
+    }, []);
 
     return (
         <div className="adm-modal-scrim" onClick={onClose} role="presentation">
-            <div className="adm-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
+            <div ref={dialogRef} tabIndex={-1} className={wide ? "adm-modal adm-modal-wide" : "adm-modal"} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
                 <header className="adm-modal-head">
                     <div>
                         <h3>{title}</h3>
                         {description && <p>{description}</p>}
                     </div>
-                    <button className="adm-modal-close" onClick={onClose} aria-label="Đóng">
+                    <button type="button" className="adm-modal-close" onClick={onClose} aria-label="Đóng">
                         <X size={17} />
                     </button>
                 </header>

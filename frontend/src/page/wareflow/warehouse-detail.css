@@ -1,0 +1,70 @@
+.wm-grid .wm-photo {
+    height: auto;
+    aspect-ratio: 2 / 1;
+}
+
+.wm-grid.wm-list .wm-photo {
+    align-self: flex-start;
+}
+
+.wm-detail .wm-detail-image {
+    display: block;
+    height: auto;
+    aspect-ratio: 2 / 1;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.wm-detail > .wm-status {
+    margin-top: 14px;
+}
+
+.wm-detail dd {
+    overflow-wrap: anywhere;
+}
+
+.wm-detail-form fieldset {
+    display: grid;
+    gap: 14px;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+
+.wm-photo-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: 10px;
+}
+
+.wm-photo-fields label {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.wm-edit-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.wm-edit-address {
+    grid-column: 1 / -1;
+}
+
+.wm-detail-form .wm-edit-error {
+    color: #b42318;
+}
+
+.wm-detail-form :disabled,
+.wm-detail button:disabled {
+    cursor: not-allowed;
+    opacity: .65;
+}
+
+@media (max-width: 520px) {
+    .wm-edit-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

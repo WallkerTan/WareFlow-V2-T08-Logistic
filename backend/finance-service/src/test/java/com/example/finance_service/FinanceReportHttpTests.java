@@ -32,6 +32,7 @@ class FinanceReportHttpTests {
     FinanceAccessService access;
     FinanceReportService reports;
     FinanceService finance;
+    WalletLedger ledger;
     MockRestServiceServer core;
     MockMvc mvc;
     @BeforeEach void setup() {
@@ -40,7 +41,9 @@ class FinanceReportHttpTests {
         access=new FinanceAccessService(SECRET,"wareflow-auth","http://core");
         ReflectionTestUtils.setField(access,"core",builder.build());
         reports=mock(FinanceReportService.class); finance=mock(FinanceService.class);
-        mvc=MockMvcBuilders.standaloneSetup(new FinanceReportController(finance,access,reports))
+        ledger=mock(WalletLedger.class);
+        mvc=MockMvcBuilders.standaloneSetup(new FinanceReportController(finance,access,reports), new TransactionController(finance,access), new WalletController(ledger,access))
+            .setCustomArgumentResolvers(new org.springframework.data.web.PageableHandlerMethodArgumentResolver())
             .setControllerAdvice(new FinanceExceptionHandler()).build();
     }
     String token(String role,boolean expired) {
@@ -67,6 +70,32 @@ class FinanceReportHttpTests {
         mvc.perform(get("/reports/finance/categories").param("period","2026")
             .header("Authorization",token("SYSTEM_ADMIN",false))).andExpect(status().isBadRequest());
         verifyNoInteractions(reports,finance);
+    }
+    @Test void transactionsWithoutCompanyUseTheAuthenticatedScope() throws Exception {
+        when(finance.transactions(nullable(UUID.class), isNull(), isNull(), eq("2026"), any(), any()))
+            .thenAnswer(call -> org.springframework.data.domain.Page.empty(call.getArgument(4)));
+        for (String role : List.of("SYSTEM_ADMIN", "COMPANY_ADMIN")) {
+            mvc.perform(get("/transactions").param("period", "2026").header("Authorization", token(role, false)))
+                .andExpect(status().isOk());
+        }
+        verify(finance).transactions(isNull(), isNull(), isNull(), eq("2026"), any(), any());
+        verify(finance).transactions(eq(company), isNull(), isNull(), eq("2026"), any(), any());
+    }
+    @Test void topUpRequiresSystemAdminAndTargetsOwnedWallet() throws Exception {
+        var requestId = UUID.randomUUID();
+        var body = """
+                {"requestId":"%s","companyId":"%s","warehouseId":"%s","amount":100}
+                """.formatted(requestId, company, warehouse);
+        mvc.perform(post("/wallets/top-up").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("Authorization", token("COMPANY_ADMIN", false))).andExpect(status().isForbidden());
+        verifyNoInteractions(ledger);
+        core.expect(anything()).andRespond(withSuccess(warehouseJson(user, company), MediaType.APPLICATION_JSON));
+        mvc.perform(post("/wallets/top-up").contentType(MediaType.APPLICATION_JSON).content(body)
+                .header("Authorization", token("SYSTEM_ADMIN", false))).andExpect(status().isOk());
+        verify(ledger).post(eq("TOP_UP"), eq(company), eq(warehouse), eq(user), eq(requestId), eq(false),
+                eq(new BigDecimal("100")), eq(com.example.finance_service.entity.enums.TransactionType.INCOME),
+                eq(com.example.finance_service.entity.enums.TransactionCategory.OTHER), anyString());
+        core.verify();
     }
     @Test void timeseriesHasDocumentedShape() throws Exception {
         when(reports.timeseries(eq(company),isNull(),eq("2026-11"),eq(GroupBy.DAY),any()))

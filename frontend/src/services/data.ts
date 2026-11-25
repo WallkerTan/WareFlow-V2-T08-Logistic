@@ -21,14 +21,18 @@ export function useAdminData(...wanted: DataKey[]) {
     const scope = useWorkspace();
     const isAdmin = session?.role === 'SYSTEM_ADMIN';
     const isManager = session?.role === 'WAREHOUSE_MANAGER';
-    const companiesQuery = useQuery<Row[]>('companies', () => isAdmin ? allPages('core', '/companies') : request<Row>('core', '/companies/my-company').then(r => [r]));
+    const companiesQuery = useQuery<Row[]>('companies', async () => {
+        if (isManager) return session.companyId ? [{ id: session.companyId, name: session.companyName }] : [];
+        if (isAdmin) return allPages<Row>('core', '/companies');
+        return [await request<Row>('core', '/companies/my-company')];
+    });
     const companyRows = companiesQuery.data || EMPTY;
     const warehouseRows = scope.warehouses;
     const workingWarehouses = isManager ? warehouseRows.filter(w => w.id === scope.warehouseId) : warehouseRows;
     const myCompanyId = str(session?.companyId || companyRows[0]?.id);
     const companiesIds = isAdmin ? companyRows.map(c => str(c.id)) : [myCompanyId].filter(Boolean);
     const scopeKey = `${companiesIds.join(',')}:${workingWarehouses.map(w => w.id).join(',')}`;
-    const ready = !scope.loading && !companiesQuery.loading && !companiesQuery.error;
+    const ready = !scope.loading && !scope.error && !companiesQuery.loading && !companiesQuery.error;
     async function acrossWarehouses(service: Service, collection: string): Promise<Row[]> {
         return (await mapLimit(workingWarehouses, async w => (await allPages<Row>(service, `/warehouses/${w.id}/${collection}`)).map(r => ({ ...r, warehouseId: w.id, warehouseName: w.name })))).flat();
     }
@@ -36,19 +40,28 @@ export function useAdminData(...wanted: DataKey[]) {
         const today = dayKey(new Date()); const year = Number(today.slice(0, 4));
         // Fetch current and previous years so charts have full timeline
         const periods = collection === 'transactions' ? [year - 1, year].map(String) : [today.slice(0, 7), `${year}`];
-        const jobs = companiesIds.flatMap(companyId => periods.map(period => ({ companyId, period })));
-        return (await mapLimit(jobs, async j => {
+        const scopes = isAdmin && collection === 'transactions' ? [undefined] : companiesIds;
+        const jobs = scopes.flatMap(companyId => periods.map(period => ({ companyId, period })));
+        const listWithDups = (await mapLimit(jobs, async j => {
             try {
                 const list = await allPages<Row>('finance', `/${collection}${query({
-                    companyId: isAdmin ? j.companyId : undefined,
+                    companyId: j.companyId,
                     period: j.period,
                     warehouseId: isManager ? scope.warehouseId : undefined
                 })}`);
-                return list.map(r => ({ ...r, companyId: j.companyId }));
-            } catch {
+                return list.map(r => ({ ...r, companyId: j.companyId || r.companyId } as Row));
+            } catch (error) {
+                if(collection==='transactions') throw error;
                 return [];
             }
         })).flat();
+        const seen = new Set<string>();
+        return listWithDups.filter((r: Row) => {
+            const id = str(r.id);
+            if (!id || seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
     }
     function resource(key: DataKey, loader: () => Promise<Row[]>) {
         // Hooks run in a fixed order; only the requests needed by this view are enabled.
@@ -62,7 +75,10 @@ export function useAdminData(...wanted: DataKey[]) {
         return (await mapLimit(suppliers, async s => (await allPages<Row>('core', `/suppliers/${s.id}/products`)).map(p => ({ ...p, supplierId: s.id, supplierName: s.name })))).flat();
     });
     const productsQuery = resource('products', () => acrossWarehouses('inventory', 'products'));
-    const transactionsQuery = resource('transactions', () => finance('transactions'));
+    const transactionsKey = wanted.includes('transactions') && (isAdmin || (ready && (!isManager || !!scope.warehouseId)))
+        ? isAdmin ? 'data:transactions:system' : `data:transactions:${scopeKey}`
+        : null;
+    const transactionsQuery = useQuery(transactionsKey, () => finance('transactions'));
     const budgetsQuery = resource('budgets', () => finance('budgets'));
     const notificationsQuery = resource('notifications', () => allPages('core', '/notifications'));
     const logsQuery = resource('systemLogs', () => allPages('core', isAdmin ? '/system-logs' : '/system-logs/my-company'));
@@ -76,7 +92,7 @@ export function useAdminData(...wanted: DataKey[]) {
     const movementsQuery = resource('movements', () => acrossWarehouses('inventory', 'movements'));
     const proposalsQuery = resource('warehouseTransactions', () => allPages('core', '/warehouse-transactions'));
     const raw = useMemo(() => ({ users: usersQuery.data || EMPTY, suppliers: suppliersQuery.data || EMPTY, supplierProducts: supplierProductsQuery.data || EMPTY, products: productsQuery.data || EMPTY, transactions: transactionsQuery.data || EMPTY, budgets: budgetsQuery.data || EMPTY, notifications: notificationsQuery.data || EMPTY, systemLogs: logsQuery.data || EMPTY, shipments: shipmentsQuery.data || EMPTY, stockDocuments: documentsQuery.data || EMPTY, expenses: expensesQuery.data || EMPTY, lots: lotsQuery.data || EMPTY, movements: movementsQuery.data || EMPTY, warehouseTransactions: proposalsQuery.data || EMPTY, companies: companyRows, warehouses: warehouseRows }), [usersQuery.data, suppliersQuery.data, supplierProductsQuery.data, productsQuery.data, transactionsQuery.data, budgetsQuery.data, notificationsQuery.data, logsQuery.data, shipmentsQuery.data, documentsQuery.data, expensesQuery.data, lotsQuery.data, movementsQuery.data, proposalsQuery.data, companyRows, warehouseRows]);
-    return useMemo(() => {
+    const data = useMemo(() => {
     const companyName = (id: unknown) => str(companyRows.find(c => c.id === id)?.name);
     const warehouseName = (id: unknown) => str(warehouseRows.find(w => w.id === id)?.name);
     const companies: Company[] = companyRows.filter(r => r.status !== 'DELETED').map(r => ({ ...r, id: str(r.id), name: str(r.name), businessModel: r.businessModel as Company['businessModel'], status: r.status as Company['status'], taxCode: str(object(r.profile).taxCode), email: str(object(r.profile).email), phone: str(object(r.profile).phone), address: str(object(r.profile).address), memberCount: number(r.memberCount), warehouseCount: warehouseRows.filter(w => w.ownerCompanyId === r.id).length, createdAt: str(r.createdAt) }));
@@ -96,7 +112,7 @@ export function useAdminData(...wanted: DataKey[]) {
         createdAt: str(r.createdAt || (r as Record<string, unknown>).created_at || new Date().toISOString())
     }));
     const warehouseTx: Transaction[] = raw.warehouseTransactions
-        .filter(w => w.status === 'COMPLETED' && (!myCompanyId || String(w.companyId) === myCompanyId))
+        .filter(w => w.status === 'COMPLETED' && w.type!=='RETURN' && !raw.transactions.some(t=>t.refDocumentId===w.id) && (!myCompanyId || String(w.companyId) === myCompanyId))
         .map(w => ({
             id: `WT-${w.id}`,
             type: 'EXPENSE' as const,
@@ -115,6 +131,12 @@ export function useAdminData(...wanted: DataKey[]) {
     const stockDocuments: StockDocument[] = raw.stockDocuments.map(r => ({ ...r, id: str(r.id), code: str(r.code || r.id), type: r.type as StockDocument['type'], status: r.status as StockDocument['status'], warehouseName: warehouseName(r.warehouseId), partner: str(object(r.approval).supplierName), itemCount: Array.isArray(r.lines) ? r.lines.length : 0, createdAt: str(r.createdAt) }));
     return { companies, warehouses, users, suppliers, products, supplierProducts, transactions, budgets, notifications, systemLogs, shipments, stockDocuments, raw };
     }, [raw, companyRows, warehouseRows]);
+    return {
+        ...data,
+        transactionsError: transactionsQuery.error,
+        transactionsLoading: transactionsQuery.loading,
+        reloadTransactions: transactionsQuery.reload,
+    };
 }
 export async function saveResource(service: Service, path: string, method: string, body?: unknown) {
     const result = await mutate(service, path, method, body); invalidateData(); return result;

@@ -11,6 +11,7 @@ export default function StorehouseProfile() {
                     title: "Thông tin kho hàng",
                     description: "Thông tin cơ bản về vị trí và quy mô kho.",
                     fields: [
+                        { name: "avatar", label: "Đường dẫn ảnh đại diện", type: "url" },
                         { name: "name", label: "Tên kho", required: true },
                         { name: "region", label: "Khu vực", required: true },
                         {

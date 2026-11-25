@@ -1,4 +1,5 @@
-import { CodeXml, Mail, Phone, MapPin, Clock } from 'lucide-react';
+import { InstagramOutlined, TikTokFilled, YoutubeFilled } from '@ant-design/icons';
+import { Mail, MapPin, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import './wareflow-footer.css';
 
@@ -10,9 +11,9 @@ export default function WareFlowFooter() {
                 <span><strong>CÔNG TY WAREFLOW</strong><span>Nền tảng quản lý kho hàng & logistics</span></span>
             </Link>
             <nav className="wareflow-footer-social" aria-label="Kết nối WareFlow">
-                <a href="https://github.com/WallkerTan/WareFlow-V2-T08-Logistic" target="_blank" rel="noopener noreferrer" aria-label="WareFlow trên GitHub"><CodeXml size={21} /></a>
-                <a href="mailto:contact@wareflow.vn" aria-label="Gửi email đến WareFlow"><Mail size={21} /></a>
-                <a href="tel:19006868" aria-label="Gọi hotline WareFlow"><Phone size={21} /></a>
+                <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube"><YoutubeFilled aria-hidden="true" /></a>
+                <a href="https://www.tiktok.com/" target="_blank" rel="noopener noreferrer" aria-label="TikTok" title="TikTok"><TikTokFilled aria-hidden="true" /></a>
+                <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram"><InstagramOutlined aria-hidden="true" /></a>
             </nav>
         </div>
         <div className="wareflow-footer-info">

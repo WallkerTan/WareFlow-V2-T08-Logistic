@@ -30,45 +30,138 @@ public class StockOutboundService {
 
     public StockDocumentResponse create(UUID warehouseId, CreateExportRequest request, UserIdentity user) {
         if (request.type() == null || !TYPES.contains(request.type())) bad("Invalid export type");
+        var document = StockDocument.builder().warehouseId(warehouseId).type(request.type())
+                .status(StockDocumentStatus.DRAFT).createdBy(user.id()).build();
+        fillDraft(document, request);
+        return StockDocumentResponse.from(documents.save(document));
+    }
+
+    public StockDocumentResponse updateSaleDraft(UUID warehouseId, UUID id, CreateExportRequest request) {
+        var document = lockedExport(warehouseId, id);
+        requireStatus(document.getStatus(), StockDocumentStatus.DRAFT);
+        if (document.getType() != StockDocumentType.EXPORT_SALE || request.type() != document.getType()) {
+            bad("Chỉ chỉnh sửa được phiếu xuất bán đang ở trạng thái nháp.");
+        }
+        fillDraft(document, request);
+        return StockDocumentResponse.from(documents.save(document));
+    }
+
+    private void fillDraft(StockDocument document, CreateExportRequest request) {
+        UUID warehouseId = document.getWarehouseId();
         boolean transfer = request.type() == StockDocumentType.EXPORT_TRANSFER;
         if (transfer && (request.targetWarehouseId() == null || warehouseId.equals(request.targetWarehouseId())))
             bad("Transfer requires a different destination warehouse");
         if (!transfer && request.targetWarehouseId() != null) bad("Only transfers can specify a destination warehouse");
-        if (request.lines() == null || request.lines().isEmpty()) bad("At least one line is required");
+        boolean sale=request.type()==StockDocumentType.EXPORT_SALE;
+        if (request.lines() == null || (!sale && request.lines().isEmpty())) bad("Phiếu cần ít nhất một dòng hàng.");
+        boolean returning=request.type()==StockDocumentType.EXPORT_RETURN;
+        BigDecimal total=BigDecimal.ZERO;
+        UUID supplier=null, batch=null;
+        if (sale && !request.lines().isEmpty()) {
+            validateRecipient(request.recipientName(), request.recipientPhone(), request.recipientAddress());
+        }
         Set<UUID> seen = new HashSet<>();
         List<Map<String, Object>> lines = new ArrayList<>();
-        for (var line : request.lines().stream().sorted(Comparator.comparing(l -> l.lotId().toString())).toList()) {
+        var allocated = allocateLines(warehouseId, request.lines(), sale);
+        for (var allocation : allocated.stream().sorted(Comparator.comparing(item -> item.line().lotId())).toList()) {
+            var line = allocation.line();
             if (!seen.add(line.lotId())) bad("Duplicate lot in export");
             if (line.quantity() == null || line.quantity().signum() <= 0) bad("Quantity must be positive");
             StockLot lot = lot(warehouseId, line.lotId());
             validateCondition(lot, request.type());
             if (lot.getQuantity().subtract(lot.getReserved()).compareTo(line.quantity()) < 0) conflict("Insufficient available stock");
-            if (transfer) target(request.targetWarehouseId(), line.targetProductId(), lot.getProduct());
+            if (transfer && line.targetProductId()!=null) target(request.targetWarehouseId(), line.targetProductId(), lot.getProduct());
             else if (line.targetProductId() != null) bad("Only transfers can specify target products");
             Map<String, Object> data = new LinkedHashMap<>();
             data.put("lotId", lot.getId().toString());
             data.put("productId", lot.getProduct().getId().toString());
             data.put("sku", lot.getProduct().getSku());
+            if (sale) data.put("productName", lot.getProduct().getName());
+            if (allocation.saleLine() != null) data.put("saleLine", allocation.saleLine());
             data.put("lotCode", lot.getLotCode());
             data.put("quantity", line.quantity());
-            if (transfer) data.put("targetProductId", line.targetProductId().toString());
+            if(sale || returning) {
+                if(lot.getUnitCost()==null) conflict("Lô chưa có giá nhập đã đối soát.");
+                var percent=sale && line.pricePercent()!=null?line.pricePercent():new BigDecimal("100");
+                BigDecimal unitPrice=lot.getUnitCost().multiply(percent).movePointLeft(2).setScale(2,java.math.RoundingMode.HALF_UP);
+                var amount=unitPrice.multiply(line.quantity()).setScale(2,java.math.RoundingMode.HALF_UP);
+                data.put("price",unitPrice);data.put("pricePercent",percent);data.put("amount",amount);
+                total=total.add(amount);
+                if(returning) {
+                    if(lot.getPurchaseBatchId()==null || lot.getSupplierId()==null) conflict("Lô chưa có nguồn nhập đã đối soát.");
+                    if(batch!=null && (!batch.equals(lot.getPurchaseBatchId()) || !supplier.equals(lot.getSupplierId()))) bad("Mỗi phiếu hoàn phải cùng lô nhập và nhà cung cấp.");
+                    batch=lot.getPurchaseBatchId();supplier=lot.getSupplierId();
+                }
+            }
+            if (transfer && line.targetProductId()!=null) data.put("targetProductId", line.targetProductId().toString());
             lines.add(data);
         }
         Map<String, Object> audit = new LinkedHashMap<>();
+        if(returning && total.compareTo(new BigDecimal("10000000"))<0) bad("Giá trị thực hoàn phải từ 10 triệu đồng.");
+        if(sale || returning) audit.put("total",total);
+        if (sale) {
+            audit.put("recipientName", request.recipientName());
+            audit.put("recipientPhone", request.recipientPhone());
+            audit.put("recipientAddress", request.recipientAddress());
+        }
         if (request.note() != null) audit.put("note", request.note());
-        return StockDocumentResponse.from(documents.save(StockDocument.builder().warehouseId(warehouseId)
-                .targetWarehouseId(request.targetWarehouseId()).type(request.type()).status(StockDocumentStatus.DRAFT)
-                .createdBy(user.id()).lines(lines).approval(audit).build()));
+        document.setTargetWarehouseId(request.targetWarehouseId());
+        document.setLines(lines);
+        document.setApproval(audit);
+    }
+
+    private record Allocation(CreateExportRequest.Line line, Integer saleLine) {}
+
+    private List<Allocation> allocateLines(UUID warehouse, List<CreateExportRequest.Line> requested, boolean sale) {
+        var allocations = new ArrayList<Allocation>();
+        var productsSelected = new HashSet<UUID>();
+        for (int index = 0; index < requested.size(); index++) {
+            var line = requested.get(index);
+            if (line.productId() == null) {
+                if (line.lotId() == null) bad("Chọn lô xuất cho dòng hàng.");
+                allocations.add(new Allocation(line, null));
+                continue;
+            }
+            if (!sale || line.lotId() != null || line.targetProductId() != null) {
+                bad("Chỉ phiếu xuất bán hỗ trợ chọn sản phẩm theo SKU.");
+            }
+            if (line.quantity() == null || line.quantity().signum() <= 0) bad("Số lượng phải lớn hơn 0.");
+            if (!productsSelected.add(line.productId())) bad("Mỗi SKU chỉ xuất hiện một lần trên phiếu.");
+            var product = products.findByIdAndWarehouseIdAndDeletedAtIsNull(line.productId(), warehouse)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Sản phẩm không có trong kho xuất."));
+            BigDecimal remaining = line.quantity();
+            LocalDate today = LocalDate.now();
+            var eligible = lots.findByProduct_IdAndDeletedAtIsNull(product.getId()).stream()
+                    .filter(lot -> lot.getUnitCost() != null && lot.getStatus() != StockLotStatus.DAMAGED
+                            && lot.getStatus() != StockLotStatus.EXPIRED
+                            && (lot.getExpiryDate() == null || !lot.getExpiryDate().isBefore(today)))
+                    .sorted(Comparator.comparing(StockLot::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                            .thenComparing(StockLot::getId))
+                    .toList();
+            for (var lot : eligible) {
+                BigDecimal quantity = remaining.min(lot.getQuantity().subtract(lot.getReserved()));
+                if (quantity.signum() <= 0) continue;
+                allocations.add(new Allocation(new CreateExportRequest.Line(lot.getId(), quantity, null, line.pricePercent()), index));
+                remaining = remaining.subtract(quantity);
+                if (remaining.signum() == 0) break;
+            }
+            if (remaining.signum() > 0) conflict("SKU " + product.getSku() + " thiếu tồn khả dụng có giá nhập.");
+        }
+        return allocations;
     }
 
     public StockDocumentResponse transition(UUID warehouseId, UUID id, String action, String note, UserIdentity user) {
-        StockDocument doc = documents.findByIdAndWarehouseIdForUpdate(id, warehouseId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Export not found"));
-        requireExport(doc);
+        StockDocument doc = lockedExport(warehouseId, id);
         StockDocumentStatus status = doc.getStatus();
         switch (action) {
             case "submit" -> {
                 requireStatus(status, StockDocumentStatus.DRAFT);
+                if (doc.getLines().isEmpty()) bad("Thêm ít nhất một dòng hàng trước khi gửi duyệt.");
+                if (doc.getType() == StockDocumentType.EXPORT_SALE) {
+                    var details = doc.getApproval();
+                    validateRecipient((String) details.get("recipientName"), (String) details.get("recipientPhone"),
+                            (String) details.get("recipientAddress"));
+                }
                 doc.setStatus(StockDocumentStatus.PENDING_APPROVAL);
             }
             case "approve" -> {
@@ -114,10 +207,11 @@ public class StockOutboundService {
                     lot.setQuantity(lot.getQuantity().subtract(qty));
                     movement(doc, lot, qty.negate(), user);
                     if (doc.getType() == StockDocumentType.EXPORT_TRANSFER) {
-                        Product product = target(doc.getTargetWarehouseId(), UUID.fromString(line.get("targetProductId").toString()), lot.getProduct());
+                        Product product = target(doc.getTargetWarehouseId(), line.get("targetProductId")==null?null:UUID.fromString(line.get("targetProductId").toString()), lot.getProduct());
                         // A separate receiving lot preserves provenance and avoids merging unrelated batches.
                         StockLot received = lots.save(StockLot.builder().product(product)
                                 .lotCode("TR-" + doc.getId() + "-" + lot.getId())
+                                .purchaseBatchId(lot.getPurchaseBatchId()).supplierId(lot.getSupplierId()).unitCost(lot.getUnitCost())
                                 .expiryDate(lot.getExpiryDate()).quantity(qty).reserved(BigDecimal.ZERO).status(lot.getStatus()).build());
                         line.put("targetLotId", received.getId().toString());
                         movement(doc, received, qty, user);
@@ -135,7 +229,12 @@ public class StockOutboundService {
     }
 
     private Product target(UUID warehouseId, UUID productId, Product source) {
-        if (productId == null) bad("Transfer line requires targetProductId");
+        if(productId==null) {
+            var match=products.findByWarehouseIdAndSkuIgnoreCaseAndDeletedAtIsNull(warehouseId,source.getSku());
+            if(match.isEmpty()) return products.save(Product.builder().warehouseId(warehouseId).sku(source.getSku()).name(source.getName())
+                .unit(source.getUnit()).barcode(source.getBarcode()).images(source.getImages()).minStock(source.getMinStock()).build());
+            productId=match.get().getId();
+        }
         Product product = products.findByIdAndWarehouseIdAndDeletedAtIsNull(productId, warehouseId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Destination product not found"));
         if (!source.getSku().equalsIgnoreCase(product.getSku()) || !Objects.equals(source.getUnit(), product.getUnit()))
@@ -175,12 +274,26 @@ public class StockOutboundService {
         }, pageable).map(StockDocumentResponse::from);
     }
 
+    private StockDocument lockedExport(UUID warehouseId, UUID id) {
+        var document = documents.findByIdAndWarehouseIdForUpdate(id, warehouseId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Export not found"));
+        requireExport(document);
+        return document;
+    }
+
+    private void validateRecipient(String name, String phone, String address) {
+        if (blank(name) || blank(address) || blank(phone) || !phone.matches("(?:0|[+]84)[0-9]{8,10}")) {
+            bad("Thông tin người nhận chưa hợp lệ.");
+        }
+    }
+
     private void requireExport(StockDocument doc) {
         if (!TYPES.contains(doc.getType())) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Export not found");
     }
     private void requireStatus(StockDocumentStatus actual, StockDocumentStatus expected) {
         if (actual != expected) conflict("Expected status " + expected + ", got " + actual);
     }
+    private static boolean blank(String s){return s==null || s.isBlank();}
     private void bad(String message) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
     private void conflict(String message) { throw new ResponseStatusException(HttpStatus.CONFLICT, message); }
 }

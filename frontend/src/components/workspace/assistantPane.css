@@ -1,0 +1,49 @@
+.tltl-launcher {
+    position: fixed;
+    right: max(20px, env(safe-area-inset-right));
+    bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 2px solid var(--workspace-accent, #2967e8);
+    border-radius: 50%;
+    background: #fff;
+    color: var(--workspace-accent, #2967e8);
+    box-shadow: 0 5px 18px #17213926;
+    cursor: pointer;
+    transition: background-color 160ms ease, transform 160ms ease;
+}
+.tltl-launcher:hover {
+    background: color-mix(in srgb, var(--workspace-accent, #2967e8) 10%, white);
+    transform: translateY(-2px);
+}
+.tltl-launcher:focus-visible {
+    outline: 2px solid var(--workspace-accent, #2967e8);
+    outline-offset: 3px;
+}
+.tltl-side-panel .ant-drawer-body {
+    overflow: hidden;
+}
+.tltl-side-panel .ant-drawer-content-wrapper {
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+}
+.tltl-side-panel .ant-drawer-section {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+@media (561px <= width < 1200px) {
+    .tltl-launcher[aria-expanded="true"] {
+        right: calc(436px + 28px);
+    }
+}
+
+@media (width <= 560px) or (width >= 1200px) {
+    .tltl-launcher[aria-expanded="true"] {
+        visibility: hidden;
+    }
+}

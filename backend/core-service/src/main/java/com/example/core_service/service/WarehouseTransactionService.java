@@ -82,7 +82,7 @@ public class WarehouseTransactionService {
             throw ApiException.badRequest("Chỉ hỗ trợ đề nghị BUY hoặc RENT");
         }
 
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+        Warehouse warehouse = warehouseRepository.locked(request.getWarehouseId())
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy kho"));
 
         if (warehouse.getStatus() != WarehouseStatus.AVAILABLE) {
@@ -227,11 +227,42 @@ public class WarehouseTransactionService {
      *  - Ghi system_log + tạo notification cho công ty và system
      */
     @Transactional
+    public WarehouseTransactionResponse reserveApproval(UUID id) {
+        var transaction=getTransaction(id);
+        if(transaction.getStatus()==WarehouseTransactionStatus.COMPLETED){
+            ensureParticipant(transaction,SecurityUtils.getCurrentUser());
+            return WarehouseTransactionResponse.fromEntity(transaction);
+        }
+        ensureCanDecide(transaction,SecurityUtils.getCurrentUser());
+        if(transaction.getStatus()==WarehouseTransactionStatus.APPROVED)return WarehouseTransactionResponse.fromEntity(transaction);
+        ensureOpen(transaction);
+        if(transaction.getType()==WarehouseTransactionType.RETURN)throw ApiException.badRequest("Dùng luồng trả kho.");
+        var warehouse=warehouseRepository.locked(transaction.getWarehouse().getId()).orElseThrow();
+        if(warehouse.getStatus()!=WarehouseStatus.AVAILABLE)throw ApiException.conflict("Kho không còn khả dụng.");
+        if(transaction.getOfferedPrice()==null)transaction.setOfferedPrice(warehouse.getPrice());
+        if(transaction.getOfferedPrice()==null||transaction.getOfferedPrice().signum()<0)throw ApiException.badRequest("Chưa có giá giao dịch.");
+        if(warehouse.getOwnerCompany()!=null)appendSystemMessage(transaction,"sellerCompanyId",warehouse.getOwnerCompany().getId().toString());
+        warehouse.setStatus(WarehouseStatus.PENDING);
+        transaction.setStatus(WarehouseTransactionStatus.APPROVED);
+        return WarehouseTransactionResponse.fromEntity(transaction);
+    }
+
+    @Transactional(readOnly=true)
+    public WarehouseTransactionResponse paymentDetails(UUID id) {
+        var tx=transactionRepository.findById(id).orElseThrow(()->ApiException.notFound("Không tìm thấy giao dịch"));
+        ensureCanDecide(tx,SecurityUtils.getCurrentUser());
+        return WarehouseTransactionResponse.fromEntity(tx);
+    }
+
+    @Transactional
     public WarehouseTransactionResponse approve(UUID id) {
         WarehouseTransaction transaction = getTransaction(id);
         UserPrincipal current = SecurityUtils.getCurrentUser();
+        if(transaction.getStatus()==WarehouseTransactionStatus.COMPLETED){
+            ensureParticipant(transaction,current);return WarehouseTransactionResponse.fromEntity(transaction);
+        }
         ensureCanDecide(transaction, current);
-        ensureOpen(transaction);
+        if(transaction.getStatus()!=WarehouseTransactionStatus.APPROVED)throw ApiException.conflict("Chưa duyệt thanh toán.");
 
         if (transaction.getType() == WarehouseTransactionType.RETURN) {
             throw ApiException.badRequest("Dùng API approve-return để duyệt giao dịch trả kho");
@@ -313,10 +344,7 @@ public class WarehouseTransactionService {
 
         Warehouse warehouse = transaction.getWarehouse();
         // Trả lại trạng thái AVAILABLE nếu kho đang PENDING (do đề nghị này giữ)
-        if (warehouse.getStatus() == WarehouseStatus.PENDING) {
-            warehouse.setStatus(WarehouseStatus.AVAILABLE);
-            warehouseRepository.save(warehouse);
-        }
+
 
         appendSystemMessage(transaction, "rejectionReason",
                 reason == null || reason.isBlank() ? "Đề nghị bị từ chối" : reason.trim());
@@ -651,7 +679,7 @@ public class WarehouseTransactionService {
     // ─────────────────────────────────────────────────────────────────────────
 
     private WarehouseTransaction getTransaction(UUID id) {
-        return transactionRepository.findById(id)
+        return transactionRepository.locked(id)
                 .orElseThrow(() -> ApiException.notFound("Không tìm thấy đề nghị giao dịch"));
     }
 

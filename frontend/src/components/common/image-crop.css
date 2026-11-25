@@ -1,0 +1,42 @@
+.wf-crop-dialog {
+    width: min(540px, calc(100% - 24px));
+    max-height: calc(100dvh - 24px);
+    margin: auto;
+    padding: 20px;
+    overflow: auto;
+    border: 1px solid #dce3ed;
+    border-radius: 12px;
+    background: #fff;
+    color: #1d293d;
+}
+.wf-crop-dialog::backdrop { background: #101f3699; }
+.wf-crop-dialog h2 { margin: 0 0 6px; font-size: 18px; font-weight: 650; }
+.wf-crop-dialog p { margin: 0 0 12px; }
+.wf-crop-frame {
+    position: relative;
+    margin: 0 auto 14px;
+    overflow: hidden;
+    background: #e9eef5;
+    cursor: grab;
+    touch-action: none;
+    outline-offset: 3px;
+}
+.wf-crop-frame:active { cursor: grabbing; }
+.wf-crop-frame img {
+    position: absolute;
+    max-width: none;
+    max-height: none;
+    pointer-events: none;
+    user-select: none;
+}
+.wf-crop-zoom { display: flex; align-items: center; gap: 12px; }
+.wf-crop-zoom input { flex: 1; width: auto; min-width: 0; }
+.wf-crop-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.wf-crop-preview {
+    display: block;
+    width: min(100%, 200px);
+    height: auto;
+    object-fit: cover;
+    margin-bottom: 10px;
+    border-radius: 8px;
+}

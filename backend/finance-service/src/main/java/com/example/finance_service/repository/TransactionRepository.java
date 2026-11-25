@@ -4,10 +4,12 @@ import com.example.finance_service.entity.Transaction;
 import com.example.finance_service.entity.enums.TransactionType;
 import org.springframework.data.domain.*;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import java.time.Instant;
 import java.util.*;
 
-public interface TransactionRepository extends JpaRepository<Transaction, Long> {
+public interface TransactionRepository extends JpaRepository<Transaction, Long>,
+        JpaSpecificationExecutor<Transaction> {
     Page<Transaction> findByCompanyIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID companyId, Instant from, Instant to, Pageable pageable);
     Page<Transaction> findByCompanyIdAndWarehouseIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID companyId, UUID warehouseId, Instant from, Instant to, Pageable pageable);
     Page<Transaction> findByCompanyIdAndTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID companyId, TransactionType type, Instant from, Instant to, Pageable pageable);

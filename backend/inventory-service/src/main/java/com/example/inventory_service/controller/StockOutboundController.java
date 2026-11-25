@@ -11,6 +11,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
@@ -21,13 +23,22 @@ public class StockOutboundController {
     private final StockOutboundService outbound;
     private final WarehouseAccessService access;
 
+    @org.springframework.beans.factory.annotation.Value("${FINANCE_SERVICE_URL:http://localhost:8083}") private String financeUrl;
+    @org.springframework.beans.factory.annotation.Value("${DELIVERY_SERVICE_URL:http://localhost:8084}") private String deliveryUrl;
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public StockDocumentResponse create(@RequestHeader(value = "Authorization", required = false) String authorization,
             @PathVariable UUID warehouseId, @Valid @RequestBody CreateExportRequest request) {
         var user = access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
-        if (request.targetWarehouseId() != null) authorizeTarget(authorization, request.targetWarehouseId());
+        if (request.targetWarehouseId() != null) access.verifyDestination(authorization,warehouseId, request.targetWarehouseId());
         return outbound.create(warehouseId, request, user);
+    }
+
+    @PutMapping("/{id}")
+    public StockDocumentResponse updateSaleDraft(@RequestHeader("Authorization") String authorization,
+            @PathVariable UUID warehouseId, @PathVariable UUID id, @Valid @RequestBody CreateExportRequest request) {
+        access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
+        return outbound.updateSaleDraft(warehouseId, id, request);
     }
 
     @GetMapping
@@ -56,11 +67,23 @@ public class StockOutboundController {
                 : access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
         var doc = outbound.get(warehouseId, id);
         if (doc.targetWarehouseId() != null && (action.equals("approve") || action.equals("complete")))
-            authorizeTarget(authorization, doc.targetWarehouseId());
-        return outbound.transition(warehouseId, id, action, request == null ? null : request.note(), user);
+            access.verifyDestination(authorization,warehouseId, doc.targetWarehouseId());
+        var result=outbound.transition(warehouseId,id,action,request==null?null:request.note(),user);
+        if(action.equals("complete") && result.approval().get("total")!=null){
+            if(result.type()==StockDocumentType.EXPORT_RETURN) {
+                org.springframework.web.client.RestClient.create(financeUrl).post()
+                    .uri("/wallets/settle/RETURN/{w}/{id}",warehouseId,id).header("Authorization",authorization).retrieve().toBodilessEntity();
+            } else if(result.type()==StockDocumentType.EXPORT_SALE) {
+                org.springframework.web.client.RestClient.create(deliveryUrl).post().uri("/warehouses/{w}/shipments",warehouseId)
+                    .header("Authorization",authorization).body(java.util.Map.of("documentId",id,"carrier","WareFlow","trackingCode","WF-"+id))
+                    .retrieve().toBodilessEntity();
+            }
+        }
+        return result;
+    }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail requestError(ResponseStatusException error) {
+        return error.getBody();
     }
 
-    private void authorizeTarget(String authorization, UUID targetWarehouseId) {
-        access.authorizeRoles(authorization, targetWarehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN", "SYSTEM_ADMIN");
-    }
 }

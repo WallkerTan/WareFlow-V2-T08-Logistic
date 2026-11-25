@@ -619,7 +619,8 @@
     max-width: 620px;
 }
 
-.admin-page-actions {
+.admin-page-actions,
+.adm-actions {
     display: flex;
     align-items: center;
     gap: 9px;
@@ -1067,6 +1068,40 @@
     gap: 9px;
 }
 
+.adm-finance-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+    align-items: end;
+    gap: 12px;
+    margin: 16px 0;
+    padding: 14px;
+    border: 1px solid var(--adm-line);
+    border-radius: 12px;
+    background: var(--adm-surface);
+}
+
+.adm-finance-filters label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: var(--adm-ink-soft);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.adm-finance-filters .adm-select {
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+}
+
+.adm-finance-filters > .adm-btn {
+    min-height: 40px;
+    justify-self: start;
+}
+
 .adm-count {
     font-size: 11.5px;
     color: var(--adm-muted);
@@ -1458,11 +1493,18 @@
 
 .adm-modal-foot {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 9px;
     padding: 15px 20px;
     border-top: 1px solid var(--adm-line-soft);
     background: #fbfcfe;
+}
+
+.adm-modal-foot > div:has(> :is(.adm-btn, .wf-button)) {
+    flex-wrap: wrap;
+    gap: 10px;
+    max-width: 100%;
 }
 
 .adm-form {
@@ -1870,5 +1912,24 @@
     }
     .adm-filter {
         flex: 1;
+    }
+}
+
+.adm-modal-wide {
+    width: min(820px, 100%);
+}
+.adm-modal-body {
+    min-height: 0;
+    overscroll-behavior: contain;
+}
+@media (max-width: 600px) {
+    .adm-modal-scrim {
+        padding: 12px;
+    }
+    .adm-modal {
+        max-height: calc(100dvh - 24px);
+    }
+    .adm-modal-head, .adm-modal-body, .adm-modal-foot {
+        padding: 14px;
     }
 }

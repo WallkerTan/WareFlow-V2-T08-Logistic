@@ -1,0 +1,4 @@
+# Enable with Spring profile ollama-local when running core-service on Windows.
+WF_AI_BASE_URL: http://127.0.0.1:11435/v1
+WF_AI_MODEL: qwen2.5:3b
+WF_AI_API_KEY: local

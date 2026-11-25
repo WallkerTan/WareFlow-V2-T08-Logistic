@@ -41,7 +41,7 @@ public class StockInboundController {
             @PathVariable UUID warehouseId,
             @Valid @RequestBody CreatePurchaseOrderRequest request) {
         UserIdentity user = access.authorizeRoles(authorization, warehouseId, "WAREHOUSE_MANAGER", "COMPANY_ADMIN");
-        return inboundService.createPurchaseOrder(warehouseId, request, user);
+        throw new org.springframework.web.server.ResponseStatusException(HttpStatus.CONFLICT,"Để lập phiếu nhập mới, chọn lô hàng tại mục Nhập hàng theo lô.");
     }
 
     @PutMapping("/purchase-orders/{poId}")

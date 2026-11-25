@@ -9,7 +9,6 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 public class FinanceExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ResponseStatusException.class)
     ResponseEntity<ProblemDetail> status(ResponseStatusException ex) {
-        return ResponseEntity.status(ex.getStatusCode()).body(
-            ProblemDetail.forStatusAndDetail(ex.getStatusCode(), ex.getReason() == null ? "Request failed" : ex.getReason()));
+        return ResponseEntity.status(ex.getStatusCode()).body(ex.getBody());
     }
 }

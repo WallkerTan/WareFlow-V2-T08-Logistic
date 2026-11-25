@@ -19,6 +19,7 @@ public class ShipmentController {
     private final ShipmentService service;
     private final WarehouseAccessService access;
 
+    @org.springframework.beans.factory.annotation.Value("${FINANCE_SERVICE_URL:http://localhost:8083}") private String financeUrl;
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ShipmentResponse create(@RequestHeader(value="Authorization", required=false) String token,
@@ -49,11 +50,20 @@ public class ShipmentController {
     @PatchMapping("/{id}/status")
     public ShipmentResponse status(@RequestHeader(value="Authorization", required=false) String token,
         @PathVariable UUID warehouseId, @PathVariable UUID id, @Valid @RequestBody ShipmentRequests.Status request) {
-        return service.transition(warehouseId, id, request, access.authorize(token, warehouseId, true));
+        var actor=access.authorize(token,warehouseId,true);
+        var shipment=service.transition(warehouseId,id,request,actor);
+        return shipment.status()==ShipmentStatus.DELIVERED ? settled(warehouseId,id,actor,token,shipment):shipment;
     }
     @PostMapping("/{id}/cod/collect")
     public ShipmentResponse collect(@RequestHeader(value="Authorization", required=false) String token,
         @PathVariable UUID warehouseId, @PathVariable UUID id) {
-        return service.collect(warehouseId, id, access.authorize(token, warehouseId, true));
+        var actor=access.authorize(token,warehouseId,true);
+        return settled(warehouseId,id,actor,token,service.get(warehouseId,id));
+    }
+    private ShipmentResponse settled(UUID warehouse,UUID id,UUID actor,String auth,ShipmentResponse shipment) {
+        if(shipment.codStatus()==CodStatus.COLLECTED)return shipment;
+        org.springframework.web.client.RestClient.create(financeUrl).post()
+                .uri("/wallets/settle/SALE/{warehouse}/{id}",warehouse,id).header("Authorization",auth).retrieve().toBodilessEntity();
+        return shipment.codAmount().signum()>0?service.collect(warehouse,id,actor):shipment;
     }
 }

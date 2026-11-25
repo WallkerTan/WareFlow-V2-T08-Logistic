@@ -23,7 +23,8 @@ export type ShipmentStatus =
     | "IN_TRANSIT"
     | "DELIVERED"
     | "FAILED"
-    | "RETURNED";
+    | "RETURNED"
+    | "CANCELLED";
 
 export type TransactionType = "INCOME" | "EXPENSE" | "SYSTEM_FEE";
 export type TransactionCategory =
@@ -97,6 +98,7 @@ export type Warehouse = {
 };
 
 export type Supplier = {
+    displayId?: number;
     id: string;
     name: string;
     category: string;
@@ -109,6 +111,7 @@ export type Supplier = {
 };
 
 export type Product = {
+    legacySku?:string;
     id: string;
     sku: string;
     barcode: string;
@@ -135,6 +138,7 @@ export type Shipment = {
 
 
 export type Transaction = {
+    companyId?:string; warehouseId?:string; refDocumentId?:string;
     id: string;
     type: TransactionType;
     category: TransactionCategory;

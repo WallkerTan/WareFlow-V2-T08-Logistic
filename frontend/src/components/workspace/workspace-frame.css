@@ -1,31 +1,252 @@
-/* The sidebar and workspace share a row; the footer spans both columns. */
-.wf-shell { display:grid; grid-template-columns:248px minmax(0,1fr); grid-template-rows:1fr auto; align-items:stretch; }
-.wf-shell > .wf-sidebar { position:relative; inset:auto; width:auto; min-width:0; padding:0; overflow:visible; z-index:10; }
-.wf-sidebar-panel { position:sticky; top:0; display:flex; flex-direction:column; min-height:100dvh; max-height:100dvh; overflow-y:auto; padding:32px 20px; }
-.wf-shell > .wf-main { min-width:0; min-height:100dvh; margin-left:0; display:flex; flex-direction:column; }
-.wf-content { position:relative; min-height:300px; }
-.wf-loading-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    min-height: 220px;
-    background: rgba(247, 249, 252, 0.7);
-    display: flex;
-    justify-content: center;
-    padding-top: 50px;
-    z-index: 50;
-    pointer-events: none;
-    border-radius: 10px;
+.wf-page {
+    --frame-gap: 6px;
+    --frame-radius: 16px;
+    padding-bottom: var(--frame-gap);
+    background: #e9eef5;
 }
-.wf-shell > .wareflow-footer { grid-column:1 / -1; margin:0; position:relative; z-index:11; }
+.wf-shell {
+    --frame-topbar-height: 64px;
+    --frame-line: #dce3ed;
+    --frame-sidebar-width: 248px;
+    display: grid;
+    box-sizing: border-box;
+    height: 100dvh;
+    grid-template-columns: var(--frame-sidebar-width) minmax(0, 1fr);
+    grid-template-rows: var(--frame-topbar-height) minmax(0, 1fr);
+    grid-template-areas: "sidebar topbar" "sidebar content";
+    gap: var(--frame-gap);
+    padding: var(--frame-gap);
+    background: #e9eef5;
+}
+.wf-shell.wf-compact {
+    --frame-topbar-height: 56px;
+}
+.wf-shell:has(> .tltl-docked-panel) {
+    grid-template-columns: var(--frame-sidebar-width) minmax(0, 1fr) clamp(300px, 25vw, 390px);
+    grid-template-areas: "sidebar topbar topbar" "sidebar content assistant";
+}
+.wf-shell > .wf-sidebar {
+    grid-area: sidebar;
+    position: relative;
+    inset: auto;
+    align-self: stretch;
+    width: auto;
+    min-width: 0;
+    padding: 0;
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    z-index: 10;
+}
+.wf-sidebar-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    padding: 24px 18px;
+    background: #fff;
+    border: 1px solid var(--frame-line);
+    border-radius: var(--frame-radius);
+}
+.wf-compact .wf-sidebar-panel {
+    padding-block: 16px;
+}
+.wf-role-admin .wf-sidebar-panel {
+    background: #101f36;
+    border-color: transparent;
+}
+.wf-sidebar-panel > :not(nav) {
+    flex-shrink: 0;
+}
+.wf-shell .wf-sidebar-panel > nav {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+}
+.wf-shell > .wf-topbar {
+    grid-area: topbar;
+    position: relative;
+    top: auto;
+    height: var(--frame-topbar-height);
+    min-width: 0;
+    border: 1px solid var(--frame-line);
+    border-radius: var(--frame-radius);
+}
+.wf-content-scroll {
+    grid-area: content;
+    isolation: isolate;
+    min-width: 0;
+    overflow: auto;
+    border: 1px solid var(--frame-line);
+    border-radius: var(--frame-radius);
+    background: #fbfcfe;
+}
+.wf-shell :is(.wf-sidebar-panel > nav, .wf-content-scroll) {
+    scrollbar-width: none;
+}
+.wf-shell :is(.wf-sidebar-panel > nav, .wf-content-scroll)::-webkit-scrollbar {
+    display: none;
+}
+.admin-shell.wf-shell .wf-content-scroll > .wf-content {
+    container: workspace-content / inline-size;
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-width: 0;
+    max-width: none;
+    margin: 0;
+    padding: clamp(16px, 2vw, 32px);
+}
+.wf-content :is(.adm-card, .adm-card-body, .wf-card, .workspace-table, .adm-table-wrap, .wf-field) {
+    min-width: 0;
+}
+.wf-content :is(.workspace-table, .adm-table-wrap) {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.wf-shipment-status {
+    min-width: 130px;
+}
+
+.wf-shipment-detail {
+    display: grid;
+    gap: 14px;
+}
+
+.wf-shipment-section {
+    min-width: 0;
+    padding: 14px;
+    border: 1px solid var(--frame-line);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.wf-shipment-section h3,
+.wf-shipment-lot h4 {
+    margin: 0;
+    color: var(--adm-ink);
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.wf-shipment-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.wf-shipment-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+    gap: 12px;
+    margin: 12px 0 0;
+}
+
+.wf-shipment-facts > div {
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f6f8fc;
+}
+
+.wf-shipment-facts dt { color: var(--adm-muted); font-size: 12px; }
+.wf-shipment-facts dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.wf-shipment-lot { margin-top: 12px; }
+.wf-shipment-lot .workspace-table { margin-top: 6px; }
+.wf-shipment-lot .workspace-table tbody tr { cursor: default; }
+
+@container workspace-content (width > 970px) {
+    .wf-profile-aside {
+        position: sticky;
+        top: var(--frame-gap);
+        max-height: calc(100dvh - var(--frame-topbar-height) - 5 * var(--frame-gap) - 2px);
+        overflow-y: auto;
+        border-radius: 11px;
+    }
+}
+
+@container workspace-content (max-width: 970px) {
+    .wf-content .wf-profile-grid,
+    .wf-content .adm-grid-2 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .wf-content :is(.market-grid, .wm-grid:not(.wm-list), .adm-grid-3) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .wf-content :is(.wm-filters, .market-filter-row, .admin-page-head) {
+        flex-wrap: wrap;
+    }
+}
+
+@container workspace-content (max-width: 620px) {
+    .wf-content :is(.wf-fields, .market-grid, .wm-grid:not(.wm-list), .adm-grid-3, .adm-grid-equal) {
+        grid-template-columns: minmax(0, 1fr);
+    }
+    .wf-content .wm-search { flex-basis: 100%; }
+    .wf-content .market-filter-row label { flex: 1 1 140px; }
+}
+.wf-shell > .tltl-docked-panel {
+    grid-area: assistant;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid var(--frame-line);
+    border-radius: var(--frame-radius);
+    background: #fff;
+}
+.wf-loading-overlay {
+    grid-area: content;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: var(--frame-radius);
+    background: rgba(247, 249, 252, 0.7);
+    display: grid;
+    place-items: center;
+    z-index: 8;
+    pointer-events: none;
+}
+.wf-page > .wareflow-footer {
+    width: auto;
+    margin: 0 var(--frame-gap);
+    overflow: hidden;
+    border-radius: var(--frame-radius);
+    container: workspace-footer / inline-size;
+}
+@container workspace-footer (max-width: 760px) {
+    .wareflow-footer .wareflow-footer-top { flex-wrap: wrap; gap: 16px; }
+    .wareflow-footer .wareflow-footer-info { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .wareflow-footer-info section:first-child { grid-column: 1 / -1; }
+}
+@container workspace-footer (max-width: 540px) {
+    .wareflow-footer .wareflow-footer-info { grid-template-columns: minmax(0, 1fr); }
+}
 @media(max-width:1150px) {
-    .wf-shell { grid-template-columns:220px minmax(0,1fr); }
+    .wf-shell { --frame-sidebar-width:220px; }
 }
 @media(max-width:700px) {
-    .wf-shell { grid-template-columns:minmax(0,1fr); }
-    .wf-shell > .wf-sidebar { position:fixed; inset:56px auto 0 0; width:260px; padding:24px 18px; overflow-y:auto; }
-    .wf-sidebar-panel { position:static; min-height:0; max-height:none; overflow:visible; padding:0; }
-    .wf-shell > .wf-main { grid-column:1; }
+    .wf-page {
+        --frame-gap: 4px;
+        --frame-radius: 12px;
+    }
+    .wf-shell,
+    .wf-shell.wf-compact {
+        --frame-topbar-height: 56px;
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "topbar" "content";
+    }
+    .wf-shell > .wf-sidebar {
+        position: fixed;
+        inset: calc(var(--frame-topbar-height) + 2 * var(--frame-gap)) auto var(--frame-gap) var(--frame-gap);
+        width: min(260px, calc(100vw - 2 * var(--frame-gap)));
+        height: auto;
+    }
+    .wf-sidebar-panel { position: static; height: 100%; }
 }

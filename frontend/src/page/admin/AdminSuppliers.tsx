@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import OperationModal from '../../components/workspace/OperationModal';
 import { downloadCsv } from "../../utils/export";
 import { useMemo, useState } from "react";
 import {
@@ -31,6 +31,7 @@ export default function AdminSuppliers() {
         "supplierProducts",
     );
     const rows = seedSuppliers;
+    const [creating, setCreating] = useState(false);
     const [query, setQuery] = useState("");
     const [page, setPage] = useState(1);
     const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(
@@ -167,12 +168,7 @@ export default function AdminSuppliers() {
                     >
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <Link
-                        className="adm-btn adm-btn-primary"
-                        to="/admin/suppliers/new"
-                    >
-                        <Plus size={16} /> Thêm nhà cung cấp
-                    </Link>
+                    <button type="button" className="adm-btn adm-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Thêm nhà cung cấp</button>
                 </div>
             </div>
 
@@ -257,7 +253,7 @@ export default function AdminSuppliers() {
                         <table className="adm-table">
                             <thead>
                                 <tr>
-                                    <th>Nhà cung cấp</th>
+                                    <th>ID</th><th>Nhà cung cấp</th>
                                     <th>Ngành hàng</th>
                                     <th>Công ty liên kết</th>
                                     <th>Người liên hệ</th>
@@ -275,7 +271,7 @@ export default function AdminSuppliers() {
                                         }
                                         title="Nhấp để xem chi tiết & chỉnh sửa"
                                     >
-                                        <td className="adm-cell-main">
+                                        <td>{supplier.displayId ?? supplier.id}</td><td className="adm-cell-main">
                                             {supplier.name}
                                         </td>
                                         <td>{supplier.category}</td>
@@ -571,6 +567,7 @@ export default function AdminSuppliers() {
                     </div>
                 </Modal>
             )}
+            {creating && <OperationModal title="Thêm nhà cung cấp" mode="supplier" back="/admin/suppliers" onClose={() => setCreating(false)} />}
         </>
     );
 }

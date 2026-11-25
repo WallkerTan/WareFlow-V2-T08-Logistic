@@ -1,8 +1,10 @@
-import { Link } from 'react-router-dom';
+import OperationModal from '../../components/workspace/OperationModal';
 import { downloadCsv } from '../../utils/export';
 import { useMemo, useState } from 'react';
 import { AlertTriangle, Boxes, Check, Download, Info, Package, Plus, Search, ShieldAlert, Trash2 } from 'lucide-react';
 import { Card, EmptyState, Modal, Pagination } from '../../components/admin/AdminUI';
+import { ImageCropInput, imageSizes } from '../../components/common/ImageCropInput';
+import { uploadImage } from '../../data/warehouses';
 import { useAdminData, saveResource, attempt } from '../../services/data';
 import type { Product } from '../../types/admin';
 import { formatCurrency, formatNumber, formatRelativeTime } from '../../utils/format';
@@ -12,6 +14,7 @@ const PAGE_SIZE = 6;
 export default function AdminProducts() {
     const { supplierProducts: seedProducts, raw } = useAdminData('supplierProducts');
     const rows = seedProducts;
+    const [creating, setCreating] = useState(false);
     const [query, setQuery] = useState('');
     const [stockFilter, setStockFilter] = useState('ALL');
     const [page, setPage] = useState(1);
@@ -23,6 +26,7 @@ export default function AdminProducts() {
         price: number;
         barcode: string;
         warehouseName: string;
+        image: string;
     }>({
         name: '',
         unit: '',
@@ -30,8 +34,11 @@ export default function AdminProducts() {
         price: 0,
         barcode: '',
         warehouseName: '',
+        image: '',
     });
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [imageError, setImageError] = useState('');
     const [toast, setToast] = useState<string | null>(null);
 
     const openProductDetail = (product: Product) => {
@@ -43,14 +50,29 @@ export default function AdminProducts() {
             price: product.price,
             barcode: product.barcode,
             warehouseName: product.warehouseName,
+            image: String(raw.supplierProducts.find(row => row.id === product.id)?.image ?? ''),
         });
         setConfirmDelete(false);
+        setImageError('');
     };
 
+    async function uploadProductImage(file: File) {
+        setUploading(true);
+        setImageError('');
+        try {
+            const { secureUrl } = await uploadImage(file, 'products');
+            setEditForm(form => ({ ...form, image: secureUrl }));
+        } catch (error) {
+            setImageError(error instanceof Error ? error.message : 'Không tải được ảnh.');
+        } finally {
+            setUploading(false);
+        }
+    }
+
     const handleSaveProduct = async () => {
-        if (!selectedProduct) return;
+        if (!selectedProduct || uploading) return;
         const original=raw.supplierProducts.find(r=>r.id===selectedProduct.id)!;
-        if (!await attempt(() => saveResource('core', '/suppliers/'+original.supplierId+'/products/'+original.id, 'PUT', {...original,name:editForm.name,unit:editForm.unit,price:editForm.price}))) return;
+        if (!await attempt(() => saveResource('core', '/suppliers/'+original.supplierId+'/products/'+original.id, 'PUT', {...original,name:editForm.name,unit:editForm.unit,price:editForm.price,image:editForm.image || original.image}))) return;
         setSelectedProduct(null); showToast('Đã lưu sản phẩm.');
     };
     const handleDeleteProduct = async () => {
@@ -71,6 +93,7 @@ export default function AdminProducts() {
                 !keyword ||
                 product.name.toLowerCase().includes(keyword) ||
                 product.sku.toLowerCase().includes(keyword) ||
+                product.legacySku?.toLowerCase().includes(keyword) ||
                 product.barcode.includes(keyword);
             const matchesStock = stockFilter === 'ALL' || product.warehouseName === stockFilter;
             return matchesQuery && matchesStock;
@@ -102,7 +125,7 @@ export default function AdminProducts() {
                     <button className="adm-btn" onClick={()=>downloadCsv("san-pham.csv",["SKU","Tên","Nhà cung cấp","Đơn vị","Đơn giá"],filtered.map(p=>[p.sku,p.name,p.warehouseName,p.unit,p.price]))}>
                         <Download size={15} /> Xuất CSV
                     </button>
-                    <Link className="adm-btn adm-btn-primary" to="/admin/products/new"><Plus size={16} /> Thêm sản phẩm</Link>
+                    <button type="button" className="adm-btn adm-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Thêm sản phẩm</button>
                 </div>
             </div>
 
@@ -259,7 +282,7 @@ export default function AdminProducts() {
                 <Modal
                     title={`Chi tiết sản phẩm: ${selectedProduct.name}`}
                     description={`SKU: ${selectedProduct.sku} · inventory-service: products`}
-                    onClose={() => setSelectedProduct(null)}
+                    onClose={() => { if (!uploading) setSelectedProduct(null); }}
                     footer={
                         <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
@@ -270,7 +293,7 @@ export default function AdminProducts() {
                                 ) : confirmDelete ? (
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                         <span style={{ fontSize: 12, color: '#ef4444' }}>Xác nhận xóa SKU?</span>
-                                        <button className="adm-btn adm-btn-danger adm-btn-sm" onClick={handleDeleteProduct}>
+                                        <button className="adm-btn adm-btn-danger adm-btn-sm" disabled={uploading} onClick={handleDeleteProduct}>
                                             Xóa vĩnh viễn
                                         </button>
                                         <button className="adm-btn adm-btn-sm" onClick={() => setConfirmDelete(false)}>
@@ -284,10 +307,10 @@ export default function AdminProducts() {
                                 )}
                             </div>
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button className="adm-btn" onClick={() => setSelectedProduct(null)}>
+                                <button className="adm-btn" disabled={uploading} onClick={() => setSelectedProduct(null)}>
                                     Hủy
                                 </button>
-                                <button className="adm-btn adm-btn-primary" onClick={handleSaveProduct}>
+                                <button className="adm-btn adm-btn-primary" disabled={uploading} onClick={handleSaveProduct}>
                                     <Check size={14} /> Lưu thay đổi
                                 </button>
                             </div>
@@ -318,6 +341,10 @@ export default function AdminProducts() {
                     </div>
 
                     <div className="adm-form">
+                        <ImageCropInput label="Đổi ảnh sản phẩm" size={imageSizes.product} preview={editForm.image}
+                            disabled={uploading} onCrop={uploadProductImage} />
+                        {uploading && <p role="status">Đang tải ảnh…</p>}
+                        {imageError && <p role="alert">{imageError}</p>}
                         <div className="adm-field">
                             <label>Tên sản phẩm</label>
                             <input
@@ -386,6 +413,7 @@ export default function AdminProducts() {
                     </div>
                 </Modal>
             )}
+            {creating && <OperationModal title="Thêm sản phẩm" mode="supplierProduct" back="/admin/products" onClose={() => setCreating(false)} />}
         </>
     );
 }

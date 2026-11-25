@@ -1,7 +1,9 @@
 import { useAdminData } from '../../services/data';
+import { object } from '../../services/api';
 import { getPaginationItems } from '../../components/admin/AdminUI';
-import { useState } from "react";
-import { Modal, message } from "antd";
+import { useEffect, useState, type FormEvent } from "react";
+import { ImageCropInput, imageSizes } from "../../components/common/ImageCropInput";
+import { Image, Modal, message } from "antd";
 import {
     ArrowDownToLine,
     ArrowRight,
@@ -15,6 +17,7 @@ import {
     Grid2X2,
     List,
     MapPin,
+    Pencil,
     Plus,
     Search,
     SlidersHorizontal,
@@ -25,9 +28,10 @@ import {
     ShieldCheck,
 } from "lucide-react";
 import "./warehouses.css";
+import "./warehouse-detail.css";
 import warehousePhoto from "../../assets/warehouse-photo.jpg";
 
-import { createDepot, updateDepotStatus, useDepots } from "../../data/warehouses";
+import { createDepot, depotImage, updateDepot, updateDepotStatus, uploadImage, useDepots } from "../../data/warehouses";
 import type { Depot, Status } from "../../data/warehouses";
 import { Link } from "react-router-dom";
 const statusNames: Record<Status, string> = {
@@ -37,6 +41,10 @@ const statusNames: Record<Status, string> = {
     returned: "Đã hoàn trả",
 };
 const format = (n: number) => n.toLocaleString("vi-VN");
+const formatDate = (value: unknown) => {
+    const date = new Date(String(value ?? ""));
+    return Number.isNaN(date.getTime()) ? "Chưa có thông tin" : date.toLocaleString("vi-VN");
+};
 
 export default function WarehouseManagement() {
     const depots = useDepots();
@@ -50,6 +58,11 @@ export default function WarehouseManagement() {
     const [view, setView] = useState("grid");
     const [page, setPage] = useState(1);
     const [selected, setSelected] = useState<Depot | null>(null);
+    const [editing, setEditing] = useState(false);
+    const [photo, setPhoto] = useState<File | null>(null);
+    const [removePhoto, setRemovePhoto] = useState(false);
+    const [preview, setPreview] = useState("");
+    const [editError, setEditError] = useState("");
     const [creating, setCreating] = useState(false);
     const [notifications, setNotifications] = useState(false);
     const [notice, contextHolder] = message.useMessage();
@@ -69,9 +82,55 @@ export default function WarehouseManagement() {
     const visible = filtered.slice((currentPage - 1) * 6, currentPage * 6);
     const resetPage = () => setPage(1);
     const [busy, setBusy] = useState(false);
+    const hasOpenProposal = raw.warehouseTransactions.some(transaction =>
+        transaction.warehouseId === selected?.id && ["PENDING", "NEGOTIATING", "APPROVED"].includes(String(transaction.status)),
+    );
+    const canEditTerms = selected?.status === "available" && !selected.ownerCompanyId && !hasOpenProposal;
+    const handoverStock = object(selected?.handover?.stockSnapshot);
+
+    useEffect(() => {
+        if (!preview) return;
+        return () => URL.revokeObjectURL(preview);
+    }, [preview]);
+
+    const stopEditing = () => {
+        setEditing(false);
+        setPhoto(null);
+        setPreview("");
+        setRemovePhoto(false);
+        setEditError("");
+    };
+
+    const saveDetails = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        if (!selected || busy) return;
+        const data = new FormData(event.currentTarget);
+        const field = (key: string) => String(data.get(key) ?? "").trim();
+        setBusy(true);
+        setEditError("");
+        try {
+            const avatar = photo ? (await uploadImage(photo, "warehouses")).secureUrl : removePhoto ? "" : undefined;
+            const price = Number(field("price"));
+            const warehouseType = field("warehouseType") === "BUY" ? "BUY" : "RENT";
+            const saved = await updateDepot(selected.id, {
+                name: field("name"), address: field("address"), region: field("region"),
+                area: field("area") ? Number(field("area")) : undefined,
+                avatar,
+                price: canEditTerms && price !== Math.round(selected.price * 1e6) ? price : undefined,
+                warehouseType: canEditTerms && warehouseType !== (selected.type === "Mua bán" ? "BUY" : "RENT") ? warehouseType : undefined,
+            });
+            setSelected(saved);
+            stopEditing();
+            notice.success("Đã cập nhật thông tin kho.");
+        } catch (error) {
+            setEditError(error instanceof Error ? error.message : "Không cập nhật được kho.");
+        } finally {
+            setBusy(false);
+        }
+    };
     const updateStatus = async (status: Status) => {
         if (!selected || busy) return; setBusy(true);
-        try { await updateDepotStatus(selected,status,proposalId||undefined); setSelected(null); notice.success('Đã xử lý yêu cầu kho.'); }
+        try { await updateDepotStatus(selected,status,proposalId||undefined); setSelected(null); setProposalId(""); notice.success('Đã xử lý yêu cầu kho.'); }
         catch(e) { notice.error(e instanceof Error?e.message:'Không lưu được trạng thái.'); }
         finally { setBusy(false); }
     };
@@ -398,7 +457,7 @@ export default function WarehouseManagement() {
                             <div
                                 className="wm-photo"
                                 style={{
-                                    backgroundImage: `linear-gradient(0deg,rgba(10,28,45,.22),transparent),url(${warehousePhoto})`,
+                                    backgroundImage: `linear-gradient(0deg,rgba(10,28,45,.22),transparent),url(${JSON.stringify(depotImage(d.image, warehousePhoto))}),url(${warehousePhoto})`,
                                 }}
                             >
                                 <span className={`wm-status ${d.status}`}>
@@ -520,8 +579,7 @@ export default function WarehouseManagement() {
             </section>
             <div className="wm-bottom">
                 <span>
-                    <ShieldCheck size={14} /> Dữ liệu mẫu · Thay đổi được lưu
-                    trên trình duyệt
+                    <ShieldCheck size={14} /> Dữ liệu kho hệ thống
                 </span>
                 <button
                     onClick={() =>
@@ -538,13 +596,76 @@ export default function WarehouseManagement() {
             </div>
             <Modal
                 open={!!selected}
-                onCancel={() => setSelected(null)}
-                footer={null}
-                title="Thông tin kho"
-                width={580}
+                onCancel={() => {
+                    if (busy) return;
+                    stopEditing();
+                    setSelected(null);
+                    setProposalId("");
+                }}
+                maskClosable={!editing && !busy}
+                keyboard={!busy}
+                closable={!busy}
+                centered
+                styles={{ body: { maxHeight: "calc(100dvh - 180px)", overflowY: "auto" } }}
+                footer={editing ? <div className="wm-modal-actions">
+                    <button type="button" className="wm-secondary" disabled={busy} onClick={stopEditing}>Hủy chỉnh sửa</button>
+                    <button type="submit" form="warehouse-details-form" className="wm-primary" disabled={busy}>
+                        {busy ? "Đang lưu…" : "Lưu thay đổi"}
+                    </button>
+                </div> : <button type="button" className="wm-primary" disabled={busy} onClick={() => setEditing(true)}>
+                    <Pencil size={15} /> Chỉnh sửa kho
+                </button>}
+                title={editing ? "Chỉnh sửa kho" : "Chi tiết kho"}
+                width={760}
             >
                 {selected && (
                     <div className="wm-detail">
+                        <Image
+                            className="wm-detail-image"
+                            width="100%"
+                            src={editing && photo ? preview || warehousePhoto : editing && removePhoto ? warehousePhoto : depotImage(selected.image, warehousePhoto)}
+                            fallback={warehousePhoto}
+                            alt={`Ảnh kho ${selected.name}`}
+                            preview={!!selected.image && !editing}
+                        />
+                        {editing ? (
+                            <form id="warehouse-details-form" className="wm-form wm-detail-form" onSubmit={saveDetails}>
+                                <fieldset disabled={busy}>
+                                    <div className="wm-photo-fields">
+                                        <ImageCropInput
+                                            label="Đổi ảnh kho (tối đa 10 MB)"
+                                            size={imageSizes.warehouse}
+                                            disabled={busy}
+                                            onCrop={file => {
+                                                setEditError("");
+                                                setRemovePhoto(false);
+                                                setPhoto(file);
+                                                setPreview(URL.createObjectURL(file));
+                                            }}
+                                        />
+                                        {(photo || (selected.image && !removePhoto)) && (
+                                            <button type="button" className="wm-secondary" onClick={() => {
+                                                setRemovePhoto(!photo);
+                                                setPhoto(null);
+                                                setPreview("");
+                                            }}>{photo ? "Bỏ ảnh đã chọn" : "Gỡ ảnh kho"}</button>
+                                        )}
+                                    </div>
+                                    <div className="wm-edit-grid">
+                                        <label>Tên kho<input name="name" defaultValue={selected.name} required maxLength={255} pattern=".*\S.*" /></label>
+                                        <label>Khu vực<input name="region" defaultValue={selected.region} required maxLength={255} pattern=".*\S.*" /></label>
+                                        <label className="wm-edit-address">Địa chỉ<input name="address" defaultValue={selected.address} maxLength={2000} /></label>
+                                        <label>Diện tích (m²)<input type="number" name="area" defaultValue={selected.area || ""} min="0.01" max="9999999999.99" step="0.01" /></label>
+                                        <label>Hình thức giao dịch<select name="warehouseType" disabled={!canEditTerms} defaultValue={selected.type === "Mua bán" ? "BUY" : "RENT"}>
+                                            <option value="BUY">Mua bán</option><option value="RENT">Cho thuê</option>
+                                        </select></label>
+                                        <label>Giá giao dịch (₫)<input type="number" name="price" disabled={!canEditTerms} required defaultValue={Math.round(selected.price * 1e6)} min="0" max="9999999999999" step="1" /></label>
+                                    </div>
+                                    {!canEditTerms && <p>Giá và hình thức chỉ chỉnh được khi kho hệ thống sẵn sàng giao dịch và đã xử lý xong các đề nghị.</p>}
+                                </fieldset>
+                                {editError && <p role="alert" className="wm-edit-error">{editError}</p>}
+                            </form>
+                        ) : <>
                         <span className={`wm-status ${selected.status}`}>
                             <i />
                             {statusNames[selected.status]}
@@ -552,7 +673,7 @@ export default function WarehouseManagement() {
                         <h2>{selected.name}</h2>
                         <p>
                             <MapPin size={15} />
-                            {selected.address}
+                            {selected.address || "Chưa có địa chỉ"}
                         </p>
                         <dl>
                             <div>
@@ -574,12 +695,14 @@ export default function WarehouseManagement() {
                             <div>
                                 <dt>Giá giao dịch</dt>
                                 <dd>
-                                    {format(selected.price)} triệu{" "}
+                                    {format(Math.round(selected.price * 1e6))} ₫{" "}
                                     {selected.type === "Cho thuê"
                                         ? "/ tháng"
                                         : ""}
                                 </dd>
                             </div>
+                            <div><dt>Ngày tạo</dt><dd>{formatDate(selected.createdAt)}</dd></div>
+                            {selected.ownerCompanyId && <div><dt>Mã công ty</dt><dd>{selected.ownerCompanyId}</dd></div>}
                             <div>
                                 <dt>Công ty</dt>
                                 <dd>
@@ -601,34 +724,36 @@ export default function WarehouseManagement() {
                         )}
                         <section className="wm-operations">
                             <h3>Sở hữu &amp; bàn giao</h3>
-                            <p>
-                                Đơn vị quản lý:{" "}
-                                {selected.status === "active"
-                                    ? selected.company
-                                    : "WareFlow — quản trị hệ thống"}
-                            </p>
-                            <p>
-                                Nhân viên nhận bàn giao: {String(selected.handover?.managerName||selected.handover?.managerId||'Chưa bàn giao')}
-                                <br />
-                                Thời gian bàn giao: {String(selected.handover?.handedOverAt||'Chưa bàn giao')}
-                            </p>
-                            <div className="wm-info">
-                                Kho đang hoạt động được bàn giao cho công ty.
-                                Kho sẵn sàng giao dịch thuộc hệ thống; công ty
-                                chưa được cấp quyền quản lý khi đề nghị còn chờ
-                                duyệt.
-                            </div>
+                            <dl>
+                                <div><dt>Đơn vị quản lý</dt><dd>{selected.company || "WareFlow"}</dd></div>
+                                <div><dt>Người nhận bàn giao</dt><dd>{String(selected.handover?.managerName || selected.handover?.managerId || "Chưa bàn giao")}</dd></div>
+                                <div><dt>Thời gian bàn giao</dt><dd>{formatDate(selected.handover?.handoverTime || selected.handover?.handedOverAt)}</dd></div>
+                                {selected.handover?.managerEmail != null && <div><dt>Email người nhận</dt><dd>{String(selected.handover.managerEmail)}</dd></div>}
+                                {selected.handover?.transactionId != null && <div><dt>Mã giao dịch</dt><dd>{String(selected.handover.transactionId)}</dd></div>}
+                                {selected.handover?.note != null && <div><dt>Ghi chú bàn giao</dt><dd>{String(selected.handover.note)}</dd></div>}
+                            </dl>
+                            {handoverStock.available === true && (
+                                <>
+                                    <h3>Tồn kho tại thời điểm bàn giao</h3>
+                                    <dl>
+                                        <div><dt>Số sản phẩm</dt><dd>{format(Number(handoverStock.totalProducts))}</dd></div>
+                                        <div><dt>Tổng số lượng</dt><dd>{format(Number(handoverStock.totalQuantity))}</dd></div>
+                                        <div><dt>Thời điểm ghi nhận</dt><dd>{formatDate(handoverStock.snapshotTime)}</dd></div>
+                                    </dl>
+                                </>
+                            )}
                         </section>
                         {selected.status === "pending" && (
                             <>
                                 <div className="wm-info">
-                                    <label className="wf-field"><span>Đề nghị cần xử lý</span><select value={proposalId} onChange={e=>setProposalId(e.target.value)}><option value="">Chọn đề nghị</option>{raw.warehouseTransactions.filter(t=>t.warehouseId===selected.id&&['PENDING','NEGOTIATING'].includes(String(t.status))).map(t=><option key={String(t.id)} value={String(t.id)}>{String(t.companyName)} · {Number(t.offeredPrice).toLocaleString('vi-VN')} ₫</option>)}</select></label>
+                                    <label className="wf-field"><span>Đề nghị cần xử lý</span><select value={proposalId} onChange={e=>setProposalId(e.target.value)}><option value="">Chọn đề nghị</option>{raw.warehouseTransactions.filter(t=>t.warehouseId===selected.id&&['PENDING','NEGOTIATING','APPROVED'].includes(String(t.status))).map(t=><option key={String(t.id)} value={String(t.id)}>{String(t.companyName)} · {Number(t.offeredPrice).toLocaleString('vi-VN')} ₫</option>)}</select></label>
                                     Kiểm tra công ty và giá đề nghị trước khi duyệt.
                                     Phí được ghi nhận theo giao dịch đã duyệt.
                                 </div>
                                 <div className="wm-modal-actions">
                                     <button
                                         className="wm-secondary"
+                                        disabled={busy}
                                         onClick={() =>
                                             updateStatus("available")
                                         }
@@ -638,6 +763,7 @@ export default function WarehouseManagement() {
                                     </button>
                                     <button
                                         className="wm-primary"
+                                        disabled={busy}
                                         onClick={() => updateStatus("active")}
                                     >
                                         <Check size={16} />
@@ -654,6 +780,7 @@ export default function WarehouseManagement() {
                                 Mở lại giao dịch <ArrowRight size={16} />
                             </button>
                         )}
+                        </>}
                     </div>
                 )}
             </Modal>
