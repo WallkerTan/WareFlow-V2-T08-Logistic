@@ -1,0 +1,59 @@
+.spinner-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 20px;
+  min-height: 120px;
+  perspective: 800px;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  animation: spinner-y0fdc1 2s infinite ease;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+.spinner > div {
+  background-color: rgba(79, 120, 217, 0.18);
+  height: 100%;
+  position: absolute;
+  width: 100%;
+  border: 2px solid #4f78d9;
+  box-sizing: border-box;
+}
+
+/* Company theme variant for spinner */
+.wf-role-company .spinner > div {
+  background-color: rgba(49, 130, 105, 0.18);
+  border-color: #318269;
+}
+
+.spinner div:nth-of-type(1) { transform: translateZ(-22px) rotateY(180deg); }
+.spinner div:nth-of-type(2) { transform: rotateY(-270deg) translateX(50%); transform-origin: top right; }
+.spinner div:nth-of-type(3) { transform: rotateY(270deg) translateX(-50%); transform-origin: center left; }
+.spinner div:nth-of-type(4) { transform: rotateX(90deg) translateY(-50%); transform-origin: top center; }
+.spinner div:nth-of-type(5) { transform: rotateX(-90deg) translateY(50%); transform-origin: bottom center; }
+.spinner div:nth-of-type(6) { transform: translateZ(22px); }
+
+@keyframes spinner-y0fdc1 {
+  0%   { transform: rotate(45deg) rotateX(-25deg) rotateY(25deg); }
+  50%  { transform: rotate(45deg) rotateX(-385deg) rotateY(25deg); }
+  100% { transform: rotate(45deg) rotateX(-385deg) rotateY(385deg); }
+}
+
+.spinner-error {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  background: #fdf2f2;
+  color: #dc2626;
+  font-size: 13.5px;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+}

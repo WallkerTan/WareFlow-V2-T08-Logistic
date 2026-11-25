@@ -141,6 +141,39 @@ export function Modal({
     );
 }
 
+export function getPaginationItems(page: number, pageCount: number): (number | '...')[] {
+    if (pageCount <= 5) {
+        return Array.from({ length: pageCount }, (_, index) => index + 1);
+    }
+    const pages = new Set<number>();
+    // 2 trang đầu
+    pages.add(1);
+    pages.add(2);
+    // Ở giữa là trang hiện tại (kèm lân cận nếu có)
+    if (page - 1 >= 1) pages.add(page - 1);
+    pages.add(page);
+    if (page + 1 <= pageCount) pages.add(page + 1);
+    // 2 trang cuối
+    pages.add(pageCount - 1);
+    pages.add(pageCount);
+
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+    const result: (number | '...')[] = [];
+
+    for (let i = 0; i < sorted.length; i++) {
+        if (i > 0) {
+            const diff = sorted[i] - sorted[i - 1];
+            if (diff === 2) {
+                result.push(sorted[i - 1] + 1);
+            } else if (diff > 2) {
+                result.push('...');
+            }
+        }
+        result.push(sorted[i]);
+    }
+    return result;
+}
+
 export function Pagination({
     page,
     pageCount,
@@ -152,27 +185,34 @@ export function Pagination({
     total: number;
     onChange: (page: number) => void;
 }) {
-    const pages = Array.from({ length: pageCount }, (_, index) => index + 1);
+    const items = getPaginationItems(page, pageCount);
     return (
         <div className="adm-pagination">
             <span className="adm-count">
                 Hiển thị <strong>{total}</strong> bản ghi
             </span>
             <div className="adm-pagination-pages">
-                <button className="adm-page-btn" disabled={page === 1} onClick={() => onChange(page - 1)} aria-label="Trang trước">
+                <button type="button" className="adm-page-btn" disabled={page === 1} onClick={() => onChange(page - 1)} aria-label="Trang trước">
                     ‹
                 </button>
-                {pages.map((value) => (
-                    <button
-                        key={value}
-                        className={`adm-page-btn ${value === page ? 'is-active' : ''}`}
-                        onClick={() => onChange(value)}
-                        aria-current={value === page ? 'page' : undefined}
-                    >
-                        {value}
-                    </button>
-                ))}
-                <button className="adm-page-btn" disabled={page === pageCount} onClick={() => onChange(page + 1)} aria-label="Trang sau">
+                {items.map((item, index) =>
+                    item === '...' ? (
+                        <span key={`dots-${index}`} className="adm-page-ellipsis">
+                            …
+                        </span>
+                    ) : (
+                        <button
+                            key={item}
+                            type="button"
+                            className={`adm-page-btn ${item === page ? 'is-active' : ''}`}
+                            onClick={() => onChange(item)}
+                            aria-current={item === page ? 'page' : undefined}
+                        >
+                            {item}
+                        </button>
+                    )
+                )}
+                <button type="button" className="adm-page-btn" disabled={page === pageCount} onClick={() => onChange(page + 1)} aria-label="Trang sau">
                     ›
                 </button>
             </div>

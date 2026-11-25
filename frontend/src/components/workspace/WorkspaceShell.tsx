@@ -8,6 +8,7 @@ import "../../layout/admin/admin.css";
 import "../../layout/main/workspace.css";
 import "../../layout/main/roles.css";
 import "./workspace-frame.css";
+
 export type WorkspaceConfig = {
     role: "admin" | "company" | "storehouse";
     title: string;
@@ -24,6 +25,7 @@ export type WorkspaceConfig = {
         icon: LucideIcon;
     }[];
 };
+
 import {
     getAuthSession,
     clearAuthSession,
@@ -36,11 +38,21 @@ import {
     WarehousePicker,
     useWorkspace,
 } from "../../services/workspace";
-import { clearData } from "../../services/query";
+import { clearData, useQuery } from "../../services/query";
+import { request } from "../../services/api";
+
 function WorkspaceOutlet({ scoped }: { scoped: boolean }) {
-    const { warehouseId } = useWorkspace();
+    const { warehouseId, loading } = useWorkspace();
+    if (scoped && !loading && !warehouseId) {
+        return (
+            <div className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
+                Tài khoản chưa được bàn giao kho. Vui lòng liên hệ quản trị viên để được phân công kho làm việc.
+            </div>
+        );
+    }
     return <Outlet key={scoped ? warehouseId : "workspace"} />;
 }
+
 export default function WorkspaceShell({
     config,
 }: {
@@ -57,10 +69,25 @@ export default function WorkspaceShell({
     );
     const session = getAuthSession(storedSession);
     const expiresAt = session?.expiresAt;
+
     useEffect(() => {
         if (!expiresAt) return;
         return scheduleSessionExpiry(expiresAt);
     }, [expiresAt]);
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+    }, [pathname]);
+
+    const userProfileQuery = useQuery<{ avatar?: string; profile?: { avatar?: string; logo?: string } }>(
+        session?.userId ? `user-profile:${session.userId}` : null,
+        () => request('core', '/users/me').catch(() => ({} as { avatar?: string }))
+    );
+    const avatarUrl =
+        userProfileQuery.data?.avatar ||
+        userProfileQuery.data?.profile?.avatar ||
+        (session as { avatar?: string } | null)?.avatar;
+
     if (!session) return <Navigate to="/auth/login" replace />;
     const allowedRole = {
         admin: "SYSTEM_ADMIN",
@@ -69,10 +96,12 @@ export default function WorkspaceShell({
     }[config.role];
     if (session.role !== allowedRole)
         return <Navigate to={roleHome(session.role)} replace />;
+
     const page =
         config.links.find((link) => pathname === link.to.split("?")[0])
             ?.label || "Chi tiết";
     const Icon = config.icon;
+
     return (
         <WorkspaceProvider>
             <div
@@ -156,7 +185,22 @@ export default function WorkspaceShell({
                                 to={config.profile}
                                 aria-label={`Hồ sơ ${config.title}`}
                             >
-                                <span>{config.avatar}</span>
+                                {avatarUrl ? (
+                                    <img
+                                        src={avatarUrl}
+                                        alt="Avatar"
+                                        className="wf-account-avatar-img"
+                                        style={{
+                                            width: 31,
+                                            height: 31,
+                                            borderRadius: "50%",
+                                            objectFit: "cover",
+                                            display: "block",
+                                        }}
+                                    />
+                                ) : (
+                                    <span>{config.avatar}</span>
+                                )}
                             </Link>
                             <Link
                                 className="wf-signin"

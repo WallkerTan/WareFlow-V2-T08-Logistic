@@ -323,11 +323,32 @@ export function InventoryPage({
     );
 }
 export function CompanyDashboard() {
-    const { warehouses, raw } = useAdminData("products");
+    const { warehouses, transactions, raw } = useAdminData("products", "transactions");
+    const trend30 = cashSeries(transactions, 30);
+    const sums30 = cashSummary(inPeriod(transactions, 30));
     return (
         <>
             <Heading title="Tổng quan công ty" />
             <Stats />
+            <div style={{ marginBottom: 20 }}>
+                <Card
+                    title="Biểu đồ dòng tiền (30 ngày gần nhất)"
+                    subtitle={`Tổng thu: ${formatCurrency(sums30.income)} · Tổng chi: ${formatCurrency(sums30.expense)} · Chênh lệch: ${formatCurrency(sums30.net)}`}
+                >
+                    <div style={{ height: 260, marginTop: 8 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trend30}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                <XAxis dataKey="name" />
+                                <YAxis />
+                                <Tooltip formatter={(v) => formatCurrency(Number(v) * 1e6)} />
+                                <Area dataKey="thu" name="Khoản thu" stroke="#318269" fill="#edf7f3" />
+                                <Area dataKey="chi" name="Khoản chi" stroke="#e05252" fill="#fdf2f2" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </Card>
+            </div>
             <div className="workspace-welcome">
                 <div>
                     <Badge label="MẠNG LƯỚI ĐANG HOẠT ĐỘNG" tone="success" />
@@ -391,6 +412,7 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
     const sums = cashSummary(rows);
     const strokeColor = storehouse ? "#7955c1" : "#17846b";
     const fillColor = storehouse ? "#f3edfc" : "#eaf6f1";
+    const companyBalance = transactions.reduce((acc, t) => acc + (t.type === 'INCOME' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
     return (
         <>
             <Heading
@@ -405,6 +427,29 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                         : { to: "/company/budget/new", label: "Cấp ngân sách" }
                 }
             />
+            {!storehouse && (
+                <div className="wf-card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'var(--workspace-gradient)', color: '#ffffff', borderRadius: 8, boxShadow: 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.2)', display: 'grid', placeItems: 'center' }}>
+                            <Wallet size={24} color="#ffffff" />
+                        </div>
+                        <div>
+                            <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.92, fontWeight: 600, color: '#ffffff' }}>
+                                SỐ DƯ KHẢ DỤNG CÔNG TY
+                            </span>
+                            <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2, color: '#ffffff' }}>
+                                {formatCurrency(companyBalance)}
+                            </div>
+                        </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                        <small style={{ display: 'block', opacity: 0.92, fontSize: 12, color: '#ffffff' }}>Nguồn tiền dùng để cấp ngân sách cho các kho</small>
+                        <Link to="/company/budget/new" className="adm-btn" style={{ marginTop: 6, background: '#ffffff', color: '#246853', fontWeight: 700, border: 0, boxShadow: 'none' }}>
+                            Cấp ngân sách kho →
+                        </Link>
+                    </div>
+                </div>
+            )}
             {!storehouse && <Stats />}
             <div className="workspace-toolbar">
                 <button
@@ -470,20 +515,20 @@ export function FinancePage({ storehouse = false }: { storehouse?: boolean }) {
                                 <YAxis />
                                 <Tooltip
                                     formatter={(v) =>
-                                        `${Number(v).toLocaleString("vi-VN")} triệu ₫`
+                                        formatCurrency(Number(v) * 1e6)
                                     }
                                 />
                                 <Area
                                     dataKey="thu"
-                                    name="Thu"
+                                    name="Khoản thu"
                                     stroke={strokeColor}
                                     fill={fillColor}
                                 />
                                 <Area
                                     dataKey="chi"
-                                    name="Chi (gồm phí)"
-                                    stroke="#22a88a"
-                                    fill="#e7f7f2"
+                                    name="Khoản chi (gồm phí)"
+                                    stroke="#e05252"
+                                    fill="#fdf2f2"
                                 />
                             </AreaChart>
                         </ResponsiveContainer>

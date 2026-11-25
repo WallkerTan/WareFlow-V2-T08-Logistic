@@ -1,2 +1,36 @@
-import { PreviewForm } from '../../components/workspace/WorkspacePages';
-export default function CompanyBudgetNewPage() { return (<PreviewForm title={'Cấp ngân sách cho kho'} fields={['Kho nhận ngân sách', 'Ngân sách', 'Ngày cấp', 'Nội dung', 'Ghi chú']} back={'/company/finance'}/>); }
+import OperationForm from '../../components/workspace/OperationForm';
+import { useAdminData } from '../../services/data';
+import { formatCurrency } from '../../utils/format';
+import { Wallet } from 'lucide-react';
+
+export default function CompanyBudgetNewPage() {
+    const { raw } = useAdminData('transactions');
+    const companyBalance = raw.transactions.reduce((acc, t) => acc + (t.type === 'INCOME' ? Number(t.amount || 0) : -Number(t.amount || 0)), 0);
+
+    return (
+        <section className="wf-section">
+            <div className="admin-page-head">
+                <div>
+                    <h2>Cấp ngân sách cho kho</h2>
+                    <p>Phân bổ hạn mức ngân sách hoạt động cho kho hàng từ số dư của công ty.</p>
+                </div>
+            </div>
+
+            <div className="wf-card" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', background: 'var(--workspace-gradient)', color: '#ffffff', borderRadius: 8, boxShadow: 'none' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 8, background: 'rgba(255,255,255,0.2)', display: 'grid', placeItems: 'center' }}>
+                    <Wallet size={24} color="#ffffff" />
+                </div>
+                <div>
+                    <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.92, fontWeight: 600, color: '#ffffff' }}>
+                        Số dư khả dụng hiện tại của công ty
+                    </span>
+                    <div style={{ fontSize: 24, fontWeight: 700, marginTop: 2, color: '#ffffff' }}>
+                        {formatCurrency(companyBalance)}
+                    </div>
+                </div>
+            </div>
+
+            <OperationForm mode="budget" back="/company/finance" />
+        </section>
+    );
+}

@@ -4,6 +4,7 @@ import { allPages, object } from './api';
 import type { Row } from './api';
 import { getAuthSession } from './authApi';
 import { invalidateData, useDataStatus, useQuery } from './query';
+import { WFSpinner } from '../components/ui/WFSpinner';
 
 type Scope = { warehouses: Row[]; warehouseId: string; warehouse: Row | undefined; selectWarehouse: (id: string) => void; loading: boolean };
 const Context = createContext<Scope>({ warehouses: [], warehouseId: '', warehouse: undefined, selectWarehouse: () => {}, loading: true });
@@ -14,7 +15,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const session = getAuthSession()!;
     const source = useQuery('scope-warehouses', async () => {
         const data = await allPages<Row>('core', session.role === 'SYSTEM_ADMIN' ? '/warehouses' : '/warehouses/my-company');
-        return session.role === 'WAREHOUSE_MANAGER' ? data.filter(w => object(w.handover).managerId === session.userId) : data;
+        if (session.role === 'WAREHOUSE_MANAGER') {
+            const mine = data.filter(w => object(w.handover).managerId === session.userId);
+            // Fallback: nếu chưa được bàn giao kho cụ thể thì dùng toàn bộ kho trong công ty
+            return mine.length > 0 ? mine : data;
+        }
+        return data;
     });
     const [selected, setSelected] = useState('');
     const warehouses = source.data || [];
@@ -29,5 +35,23 @@ export function WarehousePicker() {
 }
 export function DataStatus() {
     const status = useDataStatus();
-    return <>{status.loading && <div className="wf-notice" role="status">Đang tải dữ liệu…</div>}{status.errors.map(error => <div key={error} className="wf-notice" role="alert">{error} <button className="adm-btn" onClick={invalidateData}>Thử lại</button></div>)}</>;
+    // Lọc bỏ lỗi trùng và chuẩn hoá thông báo thân thiện hơn
+    const friendlyErrors = status.errors.map(e =>
+        /không có quyền|403/i.test(e) ? 'Không tải được một số dữ liệu. Vui lòng thử lại hoặc liên hệ quản trị viên.' : e
+    );
+    const uniqueErrors = [...new Set(friendlyErrors)];
+    return (
+        <>
+            {status.loading && (
+                <div className="wf-loading-overlay" aria-label="Đang tải dữ liệu…">
+                    <WFSpinner />
+                </div>
+            )}
+            {uniqueErrors.map(error => (
+                <div key={error} className="wf-notice" role="alert" style={{ marginBottom: 16 }}>
+                    {error} <button className="adm-btn" onClick={invalidateData}>Thử lại</button>
+                </div>
+            ))}
+        </>
+    );
 }

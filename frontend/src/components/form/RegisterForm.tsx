@@ -66,41 +66,43 @@ export default function RegisterForm({ onSubmit }: Props) {
             <div className="form-section-label">
                 <span>01</span> Thông tin doanh nghiệp
             </div>
-            <AuthField
-                id="companyName"
-                label="Tên công ty"
-                autoComplete="organization"
-                placeholder="Công ty TNHH của bạn"
-                required
-                {...register("companyName", {
-                    validate: (v) =>
-                        !!v?.trim() || "Vui lòng nhập tên công ty.",
-                })}
-                error={errors.companyName?.message}
-            />
-            <div className="auth-field">
-                <label htmlFor="businessModel">
-                    Lĩnh vực kinh doanh <span className="required"> *</span>
-                </label>
-                <div className="auth-input-wrap">
-                    <select
-                        id="businessModel"
-                        {...register("businessModel", {
-                            required: "Vui lòng chọn lĩnh vực kinh doanh.",
-                        })}
-                    >
-                        <option value="FOOD">Thực phẩm</option>
-                        <option value="TECH">Công nghệ</option>
-                        <option value="APPLIANCE">Điện máy</option>
-                        <option value="FASHION">Thời trang</option>
-                        <option value="OTHER">Khác</option>
-                    </select>
+            <div className="auth-field-row">
+                <AuthField
+                    id="companyName"
+                    label="Tên công ty"
+                    autoComplete="organization"
+                    placeholder="Công ty TNHH của bạn"
+                    required
+                    {...register("companyName", {
+                        validate: (v) =>
+                            !!v?.trim() || "Vui lòng nhập tên công ty.",
+                    })}
+                    error={errors.companyName?.message}
+                />
+                <div className="auth-field">
+                    <label htmlFor="businessModel">
+                        Lĩnh vực kinh doanh <span className="required"> *</span>
+                    </label>
+                    <div className="auth-input-wrap">
+                        <select
+                            id="businessModel"
+                            {...register("businessModel", {
+                                required: "Vui lòng chọn lĩnh vực kinh doanh.",
+                            })}
+                        >
+                            <option value="FOOD">Thực phẩm</option>
+                            <option value="TECH">Công nghệ</option>
+                            <option value="APPLIANCE">Điện máy</option>
+                            <option value="FASHION">Thời trang</option>
+                            <option value="OTHER">Khác</option>
+                        </select>
+                    </div>
+                    {errors.businessModel && (
+                        <span className="field-error" role="alert">
+                            {errors.businessModel.message}
+                        </span>
+                    )}
                 </div>
-                {errors.businessModel && (
-                    <span className="field-error" role="alert">
-                        {errors.businessModel.message}
-                    </span>
-                )}
             </div>
             <div className="form-section-label">
                 <span>02</span> Tài khoản quản trị

@@ -18,30 +18,34 @@
 
 .admin-shell.wf-role-company,
 .wf-role-company {
-    --workspace-accent: #17846b;
-    --workspace-dark: #116350;
-    --workspace-tint: #eaf6f1;
-    --workspace-border: #c6e6db;
-    --workspace-glow: rgba(23, 132, 107, 0.25);
-    --adm-blue: #17846b;
-    --adm-blue-dark: #116350;
-    --adm-blue-soft: #eaf6f1;
+    --workspace-accent: #318269;
+    --workspace-dark: #246853;
+    --workspace-tint: #f0f7f4;
+    --workspace-border: #cfe0d8;
+    --workspace-glow: transparent;
+    --workspace-gradient: #318269;
+    --adm-blue: #318269;
+    --adm-blue-dark: #246853;
+    --adm-blue-soft: #f0f7f4;
 }
 
 .admin-shell.wf-role-storehouse,
 .wf-role-storehouse {
-    --workspace-accent: #7955c1;
-    --workspace-dark: #5e3da3;
-    --workspace-tint: #f3edfc;
-    --workspace-border: #dfd0f6;
-    --workspace-glow: rgba(121, 85, 193, 0.25);
-    --adm-blue: #7955c1;
-    --adm-blue-dark: #5e3da3;
-    --adm-blue-soft: #f3edfc;
+    --workspace-accent: #564f8a;
+    --workspace-dark: #433c71;
+    --workspace-tint: #f5f3f9;
+    --workspace-border: #dcd7e8;
+    --workspace-glow: transparent;
+    --workspace-gradient: #564f8a;
+    --adm-blue: #564f8a;
+    --adm-blue-dark: #433c71;
+    --adm-blue-soft: #f5f3f9;
 }
 
 /* ---------- Structural Layout ---------- */
 .wf-shell .wf-content {
+    max-width: 1400px;
+    width: 100%;
     margin: 0 auto;
     flex: 1;
 }
@@ -95,18 +99,54 @@
     background: var(--workspace-accent);
 }
 
-.wf-role-company .wf-sidebar nav a.active,
-.wf-role-storehouse .wf-sidebar nav a.active {
-    background: var(--workspace-tint);
-    color: var(--workspace-accent);
-    font-weight: 600;
+.wf-role-company .wf-sidebar nav a.active {
+    background: #318269 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    border-radius: 8px;
+}
+.wf-role-company .wf-sidebar nav a.active svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
 }
 
-.wf-role-company .wf-workspace,
+.wf-role-storehouse .wf-sidebar nav a.active {
+    background: #564f8a !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+    border-radius: 8px;
+}
+.wf-role-storehouse .wf-sidebar nav a.active svg {
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+}
+
+.wf-role-company .wf-workspace {
+    background: #f0f7f4 !important;
+    border-color: #cfe0d8 !important;
+    color: #246853 !important;
+    box-shadow: none !important;
+}
+.wf-role-company .wf-workspace strong {
+    color: #1a4f40 !important;
+}
+.wf-role-company .wf-workspace small {
+    color: #318269 !important;
+}
+
 .wf-role-storehouse .wf-workspace {
-    background: var(--workspace-tint);
-    border-color: var(--workspace-border);
-    color: var(--workspace-accent);
+    background: #f5f3f9 !important;
+    border-color: #dcd7e8 !important;
+    color: #433c71 !important;
+    box-shadow: none !important;
+}
+.wf-role-storehouse .wf-workspace strong {
+    color: #2b254e !important;
+}
+.wf-role-storehouse .wf-workspace small {
+    color: #564f8a !important;
 }
 
 .wf-role-company .wf-mini-mark,
@@ -180,6 +220,16 @@
     font-weight: 700;
 }
 
+.wf-account > img,
+.wf-account img.wf-account-avatar-img {
+    width: 31px;
+    height: 31px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--workspace-border);
+    display: block;
+}
+
 .wf-topbar-actions .wf-signin {
     font-size: 11px;
 }
@@ -193,31 +243,52 @@
 
 /* PRIMARY BUTTONS */
 .wf-role-company .adm-btn-primary,
-.wf-role-storehouse .adm-btn-primary,
-.wf-role-company .wf-button-primary,
-.wf-role-storehouse .wf-button-primary {
-    background: var(--workspace-accent) !important;
-    border-color: var(--workspace-accent) !important;
+.wf-role-company .wf-button-primary {
+    background: #318269 !important;
+    border: 1px solid #318269 !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 14px var(--workspace-glow) !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
+}
+
+.wf-role-storehouse .adm-btn-primary,
+.wf-role-storehouse .wf-button-primary {
+    background: #564f8a !important;
+    border: 1px solid #564f8a !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: none !important;
 }
 
 .wf-role-company .adm-btn-primary:hover,
-.wf-role-storehouse .adm-btn-primary:hover,
-.wf-role-company .wf-button-primary:hover,
-.wf-role-storehouse .wf-button-primary:hover {
-    background: var(--workspace-dark) !important;
-    border-color: var(--workspace-dark) !important;
+.wf-role-company .wf-button-primary:hover {
+    background: #246853 !important;
+    border-color: #246853 !important;
     color: #ffffff !important;
+    box-shadow: none !important;
+}
+.wf-role-storehouse .adm-btn-primary:hover,
+.wf-role-storehouse .wf-button-primary:hover {
+    background: #433c71 !important;
+    border-color: #433c71 !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
 }
 
 /* WELCOME BANNER */
-.wf-role-company .workspace-welcome,
+.wf-role-company .workspace-welcome {
+    background: #f0f7f4 !important;
+    border: 1px solid #cfe0d8 !important;
+    color: #318269 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+}
 .wf-role-storehouse .workspace-welcome {
-    background: linear-gradient(115deg, var(--workspace-tint), #ffffff) !important;
-    border: 1px solid var(--workspace-border) !important;
-    color: var(--workspace-accent) !important;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.03) !important;
+    background: #f5f3f9 !important;
+    border: 1px solid #dcd7e8 !important;
+    color: #564f8a !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
 }
 .wf-role-company .workspace-welcome h2,
 .wf-role-storehouse .workspace-welcome h2 {
@@ -323,7 +394,12 @@
     background: linear-gradient(110deg, var(--workspace-tint), #ffffff) !important;
     border: 1px solid var(--workspace-border) !important;
 }
-.wf-role-company .wf-profile-icon,
+.wf-role-company .wf-profile-icon {
+    background: #ffffff !important;
+    border: 1px solid var(--workspace-border) !important;
+    color: var(--workspace-accent) !important;
+    box-shadow: none !important;
+}
 .wf-role-storehouse .wf-profile-icon {
     background: #ffffff !important;
     border: 1px solid var(--workspace-border) !important;
@@ -382,11 +458,37 @@
     display: none;
 }
 .wf-role-admin:has(.wm-page) .wf-content {
-    max-width: 1600px;
-    padding: 0 36px 16px;
+    max-width: 1400px;
 }
 
-/* ---------- Responsive Breakpoints ---------- */
+/* ---------- Complete removal of shadow & glass for Company and Storehouse layouts ---------- */
+.wf-role-company,
+.wf-role-company .wf-sidebar,
+.wf-role-company .wf-topbar,
+.wf-role-company .wf-card,
+.wf-role-company .adm-card,
+.wf-role-company .adm-stat,
+.wf-role-company .company-warehouse-card,
+.wf-role-company .wf-profile-banner,
+.wf-role-company .workspace-welcome,
+.wf-role-company .adm-btn,
+.wf-role-company .wf-button,
+.wf-role-storehouse,
+.wf-role-storehouse .wf-sidebar,
+.wf-role-storehouse .wf-topbar,
+.wf-role-storehouse .wf-card,
+.wf-role-storehouse .adm-card,
+.wf-role-storehouse .adm-stat,
+.wf-role-storehouse .company-warehouse-card,
+.wf-role-storehouse .wf-profile-banner,
+.wf-role-storehouse .workspace-welcome,
+.wf-role-storehouse .adm-btn,
+.wf-role-storehouse .wf-button {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
 @media (max-width: 1100px) {
     .wf-topbar-actions .wf-signin {
         display: none;
@@ -455,8 +557,5 @@
     }
     .wf-topbar-actions {
         gap: 7px;
-    }
-    .wf-role-admin:has(.wm-page) .wf-content {
-        padding: 0 16px 10px;
     }
 }
