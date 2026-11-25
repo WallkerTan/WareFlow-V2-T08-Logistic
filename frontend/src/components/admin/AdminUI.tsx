@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 let modalCount = 0;
@@ -157,7 +158,7 @@ export function Modal({
         };
     }, []);
 
-    return (
+    const modalContent = (
         <div className="adm-modal-scrim" onClick={onClose} role="presentation">
             <div ref={dialogRef} tabIndex={-1} className={wide ? "adm-modal adm-modal-wide" : "adm-modal"} onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-label={title}>
                 <header className="adm-modal-head">
@@ -174,6 +175,7 @@ export function Modal({
             </div>
         </div>
     );
+    return createPortal(modalContent, document.body);
 }
 
 export function getPaginationItems(page: number, pageCount: number): (number | '...')[] {

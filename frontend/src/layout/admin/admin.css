@@ -1414,7 +1414,7 @@
 .adm-modal-scrim {
     position: fixed;
     inset: 0;
-    z-index: 80;
+    z-index: 99999;
     background: rgba(16, 24, 40, 0.45);
     backdrop-filter: blur(3px);
     display: grid;
