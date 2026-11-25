@@ -24,7 +24,19 @@ permissions:
   contents: read
 
 jobs:
+  source:
+    runs-on: ubuntu-latest
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && 'tan-leader' || github.sha }}
+      - id: source
+        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
   frontend:
+    needs: source
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -32,6 +44,8 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -50,6 +64,7 @@ jobs:
           if-no-files-found: error
 
   backend:
+    needs: source
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -89,6 +104,8 @@ jobs:
       FINANCE_TEST_DB_PASSWORD: ci_only
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -107,7 +124,7 @@ jobs:
 
   deploy:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    needs: [frontend, backend]
+    needs: [source, frontend, backend]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
@@ -116,11 +133,18 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.source.outputs.revision }}
       - uses: actions/download-artifact@v4
         with:
           path: release
       - name: Deploy verified artifacts
-        run: bash .github/scripts/deploy-vps.sh "$DEPLOY_TARGET" release
+        run: |
+          if [[ $DEPLOY_TARGET == all ]]; then
+            bash .github/scripts/deploy-vps.sh release eureka-server config-server core-service inventory-service finance-service delivery-service api-gateway frontend
+          else
+            bash .github/scripts/deploy-vps.sh release "$DEPLOY_TARGET"
+          fi
         env:
           DEPLOY_TARGET: ${{ inputs.target }}
           VPS_HOST: ${{ vars.VPS_HOST }}

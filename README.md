@@ -403,9 +403,9 @@ Trong **Settings → Environments**, tạo môi trường `production`, giới h
 | Secret | `VPS_SSH_PRIVATE_KEY` | Private key riêng cho CI/CD. Public key tương ứng phải có trên VPS. |
 | Secret | `VPS_SSH_KNOWN_HOSTS` | Dòng host key SSH của VPS đã được đối chiếu fingerprint |
 
-Sau khi workflow có trên `main`, vào **Actions → WareFlow CI/CD → Run workflow**, chọn `main` và thành phần cần deploy. Workflow dùng gói của cùng lượt build đã qua test. Mỗi dịch vụ quay về image trước nếu kiểm tra sức khỏe thất bại. Frontend tải các asset mới lên trước khi thay trang vào để các tab đang mở vẫn truy cập được asset cũ.
+Vào **Actions → WareFlow CI/CD → Run workflow**, chọn `main` và thành phần cần deploy. Workflow cố định một commit từ `tan-leader`, chạy test rồi deploy artifact của đúng commit đó. Mỗi dịch vụ quay về image trước nếu kiểm tra sức khỏe thất bại. Frontend tải các asset mới lên trước khi thay trang vào để các tab đang mở vẫn truy cập được asset cũ.
 
-Pipeline dùng Docker Compose hiện có tại `/opt/wareflow` và giữ cấu hình môi trường trên VPS.
+Pipeline dùng Docker Compose hiện có tại `/opt/wareflow` và giữ cấu hình môi trường trên VPS. Khóa CI chỉ gọi được bộ nhận artifact `/usr/local/sbin/wareflow-ci-receive`. Quản trị viên cài bản mới từ `.github/scripts/receive-vps-release.sh` trên VPS khi cần cập nhật bộ nhận.
 
 ## 8. Trạng thái Git hiện tại
 
