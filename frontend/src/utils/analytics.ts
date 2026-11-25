@@ -4,7 +4,7 @@ const DAY = 86_400_000;
 export function dayKey(value: string | number | Date | undefined | null): string {
     if (!value) return new Date().toISOString().slice(0, 10);
     const time = new Date(value).getTime();
-    return Number.isFinite(time) ? new Date(time + 7 * 3_600_000).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+    return Number.isFinite(time) ? new Date(time + 7 * 3_600_000).toISOString().slice(0, 10) : '';
 }
 export function percentage(part: number, total: number): number | null {
     return Number.isFinite(part) && Number.isFinite(total) && total > 0 ? part / total * 100 : null;

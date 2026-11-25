@@ -11,13 +11,20 @@ function moduleUrl(file, replacements = []) {
 }
 const math = await import(moduleUrl('../src/utils/analytics.ts'));
 const storage = new Map();
-globalThis.sessionStorage = { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) };
+const persistentStorage = new Map();
+const browserStorage = map => ({
+    getItem: k => map.get(k) ?? null,
+    setItem: (k, v) => map.set(k, v),
+    removeItem: k => map.delete(k),
+});
+globalThis.sessionStorage = browserStorage(storage);
+globalThis.localStorage = browserStorage(persistentStorage);
 globalThis.window = { setTimeout, clearTimeout, dispatchEvent: () => {} };
 const authUrl = moduleUrl('../src/services/authApi.ts');
 const auth = await import(authUrl);
 const api = await import(moduleUrl('../src/services/api.ts', [["'./authApi'", JSON.stringify(authUrl)]]));
 const originalFetch = globalThis.fetch;
-afterEach(() => { globalThis.fetch = originalFetch; storage.clear(); });
+afterEach(() => { globalThis.fetch = originalFetch; storage.clear(); persistentStorage.clear(); });
 const now = new Date('2026-01-01T18:00:00Z'); // January 2 in Vietnam.
 const session = () => storage.set('wareflow.auth', JSON.stringify({ accessToken: 'test-token', userId: 'u1', role: 'SYSTEM_ADMIN', expiresAt: '2999-01-01T00:00:00Z' }));
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } });
@@ -124,7 +131,7 @@ test('login sends only credentials and uses the account role returned by the bac
 test('failed login and invalid server sessions do not authenticate the user', async () => {
     const values = { email: 'test@example.com', password: 'wrong-password', remember: false };
     globalThis.fetch = async () => json({ message: 'Invalid credentials' }, 401);
-    await assert.rejects(auth.authApi.login(values), /Email hoặc mật khẩu không chính xác/);
+    await assert.rejects(auth.authApi.login(values), /Invalid credentials/);
     assert.equal(auth.getAuthSession(), null);
     for (const response of [{}, { accessToken: 'test-token', userId: 'u', role: 'UNKNOWN', expiresAt: '2999-01-01T00:00:00Z' }, { accessToken: 'test-token', userId: 'u', role: 'SYSTEM_ADMIN', expiresAt: '2000-01-01T00:00:00Z' }]) {
         globalThis.fetch = async () => json(response);
