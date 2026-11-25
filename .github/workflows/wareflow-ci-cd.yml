@@ -80,7 +80,7 @@ jobs:
       DB_USER: postgres
       DB_PASSWORD: ci_only
       EMAIL_ENABLED: 'false'
-      EUREKA_CLIENT_ENABLED: 'false'
+      EUREKA_CLIENT_ENABLED: ${{ matrix.service == 'eureka-server' && 'true' || 'false' }}
       SPRING_CLOUD_CONFIG_ENABLED: 'false'
       FINANCE_TEST_DB_URL: jdbc:postgresql://localhost:5432/wareflow_ci
       FINANCE_TEST_DB_DRIVER: org.postgresql.Driver
