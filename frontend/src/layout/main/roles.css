@@ -277,34 +277,24 @@
 
 /* PRIMARY BUTTONS */
 .wf-role-company .adm-btn-primary,
-.wf-role-company .wf-button-primary {
-    background: #318269 !important;
-    border: 1px solid #318269 !important;
-    color: #ffffff !important;
-    font-weight: 600 !important;
-    box-shadow: none !important;
-}
-
+.wf-role-company .wf-button-primary,
 .wf-role-storehouse .adm-btn-primary,
 .wf-role-storehouse .wf-button-primary {
-    background: #564f8a !important;
-    border: 1px solid #564f8a !important;
+    background: #2563eb !important;
+    background-color: #2563eb !important;
+    border: 1px solid #2563eb !important;
     color: #ffffff !important;
     font-weight: 600 !important;
-    box-shadow: none !important;
+    box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.4) !important;
 }
 
 .wf-role-company .adm-btn-primary:hover,
-.wf-role-company .wf-button-primary:hover {
-    background: #246853 !important;
-    border-color: #246853 !important;
-    color: #ffffff !important;
-    box-shadow: none !important;
-}
+.wf-role-company .wf-button-primary:hover,
 .wf-role-storehouse .adm-btn-primary:hover,
 .wf-role-storehouse .wf-button-primary:hover {
-    background: #433c71 !important;
-    border-color: #433c71 !important;
+    background: #1d4ed8 !important;
+    background-color: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
     color: #ffffff !important;
     box-shadow: none !important;
 }

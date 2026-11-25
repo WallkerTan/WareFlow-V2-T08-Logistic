@@ -1,11 +1,32 @@
+:root,
+body,
+.adm-modal-scrim,
+.adm-modal {
+    --adm-blue: #2563eb;
+    --adm-blue-dark: #1d4ed8;
+    --adm-blue-soft: #eff6ff;
+    --adm-ink: #172139;
+    --adm-ink-soft: #3d4a63;
+    --adm-muted: #738096;
+    --adm-faint: #9aa4b6;
+    --adm-line: #e6eaf2;
+    --adm-line-soft: #eef1f7;
+    --adm-surface: #ffffff;
+    --adm-canvas: #f6f8fc;
+    --adm-success: #1f9d78;
+    --adm-warning: #d99220;
+    --adm-danger: #d34b58;
+    --adm-purple: #7c5cf0;
+}
+
 /* ==========================================================================
    WareFlow Admin System
    Design tokens mirror the auth workspace so the product reads as one system.
    ========================================================================== */
 
 .admin-shell {
-    --adm-blue: #4567ed;
-    --adm-blue-dark: #3557d6;
+    --adm-blue: #2563eb;
+    --adm-blue-dark: #1d4ed8;
     --adm-blue-soft: #eef2ff;
     --adm-ink: #172139;
     --adm-ink-soft: #3d4a63;
@@ -653,18 +674,46 @@
     color: var(--adm-ink);
 }
 
-.adm-btn-primary {
-    background: var(--adm-blue);
-    border-color: var(--adm-blue);
-    color: #fff;
-    box-shadow: 0 6px 14px -6px rgba(69, 103, 237, 0.7);
+.adm-btn-primary,
+button.adm-btn-primary,
+.adm-modal button[type="submit"],
+.adm-modal-foot .adm-btn-primary,
+.wf-form-actions button[type="submit"],
+.wf-operation-actions button[type="submit"] {
+    background-color: #2563eb !important;
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.4) !important;
 }
 
-.adm-btn-primary:hover {
-    background: var(--adm-blue-dark);
-    border-color: var(--adm-blue-dark);
-    color: #fff;
+.adm-btn-primary:hover:not(:disabled),
+button.adm-btn-primary:hover:not(:disabled),
+.adm-modal button[type="submit"]:hover:not(:disabled),
+.adm-modal-foot .adm-btn-primary:hover:not(:disabled),
+.wf-form-actions button[type="submit"]:hover:not(:disabled),
+.wf-operation-actions button[type="submit"]:hover:not(:disabled) {
+    background-color: #1d4ed8 !important;
+    background: #1d4ed8 !important;
+    border-color: #1d4ed8 !important;
+    color: #ffffff !important;
     transform: translateY(-1px);
+}
+
+.adm-btn-primary:disabled,
+button.adm-btn-primary:disabled,
+.adm-modal button[type="submit"]:disabled,
+.adm-modal-foot .adm-btn-primary:disabled,
+.wf-form-actions button[type="submit"]:disabled,
+.wf-operation-actions button[type="submit"]:disabled {
+    background-color: #93c5fd !important;
+    background: #93c5fd !important;
+    border-color: #93c5fd !important;
+    color: #ffffff !important;
+    cursor: not-allowed !important;
+    opacity: 0.7 !important;
+    transform: none !important;
 }
 
 .adm-btn-danger {

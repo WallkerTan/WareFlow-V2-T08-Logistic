@@ -1,14 +1,30 @@
 @import "tailwindcss";
 
-:root {
+:root, body {
   font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+
+  /* Global primary color tokens */
+  --adm-blue: #2563eb;
+  --adm-blue-dark: #1d4ed8;
+  --adm-blue-soft: #eff6ff;
+  --adm-ink: #172139;
+  --adm-ink-soft: #3d4a63;
+  --adm-muted: #738096;
+  --adm-faint: #9aa4b6;
+  --adm-line: #e6eaf2;
+  --adm-line-soft: #eef1f7;
+  --adm-surface: #ffffff;
+  --adm-canvas: #f6f8fc;
+  --adm-success: #1f9d78;
+  --adm-warning: #d99220;
+  --adm-danger: #d34b58;
+  --adm-purple: #7c5cf0;
 }
 
 body {
-  font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
   padding: 0;
   color: #172139;
@@ -18,4 +34,57 @@ body {
 button, input, select, textarea {
   font-family: inherit;
 }
+
+/* Nút Xác nhận, Lưu, Primary: luôn nền xanh dương chữ trắng rõ nét */
+.adm-btn-primary,
+button.adm-btn-primary,
+.wf-button-primary,
+button.wf-button-primary,
+.adm-modal-foot .adm-btn-primary,
+.adm-modal button[type="submit"],
+.wf-form-actions button[type="submit"],
+.wf-operation-actions button[type="submit"] {
+  background-color: #2563eb !important;
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.4) !important;
+  cursor: pointer;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.adm-btn-primary:hover:not(:disabled),
+button.adm-btn-primary:hover:not(:disabled),
+.wf-button-primary:hover:not(:disabled),
+button.wf-button-primary:hover:not(:disabled),
+.adm-modal-foot .adm-btn-primary:hover:not(:disabled),
+.adm-modal button[type="submit"]:hover:not(:disabled),
+.wf-form-actions button[type="submit"]:hover:not(:disabled),
+.wf-operation-actions button[type="submit"]:hover:not(:disabled) {
+  background-color: #1d4ed8 !important;
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  transform: translateY(-1px);
+}
+
+.adm-btn-primary:disabled,
+button.adm-btn-primary:disabled,
+.wf-button-primary:disabled,
+button.wf-button-primary:disabled,
+.adm-modal-foot .adm-btn-primary:disabled,
+.adm-modal button[type="submit"]:disabled,
+.wf-form-actions button[type="submit"]:disabled,
+.wf-operation-actions button[type="submit"]:disabled {
+  background-color: #93c5fd !important;
+  background: #93c5fd !important;
+  border-color: #93c5fd !important;
+  color: #ffffff !important;
+  cursor: not-allowed !important;
+  opacity: 0.7 !important;
+  transform: none !important;
+}
+
 
